@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,8 +14,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,18 +38,9 @@ private data class PendingDelete(val task: Task?)
 fun BinScreen(entries: List<BinEntry>, viewModel: TasksViewModel, onClose: () -> Unit) {
     var pending by remember { mutableStateOf<PendingDelete?>(null) }
     BackHandler(onBack = onClose)
-    val messages = remember { SnackbarHostState() }
-    val backup = rememberBackupFiles(viewModel) { message -> messages.showSnackbar(message) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(messages) { DiscreetMessage(it.visuals.message) } },
-        bottomBar = {
-            Row(Modifier.navigationBarsPadding().padding(start = Space.x1)) {
-                QuietButton(stringResource(R.string.export_tasks), backup.export)
-                QuietButton(stringResource(R.string.import_tasks), backup.import)
-            }
-        },
         topBar = {
             // the same bar as the main screen: title and number on the left, the controls on the right
             Row(

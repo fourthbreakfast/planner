@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
@@ -31,6 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -162,6 +166,7 @@ private fun TaskList(
     var addText by rememberSaveable { mutableStateOf("") }
     var addFocused by remember { mutableStateOf(false) }
     val snackbarHost = remember { SnackbarHostState() }
+    val backup = rememberBackupFiles(viewModel) { snackbarHost.showSnackbar(it) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     val binnedMessage = stringResource(R.string.task_removed)
@@ -301,7 +306,7 @@ private fun TaskList(
             },
         snackbarHost = {
             SnackbarHost(snackbarHost) { data ->
-                DiscreetMessage(data.visuals.message, data.visuals.actionLabel.orEmpty(), data::performAction)
+                DiscreetMessage(data.visuals.message, data.visuals.actionLabel, data::performAction)
             }
         },
         bottomBar = {
@@ -342,6 +347,8 @@ private fun TaskList(
                 onPriorityChange = { setOrder(if (it) SortOrder.PRIORITY else SortOrder.TREE) },
                 binCount = binCount,
                 onOpenBin = onOpenBin,
+                onExport = backup.export,
+                onImport = backup.import,
             )
         },
     ) { padding ->
@@ -491,6 +498,32 @@ private fun Modifier.dropHint(zone: DropZone?, depth: Int = 0): Modifier {
     }
 }
 
+@Composable
+private fun TasksMenu(open: Boolean, onDismiss: () -> Unit, onExport: () -> Unit, onImport: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    @Composable
+    fun Entry(label: String, onClick: () -> Unit) {
+        DropdownMenuItem(
+            text = { Text(label, style = MaterialTheme.typography.labelLarge, color = colors.onBackground) },
+            onClick = {
+                onDismiss()
+                onClick()
+            },
+        )
+    }
+    DropdownMenu(
+        expanded = open,
+        onDismissRequest = onDismiss,
+        containerColor = colors.surfaceVariant,
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
+        border = BorderStroke(Space.strokeThin, colors.outline),
+    ) {
+        Entry(stringResource(R.string.export_tasks), onExport)
+        Entry(stringResource(R.string.import_tasks), onImport)
+    }
+}
+
 /** A small pill: says what happened and offers the way back, without covering the list. */
 @Composable
 fun DiscreetMessage(message: String, action: String? = null, onAction: () -> Unit = {}) {
@@ -523,7 +556,11 @@ private fun Header(
     onPriorityChange: (Boolean) -> Unit,
     binCount: Int,
     onOpenBin: () -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -531,13 +568,31 @@ private fun Header(
             .statusBarsPadding()
             .padding(start = Space.gutter, end = Space.rowPad),
     ) {
-        TitleWithCount(
-            title = stringResource(R.string.tasks_title),
-            count = openCount,
-            secondCount = totalOpen.takeIf { it != openCount },
-            countLabel = stringResource(R.string.open_tasks_in_all, openCount, totalOpen),
-            modifier = Modifier.weight(1f),
-        )
+        Box(Modifier.weight(1f)) {
+            // holding the title opens the little menu; a plain touch does nothing
+            TitleWithCount(
+                title = stringResource(R.string.tasks_title),
+                count = openCount,
+                secondCount = totalOpen.takeIf { it != openCount },
+                countLabel = stringResource(R.string.open_tasks_in_all, openCount, totalOpen),
+                modifier = Modifier.combinedClickable(
+                    interactionSource = null,
+                    indication = null,
+                    onClick = {},
+                    onLongClickLabel = stringResource(R.string.tasks_menu),
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuOpen = true
+                    },
+                ),
+            )
+            TasksMenu(
+                open = menuOpen,
+                onDismiss = { menuOpen = false },
+                onExport = onExport,
+                onImport = onImport,
+            )
+        }
         if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
         ModeDot(!treeMode, onPriorityChange)
         BinButton(binCount, onOpenBin)

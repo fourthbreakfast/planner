@@ -28,7 +28,7 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
 | hold and drag | move it, sideways to change how deep it goes |
 | the dot at the top | switch between your own order (grey) and priority order (red) |
 | the triangle at the top | open or close everything |
-| export or import in the bin | save your tasks to a file, or add them back from one |
+| hold the title | export your tasks to a file, or import them back |
 
 ### build
 
