@@ -2,6 +2,7 @@ package dev.fourthbreakfast.planner.tasks
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,7 +69,7 @@ fun BinScreen(entries: List<BinEntry>, viewModel: TasksViewModel, onClose: () ->
                 Text(stringResource(R.string.bin_is_empty))
             }
         } else {
-            LazyColumn(Modifier.padding(padding).fillMaxSize()) {
+            LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(bottom = Space.listEnd())) {
                 items(entries, key = { it.task.id }) { entry ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
