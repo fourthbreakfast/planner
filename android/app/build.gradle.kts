@@ -24,8 +24,14 @@ android {
         versionCode = 2
         versionName = "0.2.0"
 
-        // -Pdemo installs a second copy with its own empty data, for screenshots and for trying a release build
-        if (providers.gradleProperty("demo").isPresent) applicationIdSuffix = ".demo"
+        manifestPlaceholders["appLabel"] = "planner"
+
+        // -Pdemo installs a second copy named planner dev with its own data, so a change can be tried on the phone
+        // without touching the real app, which is signed with the release key and cannot be replaced by a debug build
+        if (providers.gradleProperty("demo").isPresent) {
+            applicationIdSuffix = ".demo"
+            manifestPlaceholders["appLabel"] = "planner dev"
+        }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
