@@ -344,7 +344,7 @@ private fun TaskList(
         topBar = {
             Header(
                 openCount = tasks.count { !it.done && it.parentId == null },
-                totalOpen = tasks.count { !it.done },
+                subtasksOpen = tasks.count { !it.done && it.parentId != null },
                 showExpandAll = parentIds.isNotEmpty(),
                 anyCollapsed = anyCollapsed,
                 onToggleAll = {
@@ -581,7 +581,7 @@ fun DiscreetMessage(message: String, action: String? = null, onAction: () -> Uni
 @Composable
 private fun Header(
     openCount: Int,
-    totalOpen: Int,
+    subtasksOpen: Int,
     showExpandAll: Boolean,
     anyCollapsed: Boolean,
     onToggleAll: () -> Unit,
@@ -618,8 +618,8 @@ private fun Header(
             TitleWithCount(
                 title = null,
                 count = openCount,
-                secondCount = totalOpen.takeIf { it != openCount },
-                countLabel = stringResource(R.string.open_tasks_in_all, openCount, totalOpen),
+                secondCount = subtasksOpen.takeIf { it > 0 },
+                countLabel = stringResource(R.string.open_tasks_in_all, openCount, subtasksOpen),
                 modifier = Modifier.weight(1f),
             )
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)

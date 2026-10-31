@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
@@ -21,8 +21,8 @@ android {
         applicationId = "dev.fourthbreakfast.planner"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         // -Pdemo installs a second copy with its own empty data, for screenshots and for trying a release build
         if (providers.gradleProperty("demo").isPresent) applicationIdSuffix = ".demo"
