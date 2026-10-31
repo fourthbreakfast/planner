@@ -229,14 +229,25 @@ private fun EventRow(
                 .heightIn(min = Space.touch)
                 .padding(start = Space.gutter, end = Space.gutter, top = Space.x3, bottom = Space.x3),
         ) {
-            Text(
-                text = event.minute?.let { timeText(it, is24Hour) } ?: stringResource(R.string.all_day),
-                style = if (event.minute != null) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
-                color = if (event.minute != null) quiet else colors.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-                modifier = Modifier.width(Space.timeColumn),
-            )
+            Column(Modifier.width(Space.timeColumn)) {
+                Text(
+                    text = event.minute?.let { timeText(it, is24Hour) } ?: stringResource(R.string.all_day),
+                    style = if (event.minute != null) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
+                    color = if (event.minute != null) quiet else colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                )
+                // when it ends, under the start
+                event.endMinute?.let { end ->
+                    Text(
+                        text = "– " + timeText(end, is24Hour),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
+                }
+            }
             Column(Modifier.weight(1f)) {
                 Text(text = event.title, style = MaterialTheme.typography.bodyLarge, color = quiet)
                 if (event.location.isNotEmpty()) {

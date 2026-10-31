@@ -20,6 +20,7 @@ data class EventEntity(
     val title: String,
     val day: Long,
     val minute: Int?,
+    val endMinute: Int?,
     val location: String,
     val notes: String,
     val createdAt: Long,
@@ -27,9 +28,9 @@ data class EventEntity(
     val deletedAt: Long?,
 )
 
-fun EventEntity.toEvent() = Event(id, title, day, minute, location, notes, createdAt, updatedAt, deletedAt)
+fun EventEntity.toEvent() = Event(id, title, day, minute, endMinute, location, notes, createdAt, updatedAt, deletedAt)
 
-fun Event.toEntity() = EventEntity(id, title, day, minute, location, notes, createdAt, updatedAt, deletedAt)
+fun Event.toEntity() = EventEntity(id, title, day, minute, endMinute, location, notes, createdAt, updatedAt, deletedAt)
 
 @Dao
 interface EventDao {

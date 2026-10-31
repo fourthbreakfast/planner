@@ -12,7 +12,7 @@ class Events(
     val all: Flow<List<Event>> = store.observeAll().map(::sortedEvents)
 
     /** A blank title is ignored, so an event can never be nameless. */
-    suspend fun add(title: String, day: Long, minute: Int?, location: String, notes: String) {
+    suspend fun add(title: String, day: Long, minute: Int?, location: String, notes: String, endMinute: Int? = null) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
         store.insert(
@@ -21,6 +21,7 @@ class Events(
                     title = trimmed,
                     day = day,
                     minute = minute?.let(::clampMinute),
+                    endMinute = validEnd(minute, endMinute),
                     location = location.trim(),
                     notes = notes.trim(),
                     createdAt = clock(),
@@ -30,7 +31,7 @@ class Events(
     }
 
     /** A blank title leaves the event as it was. Only events outside the bin can change. */
-    suspend fun update(id: String, title: String, day: Long, minute: Int?, location: String, notes: String) {
+    suspend fun update(id: String, title: String, day: Long, minute: Int?, location: String, notes: String, endMinute: Int? = null) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
         store.transaction {
@@ -39,6 +40,7 @@ class Events(
                 title = trimmed,
                 day = day,
                 minute = minute?.let(::clampMinute),
+                endMinute = validEnd(minute, endMinute),
                 location = location.trim(),
                 notes = notes.trim(),
             )
@@ -74,4 +76,10 @@ class Events(
     }
 
     private fun clampMinute(minute: Int) = minute.coerceIn(0, 24 * 60 - 1)
+
+    /** An end only counts when there is a start and it comes after it, on the same day. */
+    private fun validEnd(start: Int?, end: Int?): Int? {
+        if (start == null || end == null) return null
+        return clampMinute(end).takeIf { it > clampMinute(start) }
+    }
 }
