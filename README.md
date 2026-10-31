@@ -18,17 +18,17 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
 
 ### use
 
-| do this | to |
-| --- | --- |
-| touch a task | open or close its subtasks |
-| touch a task while typing | add the new task inside it |
-| touch the dot on a task | change its priority |
-| swipe right | move it to the bin |
-| swipe left | rename it |
-| hold and drag | move it, sideways to change how deep it goes |
-| the dot at the top | switch between your own order (grey) and priority order (red) |
-| the triangle at the top | open or close everything |
-| hold the title | export your tasks to a file, or import them back |
+<table>
+  <tr><td>touch a task</td><td>open or close its subtasks</td></tr>
+  <tr><td>touch a task while typing</td><td>add the new task inside it</td></tr>
+  <tr><td>touch the dot on a task</td><td>change its priority</td></tr>
+  <tr><td>swipe right</td><td>move it to the bin</td></tr>
+  <tr><td>swipe left</td><td>rename it</td></tr>
+  <tr><td>hold and drag</td><td>move it, sideways to change how deep it goes</td></tr>
+  <tr><td>the dot at the top</td><td>switch between your own order (grey) and priority order (red)</td></tr>
+  <tr><td>the triangle at the top</td><td>open or close everything</td></tr>
+  <tr><td>hold the title</td><td>export your tasks to a file, or import them back</td></tr>
+</table>
 
 ### build
 
