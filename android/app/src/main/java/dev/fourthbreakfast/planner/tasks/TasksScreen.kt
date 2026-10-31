@@ -109,6 +109,8 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.agenda.AgendaScreen
+import dev.fourthbreakfast.planner.notes.NotesScreen
+import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlin.math.roundToInt
@@ -124,16 +126,18 @@ private const val PREFS = "view"
 private const val PREF_SORT = "sort"
 
 @Composable
-fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel) {
+fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: NotesViewModel) {
     val tasks by viewModel.all.collectAsStateWithLifecycle(initialValue = null)
     var binOpen by rememberSaveable { mutableStateOf(false) }
-    var agendaOpen by rememberSaveable { mutableStateOf(false) }
+    var tab by rememberSaveable { mutableStateOf(Tab.TASKS) }
     val listState = rememberSaveableStateHolder()
     val all = tasks
     val entries = remember(all) { binEntries(all.orEmpty()) }
     val active = remember(all) { all.orEmpty().filterNot { it.inBin } }
-    if (agendaOpen) {
-        AgendaScreen(agenda, onShowTasks = { agendaOpen = false })
+    if (tab == Tab.AGENDA) {
+        AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES })
+    } else if (tab == Tab.NOTES) {
+        NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS })
     } else if (binOpen) {
         BinScreen(entries, viewModel, onClose = { binOpen = false })
     } else {
@@ -143,7 +147,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel) {
                 tasks = active,
                 binCount = entries.size,
                 onOpenBin = { binOpen = true },
-                onOpenAgenda = { agendaOpen = true },
+                onSelectTab = { tab = it },
                 viewModel = viewModel,
             )
         }
@@ -156,7 +160,7 @@ private fun TaskList(
     tasks: List<Task>,
     binCount: Int,
     onOpenBin: () -> Unit,
-    onOpenAgenda: () -> Unit,
+    onSelectTab: (Tab) -> Unit,
     viewModel: TasksViewModel,
 ) {
     val prefs = LocalContext.current.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -361,7 +365,7 @@ private fun TaskList(
                 onPriorityChange = { setOrder(if (it) SortOrder.PRIORITY else SortOrder.TREE) },
                 binCount = binCount,
                 onOpenBin = onOpenBin,
-                onOpenAgenda = onOpenAgenda,
+                onSelectTab = onSelectTab,
                 onExport = backup.export,
                 onImport = backup.import,
             )
@@ -384,7 +388,7 @@ private fun TaskList(
                             it.key != EndRow.key && at.y >= it.offset && at.y < it.offset + it.size
                         }
                     },
-                    onSwitch = onOpenAgenda,
+                    onSwitch = { onSelectTab(Tab.AGENDA) },
                 )
                 .pointerInput(order == SortOrder.TREE && renamingId == null) {
                     if (order != SortOrder.TREE || renamingId != null) return@pointerInput
@@ -600,7 +604,7 @@ private fun Header(
     onPriorityChange: (Boolean) -> Unit,
     binCount: Int,
     onOpenBin: () -> Unit,
-    onOpenAgenda: () -> Unit,
+    onSelectTab: (Tab) -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
 ) {
@@ -608,7 +612,7 @@ private fun Header(
     Column {
         TabBar(
             selected = Tab.TASKS,
-            onSelect = { if (it == Tab.AGENDA) onOpenAgenda() },
+            onSelect = { if (it != Tab.TASKS) onSelectTab(it) },
             // holding the tasks tab opens the little menu with export and import
             onTasksLongPress = { menuOpen = true },
             tasksExtra = {

@@ -8,12 +8,14 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.AutoMigrationSpec
 import dev.fourthbreakfast.planner.data.EventDao
 import dev.fourthbreakfast.planner.data.EventEntity
+import dev.fourthbreakfast.planner.data.NoteDao
+import dev.fourthbreakfast.planner.data.NoteEntity
 import dev.fourthbreakfast.planner.data.TaskDao
 import dev.fourthbreakfast.planner.data.TaskEntity
 
 @Database(
-    entities = [TaskEntity::class, EventEntity::class],
-    version = 7,
+    entities = [TaskEntity::class, EventEntity::class, NoteEntity::class],
+    version = 8,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -22,12 +24,16 @@ import dev.fourthbreakfast.planner.data.TaskEntity
         AutoMigration(from = 5, to = 6, spec = PlannerDatabase.DropFolders::class),
         // the agenda: a new table, nothing existing changes
         AutoMigration(from = 6, to = 7),
+        // notes: a new table, nothing existing changes
+        AutoMigration(from = 7, to = 8),
     ],
 )
 abstract class PlannerDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
 
     abstract fun eventDao(): EventDao
+
+    abstract fun noteDao(): NoteDao
 
     /** Folders were tried and removed. Their tasks stay, at the top level. */
     @DeleteTable(tableName = "folders")
