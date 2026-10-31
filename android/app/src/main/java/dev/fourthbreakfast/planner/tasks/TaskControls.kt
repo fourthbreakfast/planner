@@ -251,10 +251,10 @@ fun TitleWithCount(
         modifier = modifier.padding(vertical = Space.x2),
     ) {
         if (title != null) {
-            Text(
+            SegmentText(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
+                scale = TAB_SCALE,
                 modifier = Modifier.semantics { heading() },
             )
         }
@@ -350,11 +350,27 @@ private fun TabWord(
             .padding(horizontal = Space.gutter - Space.rowPad)
             .semantics { selected = active },
     ) {
-        Text(
+        SegmentText(
             text = text,
-            style = MaterialTheme.typography.titleLarge,
             color = if (active) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+            scale = TAB_SCALE,
         )
+    }
+}
+
+/** How large the calculator lettering is for tab words and screen titles. */
+const val TAB_SCALE = 1.25f
+
+/** A word in the same lettering and size as the tabs, for a screen that is a tab of its own. */
+@Composable
+fun SegmentTab(text: String, modifier: Modifier = Modifier) {
+    Box(
+        contentAlignment = Alignment.CenterStart,
+        modifier = modifier
+            .heightIn(min = Space.touch)
+            .semantics { heading() },
+    ) {
+        SegmentText(text = text, color = MaterialTheme.colorScheme.onBackground, scale = TAB_SCALE)
     }
 }
 
