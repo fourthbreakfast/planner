@@ -18,7 +18,7 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
 
 ### use
 
-| | |
+| do this | to |
 | --- | --- |
 | touch a task | open or close its subtasks |
 | touch a task while typing | add the new task inside it |
