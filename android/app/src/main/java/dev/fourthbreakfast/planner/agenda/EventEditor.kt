@@ -169,11 +169,11 @@ private fun Label(resource: Int) {
     )
 }
 
-/** The hairline an empty field sits on, like a line on paper. */
+/** The line a field is written on, like the line you sign on: the text rests right on top of it. */
 @Composable
 private fun Rule() {
     HorizontalDivider(
-        color = MaterialTheme.colorScheme.outline,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
         thickness = Space.strokeThin,
         modifier = Modifier.padding(horizontal = Space.gutter),
     )
@@ -184,12 +184,12 @@ private fun Rule() {
 private fun LineChoice(text: String, onClick: () -> Unit) {
     Column {
         Box(
-            contentAlignment = Alignment.CenterStart,
+            contentAlignment = Alignment.BottomStart,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = Space.touch)
                 .clickable(onClick = onClick)
-                .padding(horizontal = Space.gutter),
+                .padding(start = Space.gutter, end = Space.gutter, top = Space.x2, bottom = Space.x1),
         ) {
             Text(text = text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
         }
@@ -216,11 +216,11 @@ private fun LineField(
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
             decorationBox = { inner ->
                 Box(
-                    contentAlignment = Alignment.CenterStart,
+                    contentAlignment = Alignment.BottomStart,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = Space.touch)
-                        .padding(horizontal = Space.gutter, vertical = Space.x2),
+                        .padding(start = Space.gutter, end = Space.gutter, top = Space.x2, bottom = Space.x1),
                 ) { inner() }
             },
             modifier = modifier.fillMaxWidth(),
