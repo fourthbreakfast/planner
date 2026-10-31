@@ -119,7 +119,7 @@ fun EventEditor(
             Label(R.string.event_location)
             LineField(location, { location = it })
             Label(R.string.event_notes)
-            LineField(notes, { notes = it }, singleLine = false, minLines = 2)
+            LineField(notes, { notes = it }, singleLine = false)
         }
     }
 
