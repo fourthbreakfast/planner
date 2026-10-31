@@ -323,7 +323,7 @@ private fun NoteRow(
                 .background(colors.background)
                 .clickable(onClickLabel = stringResource(R.string.open_note), onClick = onOpen)
                 .heightIn(min = Space.touch)
-                .padding(horizontal = Space.gutter, vertical = Space.x3),
+                .padding(horizontal = Space.gutter, vertical = Space.x5),
         ) {
             Text(
                 text = preview,
