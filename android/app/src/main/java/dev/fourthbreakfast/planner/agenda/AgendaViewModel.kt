@@ -12,11 +12,11 @@ class AgendaViewModel(private val events: Events) : ViewModel() {
     val all: Flow<List<Event>> = events.all
 
     fun add(draft: EventDraft) {
-        viewModelScope.launch { events.add(draft.title, draft.day, draft.minute, draft.location, draft.notes) }
+        viewModelScope.launch { events.add(draft.title, draft.day, draft.minute, draft.location, draft.notes, draft.endMinute) }
     }
 
     fun update(id: String, draft: EventDraft) {
-        viewModelScope.launch { events.update(id, draft.title, draft.day, draft.minute, draft.location, draft.notes) }
+        viewModelScope.launch { events.update(id, draft.title, draft.day, draft.minute, draft.location, draft.notes, draft.endMinute) }
     }
 
     fun moveToBin(id: String) {
@@ -41,6 +41,7 @@ data class EventDraft(
     val title: String,
     val day: Long,
     val minute: Int?,
+    val endMinute: Int?,
     val location: String,
     val notes: String,
 )

@@ -37,7 +37,7 @@ class BackupsTest {
 
     private val parent = Task(id = "p", title = "parent", createdAt = 1)
     private val child = Task(id = "c", title = "child", parentId = "p", priority = Priority.HIGH, deletedAt = 9, createdAt = 2)
-    private val dentist = Event(id = "e", title = "dentist", day = 20_000, minute = 570, location = "clinic", notes = "card", createdAt = 3, deletedAt = 7)
+    private val dentist = Event(id = "e", title = "dentist", day = 20_000, minute = 570, endMinute = 640, location = "clinic", notes = "card", createdAt = 3, deletedAt = 7)
 
     @Test
     fun importedThingsAreExactlyWhatWasExported() = runBlocking {

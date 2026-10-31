@@ -67,6 +67,26 @@ class EventsTest {
     }
 
     @Test
+    fun anEndTimeIsKeptOnlyWhenItFollowsAStart() = runBlocking {
+        events.add("fine", 20_000, 540, "", "", endMinute = 630)
+        events.add("no start", 20_000, null, "", "", endMinute = 630)
+        events.add("before", 20_000, 540, "", "", endMinute = 500)
+        events.add("same", 20_000, 540, "", "", endMinute = 540)
+        assertEquals(630, get("fine").endMinute)
+        assertNull(get("no start").endMinute)
+        assertNull(get("before").endMinute)
+        assertNull(get("same").endMinute)
+    }
+
+    @Test
+    fun changingToAllDayDropsTheEndToo() = runBlocking {
+        events.add("talk", 20_000, 540, "", "", endMinute = 600)
+        events.update(get("talk").id, "talk", 20_000, null, "", "")
+        assertNull(get("talk").minute)
+        assertNull(get("talk").endMinute)
+    }
+
+    @Test
     fun updateChangesTheFieldsAndKeepsTheRest() = runBlocking {
         events.add("dentist", 20_000, 570, "clinic", "")
         val before = get("dentist")

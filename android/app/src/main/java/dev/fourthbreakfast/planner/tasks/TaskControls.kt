@@ -358,23 +358,21 @@ private fun TabWord(
     }
 }
 
-/** A round button with a plus, at the bottom right, to add something. Ink with the page showing through the plus, like a checked box. */
+/** A plus, to add something: drawn like the other icons, quiet, in a touch square at the bottom right. */
 @Composable
 fun AddButton(label: String, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+    val ink = MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(Space.fab)
-            .background(colors.onBackground, CircleShape)
+            .size(Space.touch)
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
     ) {
         Canvas(Modifier.size(Space.icon)) {
-            val width = Space.strokeThick.toPx()
-            val c = colors.background
-            drawLine(c, Offset(size.width * 0.5f, size.height * 0.12f), Offset(size.width * 0.5f, size.height * 0.88f), width, StrokeCap.Round)
-            drawLine(c, Offset(size.width * 0.12f, size.height * 0.5f), Offset(size.width * 0.88f, size.height * 0.5f), width, StrokeCap.Round)
+            val width = Space.strokeThin.toPx()
+            drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), width, StrokeCap.Round)
+            drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), width, StrokeCap.Round)
         }
     }
 }
