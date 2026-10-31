@@ -1,0 +1,13 @@
+<!-- @dsCard group="Header" height=130 subtitle="grey is tree mode, red is priority mode" -->
+<style>
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/20px var(--font-sans); }
+  .wrap { display: flex; gap: 40px; padding: 24px var(--gutter); }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .touch { width: var(--touch); height: var(--touch); display: flex; align-items: center; justify-content: center; }
+  .dot { width: var(--mode-dot); height: var(--mode-dot); border-radius: 50%; }
+  .name { font: 500 12px/16px var(--font-mono); color: var(--quiet); }
+</style>
+<div class="wrap">
+  <div class="item"><div class="touch"><span class="dot" style="background: var(--quiet)"></span></div><span class="name">tree</span></div>
+  <div class="item"><div class="touch"><span class="dot" style="background: var(--priority-high)"></span></div><span class="name">priority</span></div>
+</div>

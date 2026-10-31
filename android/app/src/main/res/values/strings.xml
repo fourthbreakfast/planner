@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">planner</string>
+    <string name="clear_target">clear</string>
+    <string name="add_task_hint">add a task</string>
+    <string name="add_inside_hint">add inside: %1$s</string>
+    <string name="remove_task">move to bin</string>
+    <string name="task_removed">moved to bin</string>
+    <string name="export_tasks">export</string>
+    <string name="import_tasks">import</string>
+    <string name="export_done">backup saved</string>
+    <string name="export_failed">couldn\'t save the file</string>
+    <string name="import_failed">couldn\'t read that file</string>
+    <string name="import_nothing_new">nothing new to add</string>
+    <plurals name="import_done">
+        <item quantity="one">%1$d task added</item>
+        <item quantity="other">%1$d tasks added</item>
+    </plurals>
+    <string name="undo">undo</string>
+    <string name="tasks_title">tasks</string>
+    <string name="open_tasks_in_all">%1$d open main tasks, %2$d open in all</string>
+    <string name="bin">bin</string>
+    <string name="bin_with_count">bin %1$d</string>
+    <string name="back">back</string>
+    <string name="empty_bin">empty bin</string>
+    <string name="bin_is_empty">the bin is empty</string>
+    <string name="restore">restore</string>
+    <string name="delete">delete</string>
+    <string name="delete_forever">delete forever</string>
+    <string name="cancel">cancel</string>
+    <string name="confirm_delete_task">delete \"%1$s\" and anything inside it forever?</string>
+    <string name="confirm_empty_bin">delete everything in the bin forever?</string>
+    <plurals name="tasks_inside">
+        <item quantity="one">%1$d inside</item>
+        <item quantity="other">%1$d inside</item>
+    </plurals>
+    <string name="aim_at_task">add inside this task</string>
+    <string name="expand_all">open everything</string>
+    <string name="collapse_all">close everything</string>
+    <string name="rename">rename</string>
+    <string name="priority_mode">priority mode, off is tree mode</string>
+    <string name="priority_none">no priority</string>
+    <string name="priority_low">low priority</string>
+    <string name="priority_medium">medium priority</string>
+    <string name="priority_high">high priority</string>
+    <string name="change_priority">change priority</string>
+    <string name="task_progress">%1$d/%2$d</string>
+</resources>

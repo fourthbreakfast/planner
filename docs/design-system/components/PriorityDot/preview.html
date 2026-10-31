@@ -1,0 +1,16 @@
+<!-- @dsCard group="Tasks" height=150 subtitle="four levels, one size" -->
+<style>
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/20px var(--font-sans); }
+  .wrap { display: flex; gap: 32px; padding: 24px var(--gutter); flex-wrap: wrap; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .lane { width: var(--dot-lane); height: var(--touch); display: flex; align-items: center; justify-content: center; }
+  .dot { width: var(--dot); height: var(--dot); border-radius: 50%; }
+  .none { box-sizing: border-box; border: 1.5px solid var(--quiet); }
+  .name { font: 500 12px/16px var(--font-mono); color: var(--quiet); }
+</style>
+<div class="wrap">
+  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-high)"></span></div><span class="name">high</span></div>
+  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-medium)"></span></div><span class="name">medium</span></div>
+  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-low)"></span></div><span class="name">low</span></div>
+  <div class="item"><div class="lane"><span class="dot none"></span></div><span class="name">none</span></div>
+</div>
