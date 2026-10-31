@@ -1,5 +1,13 @@
 package dev.fourthbreakfast.planner.tasks
 
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.border
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
@@ -33,8 +41,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -508,27 +514,46 @@ private fun Modifier.dropHint(zone: DropZone?, depth: Int = 0): Modifier {
 
 @Composable
 private fun TasksMenu(open: Boolean, onDismiss: () -> Unit, onExport: () -> Unit, onImport: () -> Unit) {
+    if (!open) return
     val colors = MaterialTheme.colorScheme
+    val gap = with(LocalDensity.current) { Space.rowPad.roundToPx() }
+    // under the tab it belongs to, as wide as its words and no wider
+    val below = remember(gap) {
+        object : PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: IntRect,
+                windowSize: IntSize,
+                layoutDirection: LayoutDirection,
+                popupContentSize: IntSize,
+            ) = IntOffset(anchorBounds.left + gap, anchorBounds.bottom)
+        }
+    }
+
     @Composable
     fun Entry(label: String, onClick: () -> Unit) {
-        DropdownMenuItem(
-            text = { Text(label, style = MaterialTheme.typography.labelLarge, color = colors.onBackground) },
-            onClick = {
-                onDismiss()
-                onClick()
-            },
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.onBackground,
+            modifier = Modifier
+                .clickable {
+                    onDismiss()
+                    onClick()
+                }
+                .padding(horizontal = Space.x3, vertical = Space.x3),
         )
     }
-    DropdownMenu(
-        expanded = open,
-        onDismissRequest = onDismiss,
-        containerColor = colors.surfaceVariant,
-        shadowElevation = 0.dp,
-        tonalElevation = 0.dp,
-        border = BorderStroke(Space.strokeThin, colors.outline),
-    ) {
-        Entry(stringResource(R.string.export_tasks), onExport)
-        Entry(stringResource(R.string.import_tasks), onImport)
+    // focusable, so a touch outside or the back button closes it instead of reaching the screen behind
+    Popup(popupPositionProvider = below, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
+        Column(
+            Modifier
+                .width(IntrinsicSize.Max)
+                .background(colors.surfaceVariant, RoundedCornerShape(Space.radiusCheck))
+                .border(Space.strokeThin, colors.outline, RoundedCornerShape(Space.radiusCheck)),
+        ) {
+            Entry(stringResource(R.string.export_tasks), onExport)
+            Entry(stringResource(R.string.import_tasks), onImport)
+        }
     }
 }
 
@@ -569,44 +594,38 @@ private fun Header(
     onImport: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(start = Space.gutter, end = Space.rowPad),
-    ) {
-        Box(Modifier.weight(1f)) {
-            // holding the title opens the little menu; a plain touch does nothing
+    Column {
+        TabBar(
+            selected = Tab.TASKS,
+            onSelect = { if (it == Tab.AGENDA) onOpenAgenda() },
+            // holding the tasks tab opens the little menu with export and import
+            onTasksLongPress = { menuOpen = true },
+            tasksExtra = {
+                TasksMenu(
+                    open = menuOpen,
+                    onDismiss = { menuOpen = false },
+                    onExport = onExport,
+                    onImport = onImport,
+                )
+            },
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = Space.gutter, end = Space.rowPad),
+        ) {
             TitleWithCount(
-                title = stringResource(R.string.tasks_title),
+                title = null,
                 count = openCount,
                 secondCount = totalOpen.takeIf { it != openCount },
                 countLabel = stringResource(R.string.open_tasks_in_all, openCount, totalOpen),
-                other = stringResource(R.string.agenda_title),
-                onOther = onOpenAgenda,
-                modifier = Modifier.combinedClickable(
-                    interactionSource = null,
-                    indication = null,
-                    onClick = {},
-                    onLongClickLabel = stringResource(R.string.tasks_menu),
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        menuOpen = true
-                    },
-                ),
+                modifier = Modifier.weight(1f),
             )
-            TasksMenu(
-                open = menuOpen,
-                onDismiss = { menuOpen = false },
-                onExport = onExport,
-                onImport = onImport,
-            )
+            if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
+            ModeDot(!treeMode, onPriorityChange)
+            BinButton(binCount, onOpenBin)
         }
-        if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
-        ModeDot(!treeMode, onPriorityChange)
-        BinButton(binCount, onOpenBin)
     }
 }
 

@@ -23,8 +23,6 @@
     <string name="save">save</string>
     <string name="set">set</string>
     <string name="open_event">open this event</string>
-    <string name="delete_event">delete</string>
-    <string name="event_removed">event deleted</string>
     <string name="nothing_planned">nothing planned</string>
     <string name="earlier">earlier</string>
     <string name="day_today">today</string>
@@ -34,6 +32,7 @@
         <item quantity="one">%1$d event ahead</item>
         <item quantity="other">%1$d events ahead</item>
     </plurals>
+    <string name="confirm_delete_event">delete \"%1$s\" forever?</string>
     <string name="export_tasks">export</string>
     <string name="import_tasks">import</string>
     <string name="export_done">backup saved</string>

@@ -22,16 +22,17 @@ planner is a task list that stays out of the way: a plain page, a list, one line
 - Borders and shadows: there are none at rest. Separate things with space. The only shadow is `lift` on the row being dragged.
 - Radius: the check box uses `radius-check`; the undo pill uses `radius-pill`. Nothing else is rounded.
 - Motion: things move only when something happened. A dragged row follows the finger; rows slide to make room; a small haptic tick marks each change of drop spot. No decorative animation; respect the system's reduced motion setting.
-- Layout: one column, full width. The title bar is at the top, the add bar is pinned to the bottom above the keyboard, and the list scrolls between them. An invisible row of `end-row` ends the list.
+- Layout: one column, full width. Two tabs run along the top, tasks at the left and agenda at the right, with the screen's own bar under them (counts at the left, controls at the right). The agenda has its own bin, and a round plus floats at its bottom right. The the add bar is pinned to the bottom above the keyboard, and the list scrolls between them. An invisible row of `end-row` ends the list.
 
 ## Behaviour that shapes the interface
 
 - Two modes, switched by one dot at the top right: grey (`quiet`) is tree mode, red (`priority-high`) is priority mode. Priority only ranks a task among its siblings, so a subtask never leaves its parent.
 - Touching a task opens or closes its subtasks. While the add line is in use, touching a task targets it instead; leaving the add line drops the target.
 - Swipe a row right to move it to the bin, left to rename it. Long press and drag in tree mode only, with the finger moving sideways to choose how deep the task lands.
+- The agenda lists events soonest first with the time, name, location and notes all on view. A touch edits an event, a swipe right moves it to the event bin. An event has a name, a day, an optional time, a location and notes.
 - There is no collapse arrow on a task; a parent shows `done/total` on the right. One small triangle at the top, left of the mode dot, opens everything (pointing down, shown while anything is closed) or closes everything (pointing up).
 - Four levels at most.
-- Holding the title opens a small menu with export and import, on `panel` with a `line` border and no shadow. They use the phone's file picker. Import only adds what is missing and never changes what is already there.
+- Holding the tasks tab opens a small menu with export and import, as wide as its two words, on `panel` with a `line` border and no shadow. They use the phone's file picker, and a backup carries the tasks and the agenda. Import only adds what is missing and never changes what is already there.
 
 ## Iconography
 

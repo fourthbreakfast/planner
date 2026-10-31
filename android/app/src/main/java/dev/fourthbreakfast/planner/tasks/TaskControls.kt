@@ -1,5 +1,6 @@
 package dev.fourthbreakfast.planner.tasks
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,7 +21,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
@@ -234,28 +240,30 @@ fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
 /** The title of a screen with a little calculator-style number beside it. Both screens use it so they match. */
 @Composable
 fun TitleWithCount(
-    title: String,
+    title: String?,
     count: Int,
     countLabel: String,
     modifier: Modifier = Modifier,
     secondCount: Int? = null,
-    other: String? = null,
-    onOther: () -> Unit = {},
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(vertical = Space.x2),
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.semantics { heading() },
-        )
+        if (title != null) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.semantics { heading() },
+            )
+        }
         SegmentNumber(
             value = count,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = Space.x3).semantics { contentDescription = countLabel },
+            modifier = Modifier
+                .padding(start = if (title != null) Space.x3 else 0.dp)
+                .semantics { contentDescription = countLabel },
         )
         // a second number, the same size but fainter: everything open, subtasks included
         if (secondCount != null) {
@@ -265,38 +273,108 @@ fun TitleWithCount(
                 modifier = Modifier.padding(start = Space.x3).semantics { contentDescription = countLabel },
             )
         }
-        // the other tab, quiet, one touch away
-        if (other != null) {
-            Text(
-                text = other,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .padding(start = Space.x2)
-                    .heightIn(min = Space.touch)
-                    .clickable(onClick = onOther)
-                    .padding(horizontal = Space.x2)
-                    .wrapContentHeight(Alignment.CenterVertically),
+    }
+}
+
+enum class Tab { TASKS, AGENDA }
+
+/**
+ * The two tabs along the top: tasks at the left, agenda at the right. The one you are on is in full ink,
+ * the other is quiet. Holding the tasks tab opens its menu, which [tasksExtra] draws.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun TabBar(
+    selected: Tab,
+    onSelect: (Tab) -> Unit,
+    modifier: Modifier = Modifier,
+    onTasksLongPress: (() -> Unit)? = null,
+    tasksExtra: @Composable () -> Unit = {},
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = Space.rowPad),
+    ) {
+        Box(Modifier.weight(1f)) {
+            TabWord(
+                text = stringResource(R.string.tasks_title),
+                active = selected == Tab.TASKS,
+                alignment = Alignment.CenterStart,
+                onClick = { onSelect(Tab.TASKS) },
+                onLongClick = onTasksLongPress,
+            )
+            tasksExtra()
+        }
+        Box(Modifier.weight(1f)) {
+            TabWord(
+                text = stringResource(R.string.agenda_title),
+                active = selected == Tab.AGENDA,
+                alignment = Alignment.CenterEnd,
+                onClick = { onSelect(Tab.AGENDA) },
+                onLongClick = null,
             )
         }
     }
 }
 
-/** A plus, to add something. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TabWord(
+    text: String,
+    active: Boolean,
+    alignment: Alignment,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+) {
+    val haptics = LocalHapticFeedback.current
+    val colors = MaterialTheme.colorScheme
+    Box(
+        contentAlignment = alignment,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Space.touch)
+            .combinedClickable(
+                interactionSource = null,
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick,
+                onLongClick = onLongClick?.let { long ->
+                    {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        long()
+                    }
+                },
+            )
+            .padding(horizontal = Space.gutter - Space.rowPad)
+            .semantics { selected = active },
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleLarge,
+            color = if (active) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+        )
+    }
+}
+
+/** A round button with a plus, at the bottom right, to add something. Ink with the page showing through the plus, like a checked box. */
 @Composable
 fun AddButton(label: String, onClick: () -> Unit) {
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
+    val colors = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(Space.touch)
+            .size(Space.fab)
+            .background(colors.onBackground, CircleShape)
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
     ) {
         Canvas(Modifier.size(Space.icon)) {
-            val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round)
-            drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), line.width, StrokeCap.Round)
-            drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), line.width, StrokeCap.Round)
+            val width = Space.strokeThick.toPx()
+            val c = colors.background
+            drawLine(c, Offset(size.width * 0.5f, size.height * 0.12f), Offset(size.width * 0.5f, size.height * 0.88f), width, StrokeCap.Round)
+            drawLine(c, Offset(size.width * 0.12f, size.height * 0.5f), Offset(size.width * 0.88f, size.height * 0.5f), width, StrokeCap.Round)
         }
     }
 }

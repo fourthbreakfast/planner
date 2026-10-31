@@ -50,4 +50,7 @@ object Space {
     // the agenda
     /** Width of the time at the left of an event. */
     val timeColumn = 64.dp
+
+    /** The round add button. */
+    val fab = 56.dp
 }

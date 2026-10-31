@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 class AgendaViewModel(private val events: Events) : ViewModel() {
+    /** Every event, the bin included. */
     val all: Flow<List<Event>> = events.all
 
     fun add(draft: EventDraft) {
@@ -18,13 +19,20 @@ class AgendaViewModel(private val events: Events) : ViewModel() {
         viewModelScope.launch { events.update(id, draft.title, draft.day, draft.minute, draft.location, draft.notes) }
     }
 
-    /** Removes an event and hands it to [onRemoved], so the screen can offer to bring it back. */
-    fun remove(id: String, onRemoved: (Event) -> Unit) {
-        viewModelScope.launch { events.remove(id)?.let(onRemoved) }
+    fun moveToBin(id: String) {
+        viewModelScope.launch { events.moveToBin(id) }
     }
 
-    fun restore(event: Event) {
-        viewModelScope.launch { events.restore(event) }
+    fun restore(id: String) {
+        viewModelScope.launch { events.restore(id) }
+    }
+
+    fun deleteForever(id: String) {
+        viewModelScope.launch { events.deleteForever(id) }
+    }
+
+    fun emptyBin() {
+        viewModelScope.launch { events.emptyBin() }
     }
 }
 
