@@ -1,0 +1,38 @@
+<!-- @dsCard group="Header" height=260 subtitle="title, seven-segment count, mode dot and bin" -->
+<style>
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/20px var(--font-sans); }
+  .bar { display: flex; align-items: center; padding: 0 var(--row-pad) 0 var(--gutter); }
+  .head { flex: 1; display: flex; align-items: center; padding: var(--space-2) 0; }
+  h1 { margin: 0; font: 500 22px/28px var(--font-mono); color: var(--ink); }
+  .seg { margin-left: var(--space-3); display: block; }
+  .seg.second { margin-left: var(--space-3); opacity: 0.6; }
+  .touch { width: var(--touch); height: var(--touch); display: flex; align-items: center; justify-content: center; color: var(--quiet); }
+  .dot { width: var(--mode-dot); height: var(--mode-dot); border-radius: 50%; background: var(--quiet); }
+  svg.bin { width: var(--icon); height: var(--icon); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .gap { height: 28px; }
+</style>
+<div id="root"></div>
+<script>
+  // seven bars per digit, slanted to the right; unlit bars show faintly
+  const DIGITS = ['abcdef', 'bc', 'abdeg', 'abcdg', 'bcfg', 'acdfg', 'acdefg', 'abc', 'abcdefg', 'abcdfg'];
+  const W = 10, H = 18, T = 2.4, G = 0.45, SLANT = 0.12, SP = 4;
+  function bar(b, left) {
+    const h = T / 2;
+    const X = (x, y) => left + x + (H - y) * SLANT;
+    const hex = pts => pts.map(([x, y]) => X(x, y).toFixed(2) + ',' + y.toFixed(2)).join(' ');
+    const horiz = yc => [[h + G, yc], [T + G, yc - h], [W - T - G, yc - h], [W - h - G, yc], [W - T - G, yc + h], [T + G, yc + h]];
+    const vert = (xc, t, b2) => [[xc, t + G], [xc + h, t + h + G], [xc + h, b2 - h - G], [xc, b2 - G], [xc - h, b2 - h - G], [xc - h, t + h + G]];
+    const pts = { a: horiz(h), g: horiz(H / 2), d: horiz(H - h), f: vert(h, h, H / 2 + h * 0.2), b: vert(W - h, h, H / 2 + h * 0.2), e: vert(h, H / 2 - h * 0.2, H - h), c: vert(W - h, H / 2 - h * 0.2, H - h) }[b];
+    return hex(pts);
+  }
+  function segments(n, scale = 1, cls = '') {
+    const ds = String(n).split('').map(Number);
+    const w = ds.length * W + (ds.length - 1) * SP + H * SLANT;
+    const body = ds.map((d, i) => 'abcdefg'.split('').map(b =>
+      `<polygon points="${bar(b, i * (W + SP))}" fill="var(--quiet)" opacity="${DIGITS[d].includes(b) ? 1 : 0.13}"/>`).join('')).join('');
+    return `<svg class="seg " viewBox="0 0  " width="-e" height="-e" role="img" aria-label="">${body}</svg>`;
+  }
+  const bin = '<svg class="bin" viewBox="0 0 20 20"><path d="M4.4 5.6 L5.6 18.4 L14.4 18.4 L15.6 5.6"/><path d="M2.4 5.6 L17.6 5.6 M7.6 5.6 L7.6 2 L12.4 2 L12.4 5.6"/></svg>';
+  const barHtml = (title, n, second) => `<div class="bar"><div class="head"><h1>${title}</h1>${segments(n)}${second ? segments(second, 1, 'second') : ''}</div><div class="touch"><span class="dot"></span></div><div class="touch">${bin}</div></div>`;
+  document.getElementById('root').innerHTML = barHtml('tasks', 4) + '<div class="gap"></div>' + barHtml('tasks', 3, 24);
+</script>
