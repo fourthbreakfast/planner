@@ -177,8 +177,7 @@ private fun AgendaList(
                 Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowTasks)
-                    .switchTabBySwiping(towardsLeft = true, onRow = { false }, onSwitch = onShowNotes),
+                    .switchTabBySwiping(towardsLeft = true, onRow = { false }, onSwitch = onShowTasks),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -198,9 +197,8 @@ private fun AgendaList(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    // a sweep to the right across empty space goes back to the tasks, to the left on to the notes
-                    .switchTabBySwiping(towardsLeft = false, onRow = onEvent, onSwitch = onShowTasks)
-                    .switchTabBySwiping(towardsLeft = true, onRow = onEvent, onSwitch = onShowNotes),
+                    // a sweep to the left across empty space goes on to the tasks
+                    .switchTabBySwiping(towardsLeft = true, onRow = onEvent, onSwitch = onShowTasks),
             ) {
                 items(rows, key = { it.key }) { row ->
                     when (row) {
