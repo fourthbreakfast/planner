@@ -375,6 +375,16 @@ private fun TaskList(
                 .consumeWindowInsets(padding)
                 .fillMaxSize()
                 .onGloballyPositioned { listBounds = it.boundsInRoot() }
+                // a sweep to the left across empty space opens the agenda; rows keep their own swipes
+                .switchTabBySwiping(
+                    towardsLeft = true,
+                    onRow = { at ->
+                        list.layoutInfo.visibleItemsInfo.any {
+                            it.key != EndRow.key && at.y >= it.offset && at.y < it.offset + it.size
+                        }
+                    },
+                    onSwitch = onOpenAgenda,
+                )
                 .pointerInput(order == SortOrder.TREE && renamingId == null) {
                     if (order != SortOrder.TREE || renamingId != null) return@pointerInput
                     detectDragGesturesAfterLongPress(

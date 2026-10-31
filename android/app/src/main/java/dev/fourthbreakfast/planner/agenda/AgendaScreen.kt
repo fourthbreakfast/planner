@@ -48,6 +48,7 @@ import dev.fourthbreakfast.planner.tasks.Tab
 import dev.fourthbreakfast.planner.tasks.TabBar
 import dev.fourthbreakfast.planner.tasks.TitleWithCount
 import dev.fourthbreakfast.planner.tasks.rememberUnsavedSwipe
+import dev.fourthbreakfast.planner.tasks.switchTabBySwiping
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.launch
 
@@ -158,7 +159,13 @@ private fun AgendaList(
         },
     ) { padding ->
         if (rows.isEmpty()) {
-            Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowTasks),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
                     text = stringResource(R.string.nothing_planned),
                     style = MaterialTheme.typography.bodyMedium,
@@ -166,7 +173,22 @@ private fun AgendaList(
                 )
             }
         } else {
-            LazyColumn(state = list, modifier = Modifier.padding(padding).fillMaxSize()) {
+            LazyColumn(
+                state = list,
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    // a sweep to the right across empty space goes back to the tasks
+                    .switchTabBySwiping(
+                        towardsLeft = false,
+                        onRow = { at ->
+                            list.layoutInfo.visibleItemsInfo.any {
+                                it.key != "end" && at.y >= it.offset && at.y < it.offset + it.size
+                            }
+                        },
+                        onSwitch = onShowTasks,
+                    ),
+            ) {
                 items(rows, key = { it.key }) { row ->
                     when (row) {
                         is DayRow -> DayHeading(dayText(row.day, today), row.earlier)

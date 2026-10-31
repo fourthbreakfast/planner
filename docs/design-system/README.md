@@ -28,6 +28,7 @@ planner is a task list that stays out of the way: a plain page, a list, one line
 
 - Two modes, switched by one dot at the top right: grey (`quiet`) is tree mode, red (`priority-high`) is priority mode. Priority only ranks a task among its siblings, so a subtask never leaves its parent.
 - Touching a task opens or closes its subtasks. While the add line is in use, touching a task targets it instead; leaving the add line drops the target.
+- Sweeping sideways across empty space switches tabs: left on tasks opens the agenda, right on the agenda goes back. It never loops, and it ignores any sweep that starts on a row.
 - Swipe a row right to move it to the bin, left to rename it. Long press and drag in tree mode only, with the finger moving sideways to choose how deep the task lands.
 - The agenda lists events soonest first with the time, name, location and notes all on view. A touch edits an event, a swipe right moves it to the event bin. An event has a name, a day, a time that is all day, a start, or a start and an end, a location and notes. The form is empty lines, the day and time choosers are drawn in the app's own style, and the add button is a quiet plus at the bottom right.
 - There is no collapse arrow on a task; a parent shows `done/total` on the right. One small triangle at the top, left of the mode dot, opens everything (pointing down, shown while anything is closed) or closes everything (pointing up).

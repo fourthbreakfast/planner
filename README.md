@@ -28,6 +28,7 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
   <tr><td>the dot at the top</td><td>switch between your own order (grey) and priority order (red)</td></tr>
   <tr><td>the triangle at the top</td><td>open or close everything</td></tr>
   <tr><td>agenda at the top right</td><td>switch to your events, and tasks at the top left switches back</td></tr>
+  <tr><td>sweep sideways on empty space</td><td>left goes to the agenda, right goes back to the tasks</td></tr>
   <tr><td>plus at the bottom right of the agenda</td><td>add an event: name, day, time (all day, a start, or a start and end), place and notes</td></tr>
   <tr><td>touch an event</td><td>edit it</td></tr>
   <tr><td>swipe an event right</td><td>move it to the agenda's own bin, with undo</td></tr>
