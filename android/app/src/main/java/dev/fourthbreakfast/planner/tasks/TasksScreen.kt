@@ -618,7 +618,7 @@ private fun Header(
             TitleWithCount(
                 title = null,
                 count = openCount,
-                secondCount = subtasksOpen.takeIf { it > 0 },
+                secondCount = subtasksOpen,
                 countLabel = stringResource(R.string.open_tasks_in_all, openCount, subtasksOpen),
                 modifier = Modifier.weight(1f),
             )
