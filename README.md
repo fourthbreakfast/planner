@@ -10,7 +10,7 @@
   <img src="docs/readme/hero.png" alt="the task list in dark and light, with a task being swiped to the bin" width="100%">
 </p>
 
-planner is a task list, agenda and notebook for android. tasks can have subtasks up to four levels deep, each one can have a priority, and anything you remove goes to a bin first. the agenda lists your events soonest first, with their day, time, place and notes. notes are plain text you can mark up: lists, checkboxes, bold, italic and underline. everything is stored on your phone, so there's no account and it works offline.
+planner is a task list, agenda and notebook for android. it is a quick standalone first try, separate from any larger planned apps, that turned out to be useful on its own. tasks can have subtasks up to four levels deep, each one can have a priority, and anything you remove goes to a bin first. the agenda lists your events soonest first, with their day, time, place and notes. notes are plain text you can mark up: lists, checkboxes, bold, italic and underline. everything is stored on your phone, so there's no account and it works offline.
 
 ### install
 
