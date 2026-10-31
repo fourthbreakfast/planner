@@ -1,6 +1,6 @@
 package dev.fourthbreakfast.planner.agenda
 
-import androidx.compose.foundation.text.BasicTextField
+import dev.fourthbreakfast.planner.tasks.SegmentTab
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import dev.fourthbreakfast.planner.R
@@ -81,12 +82,7 @@ fun EventEditor(
                     .statusBarsPadding()
                     .padding(start = Space.gutter, end = Space.rowPad),
             ) {
-                Text(
-                    text = stringResource(R.string.event_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = colors.onBackground,
-                    modifier = Modifier.weight(1f).padding(vertical = Space.x2),
-                )
+                SegmentTab(stringResource(R.string.event_title), Modifier.weight(1f))
                 if (onDelete != null) QuietButton(stringResource(R.string.delete), onDelete)
                 BackButton(onClose)
             }
@@ -120,15 +116,15 @@ fun EventEditor(
                 .verticalScroll(rememberScrollState()),
         ) {
             Label(R.string.event_name)
-            LineField(title, { title = it }, Modifier.focusRequester(nameFocus))
+            QuietField(title, { title = it }, Modifier.focusRequester(nameFocus))
             Label(R.string.event_day)
-            LineChoice(if (daySet) dateText(day, today()) else "") { pickingDay = true }
+            Choice(if (daySet) dateText(day, today()) else "") { pickingDay = true }
             Label(R.string.event_time)
-            LineChoice(if (timeSet) timeRangeText(start, end, is24Hour) else "") { pickingTime = true }
+            Choice(if (timeSet) timeRangeText(start, end, is24Hour) else "") { pickingTime = true }
             Label(R.string.event_location)
-            LineField(location, { location = it })
+            QuietField(location, { location = it })
             Label(R.string.event_notes)
-            LineField(notes, { notes = it }, singleLine = false)
+            QuietField(notes, { notes = it }, singleLine = false)
         }
     }
 
@@ -169,62 +165,44 @@ private fun Label(resource: Int) {
     )
 }
 
-/** The line a field is written on, like the line you sign on: the text rests right on top of it. */
-@Composable
-private fun Rule() {
-    HorizontalDivider(
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-        thickness = Space.strokeThin,
-        modifier = Modifier.padding(horizontal = Space.gutter),
-    )
-}
-
 /** A value you touch to change, like the day or the time. Empty until chosen. */
 @Composable
-private fun LineChoice(text: String, onClick: () -> Unit) {
-    Column {
-        Box(
-            contentAlignment = Alignment.BottomStart,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = Space.touch)
-                .clickable(onClick = onClick)
-                .padding(start = Space.gutter, end = Space.gutter, top = Space.x2, bottom = Space.x1),
-        ) {
-            Text(text = text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
-        }
-        Rule()
+private fun Choice(text: String, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.CenterStart,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Space.touch)
+            .clickable(onClick = onClick)
+            .padding(horizontal = Space.gutter),
+    ) {
+        Text(text = text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
     }
 }
 
-/** A plain text field with nothing around it but its line: one touch tall, the text at the gutter. */
+/** A plain text field with nothing around it, like the add line. */
 @Composable
-private fun LineField(
+private fun QuietField(
     value: String,
     onChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     singleLine: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
-    Column {
-        BasicTextField(
-            value = value,
-            onValueChange = onChange,
-            singleLine = singleLine,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
-            cursorBrush = SolidColor(colors.onBackground),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-            decorationBox = { inner ->
-                Box(
-                    contentAlignment = Alignment.BottomStart,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = Space.touch)
-                        .padding(start = Space.gutter, end = Space.gutter, top = Space.x2, bottom = Space.x1),
-                ) { inner() }
-            },
-            modifier = modifier.fillMaxWidth(),
-        )
-        Rule()
-    }
+    TextField(
+        value = value,
+        onValueChange = onChange,
+        singleLine = singleLine,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            focusedTextColor = colors.onBackground,
+            unfocusedTextColor = colors.onBackground,
+            cursorColor = colors.onBackground,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+        modifier = modifier.fillMaxWidth(),
+    )
 }
