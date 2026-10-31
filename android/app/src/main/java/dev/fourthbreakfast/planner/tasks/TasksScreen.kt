@@ -102,6 +102,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.R
+import dev.fourthbreakfast.planner.agenda.AgendaScreen
+import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlin.math.roundToInt
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
@@ -116,14 +118,17 @@ private const val PREFS = "view"
 private const val PREF_SORT = "sort"
 
 @Composable
-fun TasksScreen(viewModel: TasksViewModel) {
+fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel) {
     val tasks by viewModel.all.collectAsStateWithLifecycle(initialValue = null)
     var binOpen by rememberSaveable { mutableStateOf(false) }
+    var agendaOpen by rememberSaveable { mutableStateOf(false) }
     val listState = rememberSaveableStateHolder()
     val all = tasks
     val entries = remember(all) { binEntries(all.orEmpty()) }
     val active = remember(all) { all.orEmpty().filterNot { it.inBin } }
-    if (binOpen) {
+    if (agendaOpen) {
+        AgendaScreen(agenda, onShowTasks = { agendaOpen = false })
+    } else if (binOpen) {
         BinScreen(entries, viewModel, onClose = { binOpen = false })
     } else {
         // keeps the aim and collapsed tasks while the bin is open
@@ -132,6 +137,7 @@ fun TasksScreen(viewModel: TasksViewModel) {
                 tasks = active,
                 binCount = entries.size,
                 onOpenBin = { binOpen = true },
+                onOpenAgenda = { agendaOpen = true },
                 viewModel = viewModel,
             )
         }
@@ -144,6 +150,7 @@ private fun TaskList(
     tasks: List<Task>,
     binCount: Int,
     onOpenBin: () -> Unit,
+    onOpenAgenda: () -> Unit,
     viewModel: TasksViewModel,
 ) {
     val prefs = LocalContext.current.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -347,6 +354,7 @@ private fun TaskList(
                 onPriorityChange = { setOrder(if (it) SortOrder.PRIORITY else SortOrder.TREE) },
                 binCount = binCount,
                 onOpenBin = onOpenBin,
+                onOpenAgenda = onOpenAgenda,
                 onExport = backup.export,
                 onImport = backup.import,
             )
@@ -556,6 +564,7 @@ private fun Header(
     onPriorityChange: (Boolean) -> Unit,
     binCount: Int,
     onOpenBin: () -> Unit,
+    onOpenAgenda: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
 ) {
@@ -575,6 +584,8 @@ private fun Header(
                 count = openCount,
                 secondCount = totalOpen.takeIf { it != openCount },
                 countLabel = stringResource(R.string.open_tasks_in_all, openCount, totalOpen),
+                other = stringResource(R.string.agenda_title),
+                onOther = onOpenAgenda,
                 modifier = Modifier.combinedClickable(
                     interactionSource = null,
                     indication = null,
@@ -602,7 +613,7 @@ private fun Header(
 // not rememberSwipeToDismissBoxState: it saves by row key, so something brought back
 // by undo would still be dismissed and remove itself again
 @Composable
-private fun rememberUnsavedSwipe() = remember {
+internal fun rememberUnsavedSwipe() = remember {
     SwipeToDismissBoxState(
         initialValue = SwipeToDismissBoxValue.Settled,
         positionalThreshold = { distance -> distance * 0.5f },
@@ -611,7 +622,7 @@ private fun rememberUnsavedSwipe() = remember {
 
 /** Under a swiping row: swiping right removes it, swiping left renames it. */
 @Composable
-private fun SwipeBackground(direction: SwipeToDismissBoxValue, removeLabel: String, renameLabel: String) {
+internal fun SwipeBackground(direction: SwipeToDismissBoxValue, removeLabel: String, renameLabel: String) {
     val colors = MaterialTheme.colorScheme
     val renaming = direction == SwipeToDismissBoxValue.EndToStart
     Box(

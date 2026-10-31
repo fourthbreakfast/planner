@@ -129,26 +129,6 @@ class Tasks(
         store.transaction { store.delete(store.all().filter { it.inBin }) }
     }
 
-    /** Every task, the bin included, as a backup file. */
-    suspend fun exportBackup(): String = encodeBackup(store.all())
-
-    /**
-     * Adds what a backup holds and this list does not, and returns how many that was. It never changes or
-     * removes anything already here, so importing the same file twice is harmless.
-     */
-    suspend fun importBackup(text: String): Int {
-        val incoming = decodeBackup(text).distinctBy { it.id }
-        return store.transaction {
-            val existing = store.all().mapTo(HashSet()) { it.id }
-            val known = existing + incoming.map { it.id }
-            val added = incoming
-                .filterNot { it.id in existing }
-                .map { task -> if (task.parentId in known) task else task.copy(parentId = null) }
-            if (added.isNotEmpty()) store.insert(added)
-            added.size
-        }
-    }
-
     private suspend fun active(): List<Task> = store.all().filterNot { it.inBin }
 
     private suspend fun reopenAncestors(parentId: String?, now: Long) {

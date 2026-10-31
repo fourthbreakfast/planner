@@ -123,12 +123,16 @@ fun BinScreen(entries: List<BinEntry>, viewModel: TasksViewModel, onClose: () ->
 }
 
 @Composable
-fun QuietButton(label: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
+fun QuietButton(label: String, onClick: () -> Unit) = QuietButton(label, true, onClick)
+
+/** A quiet button that can be switched off, shown fainter while it is. */
+@Composable
+fun QuietButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick, enabled = enabled) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onBackground,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (enabled) 1f else 0.38f),
         )
     }
 }

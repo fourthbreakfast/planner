@@ -2,22 +2,23 @@ package dev.fourthbreakfast.planner.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.core.Destination
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.Tasks
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
-class TasksViewModel(private val tasks: Tasks) : ViewModel() {
+class TasksViewModel(private val tasks: Tasks, private val backups: Backups) : ViewModel() {
     val all: Flow<List<Task>> = tasks.all
 
     fun add(title: String, parentId: String?) {
         viewModelScope.launch { tasks.add(title, parentId) }
     }
 
-    suspend fun exportBackup(): String = tasks.exportBackup()
+    suspend fun exportBackup(): String = backups.export()
 
-    suspend fun importBackup(text: String): Int = tasks.importBackup(text)
+    suspend fun importBackup(text: String): Int = backups.import(text)
 
     fun rename(id: String, title: String) {
         viewModelScope.launch { tasks.rename(id, title) }

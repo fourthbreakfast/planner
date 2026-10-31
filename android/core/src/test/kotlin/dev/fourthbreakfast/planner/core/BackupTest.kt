@@ -20,18 +20,18 @@ class BackupTest {
     @Test
     fun everyFieldSurvivesARoundTrip() {
         val plain = Task(id = "b", title = "plain", createdAt = 5)
-        assertEquals(listOf(full, plain), decodeBackup(encodeBackup(listOf(full, plain))))
+        assertEquals(listOf(full, plain), decodeBackup(encodeBackup(listOf(full, plain))).tasks)
     }
 
     @Test
     fun anEmptyListSurvivesARoundTrip() {
-        assertEquals(emptyList<Task>(), decodeBackup(encodeBackup(emptyList())))
+        assertEquals(emptyList<Task>(), decodeBackup(encodeBackup(emptyList())).tasks)
     }
 
     @Test
     fun anUnknownPriorityBecomesNone() {
         val text = """{"app":"planner","version":1,"tasks":[{"id":"a","title":"t","createdAt":1,"priority":"URGENT"}]}"""
-        assertEquals(Priority.NONE, decodeBackup(text).single().priority)
+        assertEquals(Priority.NONE, decodeBackup(text).tasks.single().priority)
     }
 
     @Test
