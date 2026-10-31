@@ -8,22 +8,33 @@ class Events(
     private val store: EventStore,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    /** Every event, soonest first. */
+    /** Every event, the bin included, soonest first. */
     val all: Flow<List<Event>> = store.observeAll().map(::sortedEvents)
 
     /** A blank title is ignored, so an event can never be nameless. */
     suspend fun add(title: String, day: Long, minute: Int?, location: String, notes: String) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
-        store.insert(listOf(Event(title = trimmed, day = day, minute = minute?.let(::clampMinute), location = location.trim(), notes = notes.trim(), createdAt = clock())))
+        store.insert(
+            listOf(
+                Event(
+                    title = trimmed,
+                    day = day,
+                    minute = minute?.let(::clampMinute),
+                    location = location.trim(),
+                    notes = notes.trim(),
+                    createdAt = clock(),
+                ),
+            ),
+        )
     }
 
-    /** Changes everything but the title blank rule: a blank title leaves the event as it was. */
+    /** A blank title leaves the event as it was. Only events outside the bin can change. */
     suspend fun update(id: String, title: String, day: Long, minute: Int?, location: String, notes: String) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
         store.transaction {
-            val event = store.all().firstOrNull { it.id == id } ?: return@transaction
+            val event = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
             val changed = event.copy(
                 title = trimmed,
                 day = day,
@@ -35,18 +46,31 @@ class Events(
         }
     }
 
-    /** Takes the event away and returns it, so it can be put back. */
-    suspend fun remove(id: String): Event? = store.transaction {
-        val event = store.all().firstOrNull { it.id == id } ?: return@transaction null
-        store.delete(listOf(event))
-        event
+    /** Moves an event to the bin, otherwise unchanged. */
+    suspend fun moveToBin(id: String) {
+        val now = clock()
+        store.transaction {
+            val event = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
+            store.update(listOf(event.copy(deletedAt = now, updatedAt = now)))
+        }
     }
 
-    /** Puts a removed event back, as it was. */
-    suspend fun restore(event: Event) {
+    /** Brings an event back from the bin. */
+    suspend fun restore(id: String) {
+        val now = clock()
         store.transaction {
-            if (store.all().none { it.id == event.id }) store.insert(listOf(event))
+            val event = store.all().firstOrNull { it.id == id && it.inBin } ?: return@transaction
+            store.update(listOf(event.copy(deletedAt = null, updatedAt = now)))
         }
+    }
+
+    /** Only what is in the bin can be deleted for good. */
+    suspend fun deleteForever(id: String) {
+        store.transaction { store.all().firstOrNull { it.id == id && it.inBin }?.let { store.delete(listOf(it)) } }
+    }
+
+    suspend fun emptyBin() {
+        store.transaction { store.delete(store.all().filter { it.inBin }) }
     }
 
     private fun clampMinute(minute: Int) = minute.coerceIn(0, 24 * 60 - 1)

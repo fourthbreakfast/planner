@@ -16,7 +16,11 @@ data class Event(
     val notes: String = "",
     val createdAt: Long,
     val updatedAt: Long = createdAt,
-)
+    /** Set while the event is in the bin. */
+    val deletedAt: Long? = null,
+) {
+    val inBin: Boolean get() = deletedAt != null
+}
 
 /** Soonest first. Within a day, the whole-day events come before the timed ones. Ties keep the order they were made in. */
 fun sortedEvents(events: List<Event>): List<Event> =

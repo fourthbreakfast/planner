@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -89,19 +88,52 @@ class EventsTest {
     }
 
     @Test
-    fun removeReturnsTheEventAndRestorePutsItBackAsItWas() = runBlocking {
+    fun movingToTheBinKeepsTheEventAndRestoreBringsItBack() = runBlocking {
         events.add("dentist", 20_000, 570, "clinic", "notes")
-        val removed = events.remove(get("dentist").id)
-        assertNotNull(removed)
-        assertEquals(emptyList<Event>(), store.state.value)
-        events.restore(removed!!)
-        assertEquals(listOf(removed), store.state.value)
-        events.restore(removed)
-        assertEquals(1, store.state.value.size)
+        val id = get("dentist").id
+        events.moveToBin(id)
+        assertEquals(true, get("dentist").inBin)
+        events.restore(id)
+        assertEquals(false, get("dentist").inBin)
+        assertEquals("clinic", get("dentist").location)
     }
 
     @Test
-    fun removingSomethingThatIsNotThereReturnsNothing() = runBlocking {
-        assertNull(events.remove("missing"))
+    fun anEventInTheBinCannotBeChanged() = runBlocking {
+        events.add("dentist", 20_000, 570, "", "")
+        val id = get("dentist").id
+        events.moveToBin(id)
+        events.update(id, "renamed", 20_009, null, "", "")
+        assertEquals("dentist", get("dentist").title)
+    }
+
+    @Test
+    fun onlyWhatIsInTheBinCanBeDeletedForGood() = runBlocking {
+        events.add("kept", 20_000, null, "", "")
+        events.add("binned", 20_000, null, "", "")
+        events.deleteForever(get("kept").id)
+        assertEquals(2, store.state.value.size)
+        events.moveToBin(get("binned").id)
+        events.deleteForever(get("binned").id)
+        assertEquals(listOf("kept"), store.state.value.map { it.title })
+    }
+
+    @Test
+    fun emptyingTheBinLeavesTheRest() = runBlocking {
+        events.add("kept", 20_000, null, "", "")
+        events.add("a", 20_000, null, "", "")
+        events.add("b", 20_000, null, "", "")
+        events.moveToBin(get("a").id)
+        events.moveToBin(get("b").id)
+        events.emptyBin()
+        assertEquals(listOf("kept"), store.state.value.map { it.title })
+    }
+
+    @Test
+    fun anythingMissingIsIgnored() = runBlocking {
+        events.moveToBin("missing")
+        events.restore("missing")
+        events.deleteForever("missing")
+        assertEquals(emptyList<Event>(), store.state.value)
     }
 }

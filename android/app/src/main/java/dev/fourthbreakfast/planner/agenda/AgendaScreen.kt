@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +21,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,8 +41,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.tasks.AddButton
+import dev.fourthbreakfast.planner.tasks.BinButton
 import dev.fourthbreakfast.planner.tasks.DiscreetMessage
 import dev.fourthbreakfast.planner.tasks.SwipeBackground
+import dev.fourthbreakfast.planner.tasks.Tab
+import dev.fourthbreakfast.planner.tasks.TabBar
 import dev.fourthbreakfast.planner.tasks.TitleWithCount
 import dev.fourthbreakfast.planner.tasks.rememberUnsavedSwipe
 import dev.fourthbreakfast.planner.ui.theme.Space
@@ -53,32 +54,30 @@ import kotlinx.coroutines.launch
 /** The agenda: what is coming up, soonest first, with everything about each event on view. */
 @Composable
 fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit) {
-    val events by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
+    val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
+    val events = remember(everything) { everything.filterNot { it.inBin } }
+    val binned = remember(everything) { everything.filter { it.inBin }.sortedByDescending { it.deletedAt } }
     // 0 means closed, 1 a new event, 2 an existing one
     var editorMode by rememberSaveable { mutableStateOf(0) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var binOpen by rememberSaveable { mutableStateOf(false) }
     val editing = events.firstOrNull { it.id == editingId }
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val removedMessage = stringResource(R.string.event_removed)
+    val binnedMessage = stringResource(R.string.task_removed)
     val undoLabel = stringResource(R.string.undo)
 
-    fun removeWithUndo(id: String) {
-        viewModel.remove(id) { removed ->
-            scope.launch {
-                snackbarHost.currentSnackbarData?.dismiss()
-                val result = snackbarHost.showSnackbar(
-                    message = removedMessage,
-                    actionLabel = undoLabel,
-                    duration = SnackbarDuration.Short,
-                )
-                if (result == SnackbarResult.ActionPerformed) viewModel.restore(removed)
-            }
+    fun moveToBinWithUndo(id: String) {
+        viewModel.moveToBin(id)
+        scope.launch {
+            snackbarHost.currentSnackbarData?.dismiss()
+            val result = snackbarHost.showSnackbar(message = binnedMessage, actionLabel = undoLabel, duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) viewModel.restore(id)
         }
     }
 
-    if (editorMode != 0 && (editorMode == 1 || editing != null)) {
-        EventEditor(
+    when {
+        editorMode != 0 && (editorMode == 1 || editing != null) -> EventEditor(
             initial = if (editorMode == 1) null else editing,
             onSave = { draft ->
                 if (editorMode == 1) viewModel.add(draft) else editingId?.let { viewModel.update(it, draft) }
@@ -87,16 +86,18 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit) {
             onDelete = editing?.takeIf { editorMode == 2 }?.let { event ->
                 {
                     editorMode = 0
-                    removeWithUndo(event.id)
+                    moveToBinWithUndo(event.id)
                 }
             },
             onClose = { editorMode = 0 },
         )
-    } else {
-        AgendaList(
+        binOpen -> AgendaBin(binned, viewModel, onClose = { binOpen = false })
+        else -> AgendaList(
             events = events,
+            binCount = binned.size,
             snackbarHost = snackbarHost,
             onShowTasks = onShowTasks,
+            onOpenBin = { binOpen = true },
             onNew = {
                 editingId = null
                 editorMode = 1
@@ -105,7 +106,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit) {
                 editingId = id
                 editorMode = 2
             },
-            onRemove = ::removeWithUndo,
+            onRemove = ::moveToBinWithUndo,
         )
     }
 }
@@ -113,8 +114,10 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit) {
 @Composable
 private fun AgendaList(
     events: List<Event>,
+    binCount: Int,
     snackbarHost: SnackbarHostState,
     onShowTasks: () -> Unit,
+    onOpenBin: () -> Unit,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
     onRemove: (String) -> Unit,
@@ -133,23 +136,24 @@ private fun AgendaList(
                 DiscreetMessage(data.visuals.message, data.visuals.actionLabel, data::performAction)
             }
         },
+        floatingActionButton = { AddButton(stringResource(R.string.add_event), onNew) },
         topBar = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = Space.gutter, end = Space.rowPad),
-            ) {
-                TitleWithCount(
-                    title = stringResource(R.string.agenda_title),
-                    count = upcoming,
-                    countLabel = pluralStringResource(R.plurals.upcoming_events, upcoming, upcoming),
-                    modifier = Modifier.weight(1f),
-                    other = stringResource(R.string.tasks_title),
-                    onOther = onShowTasks,
-                )
-                AddButton(stringResource(R.string.add_event), onNew)
+            Column {
+                TabBar(selected = Tab.AGENDA, onSelect = { if (it == Tab.TASKS) onShowTasks() })
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = Space.gutter, end = Space.rowPad),
+                ) {
+                    TitleWithCount(
+                        title = null,
+                        count = upcoming,
+                        countLabel = pluralStringResource(R.plurals.upcoming_events, upcoming, upcoming),
+                        modifier = Modifier.weight(1f),
+                    )
+                    BinButton(binCount, onOpenBin)
+                }
             }
         },
     ) { padding ->
@@ -177,6 +181,8 @@ private fun AgendaList(
                         )
                     }
                 }
+                // room under the last event, so the round button never covers it
+                item(key = "end") { Box(Modifier.heightIn(min = Space.endRow)) }
             }
         }
     }
@@ -192,7 +198,7 @@ private fun DayHeading(text: String, earlier: Boolean, big: Boolean = false) {
     )
 }
 
-/** One event with everything on view: the time, the name, the place and the notes. A touch opens it, a swipe right deletes it. */
+/** One event with everything on view: the time, the name, the place and the notes. A touch opens it, a swipe right bins it. */
 @Composable
 private fun EventRow(
     event: Event,
@@ -203,7 +209,7 @@ private fun EventRow(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val removeLabel = stringResource(R.string.delete_event)
+    val removeLabel = stringResource(R.string.remove_task)
     val swipe = rememberUnsavedSwipe()
     val quiet = if (earlier) colors.onSurfaceVariant else colors.onBackground
     SwipeToDismissBox(
