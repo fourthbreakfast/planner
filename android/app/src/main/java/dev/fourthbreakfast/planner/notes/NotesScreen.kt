@@ -52,7 +52,8 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Note
-import dev.fourthbreakfast.planner.core.parseBody
+import dev.fourthbreakfast.planner.core.linesUnderTitle
+import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.tasks.AddButton
 import dev.fourthbreakfast.planner.tasks.BackButton
 import dev.fourthbreakfast.planner.tasks.BinButton
@@ -95,15 +96,12 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
     val open = notes.firstOrNull { it.id == openId }
     when {
         open != null -> NoteEditor(
+            initialTitle = open.title,
             initialBody = open.body,
-            onSave = { viewModel.save(open.id, it) },
-            onClose = { body ->
-                viewModel.close(open.id, body)
+            onSave = { title, body -> viewModel.save(open.id, title, body) },
+            onClose = { title, body ->
+                viewModel.close(open.id, title, body)
                 openId = null
-            },
-            onDelete = {
-                openId = null
-                moveToBinWithUndo(open.id)
             },
         )
         binOpen -> NotesBin(binned, viewModel, onClose = { binOpen = false })
@@ -303,7 +301,8 @@ private fun NoteRow(
     val colors = MaterialTheme.colorScheme
     val removeLabel = stringResource(R.string.remove_task)
     val swipe = rememberUnsavedSwipe()
-    val preview = remember(note.body) { previewOf(parseBody(note.body), PREVIEW_LINES) }
+    val title = noteTitle(note)
+    val preview = remember(note.title, note.body) { previewOf(linesUnderTitle(note), PREVIEW_LINES - 1) }
     SwipeToDismissBox(
         state = swipe,
         enableDismissFromEndToStart = false,
@@ -325,12 +324,14 @@ private fun NoteRow(
                 .heightIn(min = Space.touch)
                 .padding(horizontal = Space.gutter, vertical = Space.x5),
         ) {
-            Text(
-                text = preview,
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.onBackground,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column {
+                if (title.isNotEmpty()) {
+                    Text(text = title, style = MaterialTheme.typography.titleLarge, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (preview.isNotEmpty()) {
+                    Text(text = preview, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, overflow = TextOverflow.Ellipsis)
+                }
+            }
         }
     }
 }
@@ -380,7 +381,8 @@ private fun NotesBin(entries: List<Note>, viewModel: NotesViewModel, onClose: ()
                         modifier = Modifier.animateItem().padding(start = Space.gutter, end = Space.rowPad),
                     ) {
                         Text(
-                            text = remember(note.body) { previewOf(parseBody(note.body), 2) },
+                            text = noteTitle(note),
+                            maxLines = 2,
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.onBackground,
                             overflow = TextOverflow.Ellipsis,

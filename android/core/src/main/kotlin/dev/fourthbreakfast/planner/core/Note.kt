@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.map
 /** A note. Its [body] is the text [formatBody] makes, one line to a line. */
 data class Note(
     val id: String = UUID.randomUUID().toString(),
+    /** Typed above the text. Left empty, the first line of the text stands in for it. */
+    val title: String = "",
     val body: String = formatBody(listOf(NoteLine())),
     /** Where it sits among the others, set by dragging. */
     val position: Double = 0.0,
@@ -54,11 +56,11 @@ class Notes(
         }
     }
 
-    suspend fun updateBody(id: String, body: String) {
+    suspend fun update(id: String, title: String, body: String) {
         val now = clock()
         store.transaction {
             val note = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
-            if (note.body != body) store.update(listOf(note.copy(body = body, updatedAt = now)))
+            if (note.body != body || note.title != title) store.update(listOf(note.copy(title = title, body = body, updatedAt = now)))
         }
     }
 
@@ -108,7 +110,19 @@ class Notes(
     /** A note nobody wrote anything in is not kept: closing it takes it away for good, bin and all. */
     suspend fun dropIfEmpty(id: String) {
         store.transaction {
-            store.all().firstOrNull { it.id == id && !it.inBin && isBlankBody(it.body) }?.let { store.delete(listOf(it)) }
+            store.all().firstOrNull { it.id == id && !it.inBin && (it.title.isBlank() && isBlankBody(it.body)) }?.let { store.delete(listOf(it)) }
         }
     }
+}
+
+/** What a note is called: its own title, or else its first line of words. */
+fun noteTitle(note: Note): String =
+    note.title.trim().ifEmpty { parseBody(note.body).firstOrNull { it.text.isNotBlank() }?.text?.trim() ?: "" }
+
+/** The lines to show under the title: all of them, or all but the first when that line is what the title is borrowing. */
+fun linesUnderTitle(note: Note): List<NoteLine> {
+    val lines = parseBody(note.body)
+    if (note.title.isNotBlank()) return lines
+    val first = lines.indexOfFirst { it.text.isNotBlank() }
+    return if (first < 0) emptyList() else lines.drop(first + 1)
 }

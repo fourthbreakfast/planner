@@ -69,7 +69,6 @@ import dev.fourthbreakfast.planner.core.parseBody
 import dev.fourthbreakfast.planner.core.restyle
 import dev.fourthbreakfast.planner.core.toggleStyle
 import dev.fourthbreakfast.planner.tasks.BackButton
-import dev.fourthbreakfast.planner.tasks.QuietButton
 import dev.fourthbreakfast.planner.tasks.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.delay
@@ -95,7 +94,8 @@ private class EditLine(val id: Long, line: NoteLine, cursor: Int = line.text.len
 
 /** Everything a note being written is: its lines, which one the cursor is in, and the look new letters get. */
 @Stable
-private class NoteEditState(body: String) {
+private class NoteEditState(initialTitle: String, body: String) {
+    var title by mutableStateOf(initialTitle)
     private var nextId = 0L
     val lines = mutableStateListOf<EditLine>().apply { parseBody(body).forEach { add(EditLine(nextId++, it)) } }
     var focusedId by mutableStateOf<Long?>(null)
@@ -224,21 +224,21 @@ private class NoteEditState(body: String) {
 
 /** Writing one note: a row of marks at the top, then lines of text, each of which can be a list item. */
 @Composable
-fun NoteEditor(initialBody: String, onSave: (String) -> Unit, onClose: (String) -> Unit, onDelete: () -> Unit) {
-    val state = remember { NoteEditState(initialBody) }
-    BackHandler { onClose(state.body()) }
+fun NoteEditor(initialTitle: String, initialBody: String, onSave: (String, String) -> Unit, onClose: (String, String) -> Unit) {
+    val state = remember { NoteEditState(initialTitle, initialBody) }
+    BackHandler { onClose(state.title, state.body()) }
     LaunchedEffect(state) {
         var first = true
-        snapshotFlow { state.body() }.collectLatest { body ->
+        snapshotFlow { state.title to state.body() }.collectLatest { (title, body) ->
             if (first) {
                 first = false
                 return@collectLatest
             }
             delay(AUTOSAVE_MILLIS)
-            onSave(body)
+            onSave(title, body)
         }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onSave(state.body()) }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onSave(state.title, state.body()) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -252,8 +252,7 @@ fun NoteEditor(initialBody: String, onSave: (String) -> Unit, onClose: (String) 
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
                     SegmentTab(stringResource(R.string.note_title), Modifier.weight(1f))
-                    QuietButton(stringResource(R.string.delete), onDelete)
-                    BackButton { onClose(state.body()) }
+                    BackButton { onClose(state.title, state.body()) }
                 }
                 Toolbar(state)
             }
@@ -267,6 +266,7 @@ fun NoteEditor(initialBody: String, onSave: (String) -> Unit, onClose: (String) 
                 .imePadding()
                 .verticalScroll(rememberScrollState()),
         ) {
+            TitleField(state)
             state.lines.forEachIndexed { index, line ->
                 androidx.compose.runtime.key(line.id) { LineRow(line, numbers.getOrNull(index), state) }
             }
@@ -392,6 +392,38 @@ private fun ToolButton(
             text = buildAnnotatedString { withStyle(spanFor(look)) { append(glyph) } },
             style = MaterialTheme.typography.titleMedium,
             color = if (on) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+        )
+    }
+}
+
+/** The name of the note in big letters. Left empty, the first line of the text shows in its place, faintly. */
+@Composable
+private fun TitleField(state: NoteEditState) {
+    val colors = MaterialTheme.colorScheme
+    val style = MaterialTheme.typography.headlineSmall
+    val borrowed = state.lines.firstOrNull { it.text.isNotBlank() }?.text?.trim() ?: ""
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = Space.gutter, end = Space.gutter, top = Space.x2, bottom = Space.x1),
+    ) {
+        if (state.title.isEmpty() && borrowed.isNotEmpty()) {
+            Text(text = borrowed, style = style, color = colors.onSurfaceVariant.copy(alpha = 0.5f), maxLines = 1)
+        }
+        BasicTextField(
+            value = state.title,
+            onValueChange = {
+                if ('\n' in it) {
+                    state.title = it.replace("\n", "")
+                    state.focusRequest = state.lines.first().id
+                } else {
+                    state.title = it
+                }
+            },
+            textStyle = style.copy(color = colors.onBackground),
+            cursorBrush = SolidColor(colors.onBackground),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

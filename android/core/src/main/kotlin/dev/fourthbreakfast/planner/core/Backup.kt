@@ -45,6 +45,7 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
     notes.forEachIndexed { index, note ->
         if (index > 0) append(',')
         append("\n    {\"id\": ").append(quoted(note.id))
+        append(", \"title\": ").append(quoted(note.title))
         append(", \"body\": ").append(quoted(note.body))
         append(", \"position\": ").append(note.position)
         append(", \"createdAt\": ").append(note.createdAt)
@@ -100,6 +101,7 @@ fun decodeBackup(text: String): Backup {
         val createdAt = number(note["createdAt"]).toLong()
         Note(
             id = note["id"] as? String ?: throw BackupException("a note has no id"),
+            title = note["title"] as? String ?: "",
             body = note["body"] as? String ?: throw BackupException("a note has no body"),
             position = note["position"]?.let { number(it).toDouble() } ?: 0.0,
             createdAt = createdAt,
