@@ -207,6 +207,7 @@ private fun TaskList(
     val display = remember(rows) { rows + EndRow }
 
     val list = rememberLazyListState()
+    val endSpace = Space.listEnd()
     val focusManager = LocalFocusManager.current
     // the add line stays in use after enter. It ends when the keyboard goes away (back) or on a touch elsewhere
     val imeVisible = WindowInsets.isImeVisible
@@ -434,7 +435,7 @@ private fun TaskList(
                     is EndRow -> Box(
                         Modifier
                             .fillMaxWidth()
-                            .height(Space.endRow)
+                            .height(endSpace)
                             .animateItem()
                             .dropHint(hint, dropDepth),
                     )

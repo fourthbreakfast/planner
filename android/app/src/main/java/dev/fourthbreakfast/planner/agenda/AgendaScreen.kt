@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -129,6 +130,7 @@ private fun AgendaList(
     val upcoming = upcomingCount(events, today)
     val is24Hour = rememberIs24Hour()
     val list = rememberLazyListState()
+    val endSpace = Space.listEnd()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -203,8 +205,8 @@ private fun AgendaList(
                         )
                     }
                 }
-                // room under the last event, so the round button never covers it
-                item(key = "end") { Box(Modifier.heightIn(min = Space.endRow)) }
+                // a third of the screen left empty under the last event, so the list can always be pulled up
+                item(key = "end") { Box(Modifier.height(endSpace)) }
             }
         }
     }

@@ -1,5 +1,6 @@
 package dev.fourthbreakfast.planner.ui.theme
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -7,6 +8,10 @@ import androidx.compose.ui.unit.dp
  * and never write their own, so the design system (docs/design-system/tokens.json) and the app agree.
  */
 object Space {
+    /** Empty room left under the last row of any list: a third of the screen, never less than [endRow]. */
+    @androidx.compose.runtime.Composable
+    fun listEnd(): Dp = maxOf(endRow, (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp / 3).dp)
+
     // the scale
     val x1 = 4.dp
     val x2 = 8.dp
