@@ -1,5 +1,6 @@
 package dev.fourthbreakfast.planner.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Entity
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.map
 @Entity(tableName = "notes")
 data class NoteEntity(
     @PrimaryKey val id: String,
+    @ColumnInfo(defaultValue = "") val title: String,
     val body: String,
     val position: Double,
     val createdAt: Long,
@@ -24,9 +26,9 @@ data class NoteEntity(
     val deletedAt: Long?,
 )
 
-fun NoteEntity.toNote() = Note(id, body, position, createdAt, updatedAt, deletedAt)
+fun NoteEntity.toNote() = Note(id, title, body, position, createdAt, updatedAt, deletedAt)
 
-fun Note.toEntity() = NoteEntity(id, body, position, createdAt, updatedAt, deletedAt)
+fun Note.toEntity() = NoteEntity(id, title, body, position, createdAt, updatedAt, deletedAt)
 
 @Dao
 interface NoteDao {

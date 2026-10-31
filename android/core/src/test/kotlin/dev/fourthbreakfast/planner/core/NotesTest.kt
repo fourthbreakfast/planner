@@ -64,7 +64,7 @@ class NotesTest {
     fun editingChangesTheBodyAndWhenItChanged() = runBlocking {
         val id = notes.add()
         val body = formatBody(listOf(NoteLine(text = "hello", styles = listOf(0, 0, 0, 0, 0))))
-        notes.updateBody(id, body)
+        notes.update(id, "", body)
         val note = store.state.value.single()
         assertEquals(body, note.body)
         assertTrue(note.updatedAt > note.createdAt)
@@ -92,7 +92,7 @@ class NotesTest {
     fun aNoteLeftEmptyIsDroppedButOneWithWordsStays() = runBlocking {
         val empty = notes.add()
         val written = notes.add()
-        notes.updateBody(written, formatBody(listOf(NoteLine(text = "x", styles = listOf(0)))))
+        notes.update(written, "", formatBody(listOf(NoteLine(text = "x", styles = listOf(0)))))
         notes.dropIfEmpty(empty)
         notes.dropIfEmpty(written)
         assertEquals(listOf(written), order())
@@ -165,5 +165,33 @@ class NoteStyleTest {
         assertEquals(listOf(0, 0, 0), toggleStyle(listOf(BOLD, BOLD, 0), 0, 2, BOLD))
         assertEquals(listOf(BOLD or ITALIC, ITALIC), toggleStyle(listOf(BOLD, 0), 0, 2, ITALIC))
         assertEquals(listOf(0, 0), toggleStyle(listOf(0, 0), 1, 1, BOLD))
+    }
+}
+
+class NoteTitleTest {
+    private fun body(vararg words: String) = formatBody(words.map { NoteLine(text = it, styles = List(it.length) { 0 }) })
+
+    @Test
+    fun anEmptyTitleBorrowsTheFirstLineAndTheListSkipsIt() {
+        val note = Note(body = body("", " milk ", "eggs"), createdAt = 1)
+        assertEquals("milk", noteTitle(note))
+        assertEquals(listOf("eggs"), linesUnderTitle(note).map { it.text })
+    }
+
+    @Test
+    fun aTypedTitleWinsAndKeepsEveryLine() {
+        val note = Note(title = " shopping ", body = body("milk", "eggs"), createdAt = 1)
+        assertEquals("shopping", noteTitle(note))
+        assertEquals(2, linesUnderTitle(note).size)
+    }
+
+    @Test
+    fun aNoteWithOnlyATitleIsNotEmpty() = runBlocking {
+        val store = MemoryNoteStore()
+        val notes = Notes(store) { 1L }
+        val id = notes.add()
+        notes.update(id, "idea", formatBody(listOf(NoteLine())))
+        notes.dropIfEmpty(id)
+        assertEquals(1, store.state.value.size)
     }
 }

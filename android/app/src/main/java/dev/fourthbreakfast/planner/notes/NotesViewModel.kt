@@ -16,14 +16,14 @@ class NotesViewModel(private val notes: Notes) : ViewModel() {
         viewModelScope.launch { onAdded(notes.add()) }
     }
 
-    fun save(id: String, body: String) {
-        viewModelScope.launch { notes.updateBody(id, body) }
+    fun save(id: String, title: String, body: String) {
+        viewModelScope.launch { notes.update(id, title, body) }
     }
 
     /** Saves a note one last time and takes it away again if nothing was written. */
-    fun close(id: String, body: String) {
+    fun close(id: String, title: String, body: String) {
         viewModelScope.launch {
-            notes.updateBody(id, body)
+            notes.update(id, title, body)
             notes.dropIfEmpty(id)
         }
     }
