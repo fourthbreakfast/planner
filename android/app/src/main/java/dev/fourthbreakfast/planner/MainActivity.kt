@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
+import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.tasks.TasksScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
@@ -28,12 +29,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val notesViewModel: NotesViewModel by viewModels {
+        viewModelFactory {
+            initializer { NotesViewModel((application as PlannerApp).notes) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             PlannerTheme {
-                TasksScreen(tasksViewModel, agendaViewModel)
+                TasksScreen(tasksViewModel, agendaViewModel, notesViewModel)
             }
         }
     }

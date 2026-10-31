@@ -32,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -55,7 +56,7 @@ import kotlinx.coroutines.launch
 
 /** The agenda: what is coming up, soonest first, with everything about each event on view. */
 @Composable
-fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit) {
+fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNotes: () -> Unit) {
     val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val events = remember(everything) { everything.filterNot { it.inBin } }
     val binned = remember(everything) { everything.filter { it.inBin }.sortedByDescending { it.deletedAt } }
@@ -99,6 +100,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit) {
             binCount = binned.size,
             snackbarHost = snackbarHost,
             onShowTasks = onShowTasks,
+            onShowNotes = onShowNotes,
             onOpenBin = { binOpen = true },
             onNew = {
                 editingId = null
@@ -119,6 +121,7 @@ private fun AgendaList(
     binCount: Int,
     snackbarHost: SnackbarHostState,
     onShowTasks: () -> Unit,
+    onShowNotes: () -> Unit,
     onOpenBin: () -> Unit,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
@@ -142,7 +145,16 @@ private fun AgendaList(
         floatingActionButton = { AddButton(stringResource(R.string.add_event), onNew) },
         topBar = {
             Column {
-                TabBar(selected = Tab.AGENDA, onSelect = { if (it == Tab.TASKS) onShowTasks() })
+                TabBar(
+                    selected = Tab.AGENDA,
+                    onSelect = {
+                        when (it) {
+                            Tab.TASKS -> onShowTasks()
+                            Tab.NOTES -> onShowNotes()
+                            Tab.AGENDA -> Unit
+                        }
+                    },
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -165,7 +177,8 @@ private fun AgendaList(
                 Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowTasks),
+                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowTasks)
+                    .switchTabBySwiping(towardsLeft = true, onRow = { false }, onSwitch = onShowNotes),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -175,21 +188,19 @@ private fun AgendaList(
                 )
             }
         } else {
+            val onEvent = { at: Offset ->
+                list.layoutInfo.visibleItemsInfo.any {
+                    it.key != "end" && at.y >= it.offset && at.y < it.offset + it.size
+                }
+            }
             LazyColumn(
                 state = list,
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    // a sweep to the right across empty space goes back to the tasks
-                    .switchTabBySwiping(
-                        towardsLeft = false,
-                        onRow = { at ->
-                            list.layoutInfo.visibleItemsInfo.any {
-                                it.key != "end" && at.y >= it.offset && at.y < it.offset + it.size
-                            }
-                        },
-                        onSwitch = onShowTasks,
-                    ),
+                    // a sweep to the right across empty space goes back to the tasks, to the left on to the notes
+                    .switchTabBySwiping(towardsLeft = false, onRow = onEvent, onSwitch = onShowTasks)
+                    .switchTabBySwiping(towardsLeft = true, onRow = onEvent, onSwitch = onShowNotes),
             ) {
                 items(rows, key = { it.key }) { row ->
                     when (row) {

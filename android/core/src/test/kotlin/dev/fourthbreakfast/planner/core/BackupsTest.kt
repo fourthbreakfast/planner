@@ -33,8 +33,10 @@ private class MemoryTaskStore : TaskStore {
 class BackupsTest {
     private val tasks = MemoryTaskStore()
     private val events = MemoryEventStore()
-    private val backups = Backups(tasks, events)
+    private val notes = MemoryNoteStore()
+    private val backups = Backups(tasks, events, notes)
 
+    private val groceries = Note(id = "n", body = formatBody(listOf(NoteLine(LineKind.CHECK, 1, true, "milk", listOf(BOLD, 0, 0, 0)))), position = 2.0, createdAt = 4, deletedAt = 8)
     private val parent = Task(id = "p", title = "parent", createdAt = 1)
     private val child = Task(id = "c", title = "child", parentId = "p", priority = Priority.HIGH, deletedAt = 9, createdAt = 2)
     private val dentist = Event(id = "e", title = "dentist", day = 20_000, minute = 570, endMinute = 640, location = "clinic", notes = "card", createdAt = 3, deletedAt = 7)
@@ -43,12 +45,22 @@ class BackupsTest {
     fun importedThingsAreExactlyWhatWasExported() = runBlocking {
         tasks.state.value = listOf(parent, child)
         events.state.value = listOf(dentist)
+        notes.state.value = listOf(groceries)
         val file = backups.export()
         val freshTasks = MemoryTaskStore()
         val freshEvents = MemoryEventStore()
-        assertEquals(3, Backups(freshTasks, freshEvents).import(file))
+        val freshNotes = MemoryNoteStore()
+        assertEquals(4, Backups(freshTasks, freshEvents, freshNotes).import(file))
         assertEquals(setOf(parent, child), freshTasks.state.value.toSet())
         assertEquals(listOf(dentist), freshEvents.state.value)
+        assertEquals(listOf(groceries), freshNotes.state.value)
+    }
+
+    @Test
+    fun aBackupFromBeforeNotesStillImports() = runBlocking {
+        val text = """{"app":"planner","version":2,"tasks":[{"id":"x","title":"old","createdAt":1}],"events":[]}"""
+        assertEquals(1, backups.import(text))
+        assertEquals(emptyList<Note>(), notes.state.value)
     }
 
     @Test

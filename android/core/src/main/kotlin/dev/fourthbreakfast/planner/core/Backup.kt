@@ -3,13 +3,13 @@ package dev.fourthbreakfast.planner.core
 /** A file that is not a planner backup, or is damaged. */
 class BackupException(message: String) : Exception(message)
 
-private const val BACKUP_VERSION = 2
+private const val BACKUP_VERSION = 3
 
-/** What a backup file holds. Version 1 files have no events. */
-data class Backup(val tasks: List<Task>, val events: List<Event>)
+/** What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes. */
+data class Backup(val tasks: List<Task>, val events: List<Event>, val notes: List<Note> = emptyList())
 
-/** Every task, the bin included, and every event, as a json file a person can read and keep. */
-fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList()): String = buildString {
+/** Every task, the bin included, every event and every note, as a json file a person can read and keep. */
+fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: List<Note> = emptyList()): String = buildString {
     append("{\n  \"app\": \"planner\",\n  \"version\": ").append(BACKUP_VERSION).append(",\n  \"tasks\": [")
     tasks.forEachIndexed { index, task ->
         if (index > 0) append(',')
@@ -40,7 +40,19 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList()): String =
         append(", \"deletedAt\": ").append(event.deletedAt ?: "null")
         append('}')
     }
-    append(if (events.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
+    append(if (events.isEmpty()) "]" else "\n  ]")
+    append(",\n  \"notes\": [")
+    notes.forEachIndexed { index, note ->
+        if (index > 0) append(',')
+        append("\n    {\"id\": ").append(quoted(note.id))
+        append(", \"body\": ").append(quoted(note.body))
+        append(", \"position\": ").append(note.position)
+        append(", \"createdAt\": ").append(note.createdAt)
+        append(", \"updatedAt\": ").append(note.updatedAt)
+        append(", \"deletedAt\": ").append(note.deletedAt ?: "null")
+        append('}')
+    }
+    append(if (notes.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
 }
 
 /** What a backup holds, or a [BackupException] when the text is not one. */
@@ -82,7 +94,20 @@ fun decodeBackup(text: String): Backup {
             deletedAt = event["deletedAt"]?.let { number(it).toLong() },
         )
     }
-    return Backup(taskList, events)
+    // versions 1 and 2 were made before notes existed
+    val notes = (root["notes"] as? List<*> ?: emptyList<Any?>()).map { entry ->
+        val note = entry as? Map<*, *> ?: throw BackupException("damaged note")
+        val createdAt = number(note["createdAt"]).toLong()
+        Note(
+            id = note["id"] as? String ?: throw BackupException("a note has no id"),
+            body = note["body"] as? String ?: throw BackupException("a note has no body"),
+            position = note["position"]?.let { number(it).toDouble() } ?: 0.0,
+            createdAt = createdAt,
+            updatedAt = note["updatedAt"]?.let { number(it).toLong() } ?: createdAt,
+            deletedAt = note["deletedAt"]?.let { number(it).toLong() },
+        )
+    }
+    return Backup(taskList, events, notes)
 }
 
 private fun number(value: Any?): Number = value as? Number ?: throw BackupException("damaged number")

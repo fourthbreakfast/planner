@@ -276,10 +276,10 @@ fun TitleWithCount(
     }
 }
 
-enum class Tab { TASKS, AGENDA }
+enum class Tab { TASKS, AGENDA, NOTES }
 
 /**
- * The two tabs along the top: tasks at the left, agenda at the right. The one you are on is in full ink,
+ * The three tabs along the top: tasks at the left, agenda in the middle, notes at the right. The one you are on is in full ink,
  * the other is quiet. Holding the tasks tab opens its menu, which [tasksExtra] draws.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -311,8 +311,17 @@ fun TabBar(
             TabWord(
                 text = stringResource(R.string.agenda_title),
                 active = selected == Tab.AGENDA,
-                alignment = Alignment.CenterEnd,
+                alignment = Alignment.Center,
                 onClick = { onSelect(Tab.AGENDA) },
+                onLongClick = null,
+            )
+        }
+        Box(Modifier.weight(1f)) {
+            TabWord(
+                text = stringResource(R.string.notes_title),
+                active = selected == Tab.NOTES,
+                alignment = Alignment.CenterEnd,
+                onClick = { onSelect(Tab.NOTES) },
                 onLongClick = null,
             )
         }
@@ -359,7 +368,7 @@ private fun TabWord(
 }
 
 /** How large the calculator lettering is for tab words and screen titles. */
-const val TAB_SCALE = 1.25f
+const val TAB_SCALE = 1.0f
 
 /** A word in the same lettering and size as the tabs, for a screen that is a tab of its own. */
 @Composable

@@ -7,6 +7,24 @@
     <string name="task_removed">moved to bin</string>
     <string name="tasks_menu">open the menu</string>
     <string name="agenda_title">agenda</string>
+    <string name="notes_title">notes</string>
+    <string name="note_title">note</string>
+    <string name="add_note">add a note</string>
+    <string name="open_note">open this note</string>
+    <string name="nothing_written">nothing written</string>
+    <string name="confirm_delete_note">delete this note forever?</string>
+    <string name="more_indent">push in</string>
+    <string name="less_indent">pull out</string>
+    <string name="numbered_list">numbered list</string>
+    <string name="bulleted_list">bulleted list</string>
+    <string name="checklist">checklist</string>
+    <string name="bold">bold</string>
+    <string name="italic">italic</string>
+    <string name="underline">underline</string>
+    <plurals name="notes_count">
+        <item quantity="one">%1$d note</item>
+        <item quantity="other">%1$d notes</item>
+    </plurals>
     <string name="add_event">add an event</string>
     <string name="event_title">event</string>
     <string name="event_name">name</string>
