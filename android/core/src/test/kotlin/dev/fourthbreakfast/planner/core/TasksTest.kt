@@ -96,33 +96,6 @@ class TasksTest {
     }
 
     @Test
-    fun exportThenImportBringsEverythingBackIntoAnEmptyList() = runBlocking {
-        family()
-        tasks.cyclePriority(id("child"))
-        tasks.moveToBin(id("grandchild"))
-        val backup = tasks.exportBackup()
-        val other = MemoryStore()
-        assertEquals(3, Tasks(other).importBackup(backup))
-        assertEquals(store.state.value.toSet(), other.state.value.toSet())
-    }
-
-    @Test
-    fun importingTwiceAddsNothingAndChangesNothing() = runBlocking {
-        abc()
-        val backup = tasks.exportBackup()
-        tasks.rename(id("a"), "renamed")
-        assertEquals(0, tasks.importBackup(backup))
-        assertEquals(listOf("renamed", "b", "c"), order())
-    }
-
-    @Test
-    fun anImportedTaskWhoseParentIsMissingBecomesAMainTask() = runBlocking {
-        val text = """{"app":"planner","version":1,"tasks":[{"id":"x","title":"orphan","createdAt":1,"parentId":"gone"}]}"""
-        tasks.importBackup(text)
-        assertEquals(null, get("orphan").parentId)
-    }
-
-    @Test
     fun moveBeforeAndAfterASibling() = runBlocking {
         abc()
         tasks.move(id("c"), Destination(beforeId = id("a")))

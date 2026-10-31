@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -237,6 +239,8 @@ fun TitleWithCount(
     countLabel: String,
     modifier: Modifier = Modifier,
     secondCount: Int? = null,
+    other: String? = null,
+    onOther: () -> Unit = {},
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -260,6 +264,39 @@ fun TitleWithCount(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 modifier = Modifier.padding(start = Space.x3).semantics { contentDescription = countLabel },
             )
+        }
+        // the other tab, quiet, one touch away
+        if (other != null) {
+            Text(
+                text = other,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .padding(start = Space.x2)
+                    .heightIn(min = Space.touch)
+                    .clickable(onClick = onOther)
+                    .padding(horizontal = Space.x2)
+                    .wrapContentHeight(Alignment.CenterVertically),
+            )
+        }
+    }
+}
+
+/** A plus, to add something. */
+@Composable
+fun AddButton(label: String, onClick: () -> Unit) {
+    val ink = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(Space.touch)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = label },
+    ) {
+        Canvas(Modifier.size(Space.icon)) {
+            val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round)
+            drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), line.width, StrokeCap.Round)
+            drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), line.width, StrokeCap.Round)
         }
     }
 }

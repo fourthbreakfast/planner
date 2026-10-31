@@ -46,4 +46,8 @@ object Space {
     val digitHeight = 18.dp
     val digitBar = 2.4.dp
     val digitGap = x1
+
+    // the agenda
+    /** Width of the time at the left of an event. */
+    val timeColumn = 64.dp
 }
