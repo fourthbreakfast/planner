@@ -27,8 +27,8 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
   <tr><td>hold and drag</td><td>move it, sideways to change how deep it goes</td></tr>
   <tr><td>the dot at the top</td><td>switch between your own order (grey) and priority order (red)</td></tr>
   <tr><td>the triangle at the top</td><td>open or close everything</td></tr>
-  <tr><td>agenda, tasks and notes along the top</td><td>touch a word to switch to that tab</td></tr>
-  <tr><td>sweep sideways on empty space</td><td>left goes on to the next tab (agenda, tasks, notes), right goes back, and it never loops</td></tr>
+  <tr><td>tasks, agenda and notes along the top</td><td>touch a word to switch to that tab</td></tr>
+  <tr><td>sweep sideways on empty space</td><td>left goes on to the next tab (tasks, agenda, notes), right goes back, and it never loops</td></tr>
   <tr><td>plus at the bottom right of the notes</td><td>add a note and start writing</td></tr>
   <tr><td>touch a note</td><td>write in it: the row at the top sets pull out, push in, numbered list, bulleted list, checkbox, bold, italic and underline; enter makes a new line and ends an empty list item</td></tr>
   <tr><td>hold a note and drag</td><td>put it in another place in the list</td></tr>

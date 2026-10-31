@@ -371,11 +371,6 @@ private fun TaskList(
             )
         },
     ) { padding ->
-        val onTaskRow = { at: Offset ->
-            list.layoutInfo.visibleItemsInfo.any {
-                it.key != EndRow.key && at.y >= it.offset && at.y < it.offset + it.size
-            }
-        }
         LazyColumn(
             state = list,
             // otherwise the list takes the finger's movement and cancels the drag
@@ -385,9 +380,16 @@ private fun TaskList(
                 .consumeWindowInsets(padding)
                 .fillMaxSize()
                 .onGloballyPositioned { listBounds = it.boundsInRoot() }
-                // a sweep across empty space goes to the next tab, left to the notes and right to the agenda; rows keep their own swipes
-                .switchTabBySwiping(towardsLeft = true, onRow = onTaskRow, onSwitch = { onSelectTab(Tab.NOTES) })
-                .switchTabBySwiping(towardsLeft = false, onRow = onTaskRow, onSwitch = { onSelectTab(Tab.AGENDA) })
+                // a sweep to the left across empty space opens the agenda; rows keep their own swipes
+                .switchTabBySwiping(
+                    towardsLeft = true,
+                    onRow = { at ->
+                        list.layoutInfo.visibleItemsInfo.any {
+                            it.key != EndRow.key && at.y >= it.offset && at.y < it.offset + it.size
+                        }
+                    },
+                    onSwitch = { onSelectTab(Tab.AGENDA) },
+                )
                 .pointerInput(order == SortOrder.TREE && renamingId == null) {
                     if (order != SortOrder.TREE || renamingId != null) return@pointerInput
                     detectDragGesturesAfterLongPress(
@@ -529,15 +531,16 @@ private fun Modifier.dropHint(zone: DropZone?, depth: Int = 0): Modifier {
 private fun TasksMenu(open: Boolean, onDismiss: () -> Unit, onExport: () -> Unit, onImport: () -> Unit) {
     if (!open) return
     val colors = MaterialTheme.colorScheme
+    val gap = with(LocalDensity.current) { Space.rowPad.roundToPx() }
     // under the tab it belongs to, as wide as its words and no wider
-    val below = remember {
+    val below = remember(gap) {
         object : PopupPositionProvider {
             override fun calculatePosition(
                 anchorBounds: IntRect,
                 windowSize: IntSize,
                 layoutDirection: LayoutDirection,
                 popupContentSize: IntSize,
-            ) = IntOffset(anchorBounds.center.x - popupContentSize.width / 2, anchorBounds.bottom)
+            ) = IntOffset(anchorBounds.left + gap, anchorBounds.bottom)
         }
     }
 

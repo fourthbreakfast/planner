@@ -279,7 +279,7 @@ fun TitleWithCount(
 enum class Tab { TASKS, AGENDA, NOTES }
 
 /**
- * The three tabs along the top: agenda at the left, tasks in the middle, notes at the right. The one you are on is in full ink,
+ * The three tabs along the top: tasks at the left, agenda in the middle, notes at the right. The one you are on is in full ink,
  * the other is quiet. Holding the tasks tab opens its menu, which [tasksExtra] draws.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -299,22 +299,22 @@ fun TabBar(
     ) {
         Box(Modifier.weight(1f)) {
             TabWord(
-                text = stringResource(R.string.agenda_title),
-                active = selected == Tab.AGENDA,
-                alignment = Alignment.CenterStart,
-                onClick = { onSelect(Tab.AGENDA) },
-                onLongClick = null,
-            )
-        }
-        Box(Modifier.weight(1f)) {
-            TabWord(
                 text = stringResource(R.string.tasks_title),
                 active = selected == Tab.TASKS,
-                alignment = Alignment.Center,
+                alignment = Alignment.CenterStart,
                 onClick = { onSelect(Tab.TASKS) },
                 onLongClick = onTasksLongPress,
             )
             tasksExtra()
+        }
+        Box(Modifier.weight(1f)) {
+            TabWord(
+                text = stringResource(R.string.agenda_title),
+                active = selected == Tab.AGENDA,
+                alignment = Alignment.Center,
+                onClick = { onSelect(Tab.AGENDA) },
+                onLongClick = null,
+            )
         }
         Box(Modifier.weight(1f)) {
             TabWord(

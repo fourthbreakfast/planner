@@ -209,7 +209,7 @@ private fun NotesList(
                 Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowTasks),
+                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowAgenda),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -226,7 +226,7 @@ private fun NotesList(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .switchTabBySwiping(towardsLeft = false, onRow = onNote, onSwitch = onShowTasks)
+                    .switchTabBySwiping(towardsLeft = false, onRow = onNote, onSwitch = onShowAgenda)
                     .pointerInput(Unit) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = { start ->
