@@ -31,7 +31,7 @@ planner is a task list that stays out of the way: a plain page, a list, one line
 - Swipe a row right to move it to the bin, left to rename it. Long press and drag in tree mode only, with the finger moving sideways to choose how deep the task lands.
 - There is no collapse arrow on a task; a parent shows `done/total` on the right. One small triangle at the top, left of the mode dot, opens everything (pointing down, shown while anything is closed) or closes everything (pointing up).
 - Four levels at most.
-- The bin screen holds export and import as quiet buttons at the bottom. They use the phone's file picker. Import only adds what is missing and never changes what is already there.
+- Holding the title opens a small menu with export and import, on `panel` with a `line` border and no shadow. They use the phone's file picker. Import only adds what is missing and never changes what is already there.
 
 ## Iconography
 

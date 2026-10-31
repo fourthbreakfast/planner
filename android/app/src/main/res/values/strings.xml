@@ -5,6 +5,7 @@
     <string name="add_inside_hint">add inside: %1$s</string>
     <string name="remove_task">move to bin</string>
     <string name="task_removed">moved to bin</string>
+    <string name="tasks_menu">open the menu</string>
     <string name="export_tasks">export</string>
     <string name="import_tasks">import</string>
     <string name="export_done">backup saved</string>
