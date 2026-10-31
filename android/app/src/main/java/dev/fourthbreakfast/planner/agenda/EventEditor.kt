@@ -1,5 +1,9 @@
 package dev.fourthbreakfast.planner.agenda
 
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -19,8 +23,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,7 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import dev.fourthbreakfast.planner.R
@@ -90,16 +92,23 @@ fun EventEditor(
             }
         },
         bottomBar = {
+            val ready = title.isNotBlank()
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding().imePadding(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = Space.gutter, vertical = Space.x3)
+                    .heightIn(min = Space.touch)
+                    .background(colors.surfaceVariant, RoundedCornerShape(Space.radiusCheck))
+                    .border(Space.strokeThin, colors.outline, RoundedCornerShape(Space.radiusCheck))
+                    .clickable(enabled = ready) { onSave(EventDraft(title, day, start, end, location, notes)) },
             ) {
-                QuietButton(
-                    label = stringResource(R.string.save),
-                    enabled = title.isNotBlank(),
-                    onClick = {
-                        onSave(EventDraft(title, day, start, end, location, notes))
-                    },
+                Text(
+                    text = stringResource(R.string.save),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onBackground.copy(alpha = if (ready) 1f else 0.38f),
                 )
             }
         },
@@ -188,32 +197,32 @@ private fun LineChoice(text: String, onClick: () -> Unit) {
     }
 }
 
-/** A plain text field with nothing around it but its line. */
+/** A plain text field with nothing around it but its line: one touch tall, the text at the gutter. */
 @Composable
 private fun LineField(
     value: String,
     onChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     singleLine: Boolean = true,
-    minLines: Int = 1,
 ) {
     val colors = MaterialTheme.colorScheme
     Column {
-        TextField(
+        BasicTextField(
             value = value,
             onValueChange = onChange,
             singleLine = singleLine,
-            minLines = minLines,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = colors.onBackground,
-                unfocusedTextColor = colors.onBackground,
-                cursorColor = colors.onBackground,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
+            cursorBrush = SolidColor(colors.onBackground),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+            decorationBox = { inner ->
+                Box(
+                    contentAlignment = Alignment.CenterStart,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Space.touch)
+                        .padding(horizontal = Space.gutter, vertical = Space.x2),
+                ) { inner() }
+            },
             modifier = modifier.fillMaxWidth(),
         )
         Rule()
