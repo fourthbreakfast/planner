@@ -194,4 +194,14 @@ class NoteTitleTest {
         notes.dropIfEmpty(id)
         assertEquals(1, store.state.value.size)
     }
+
+    @Test
+    fun sharedTextBecomesALinePerLine() = runBlocking {
+        val store = MemoryNoteStore()
+        val notes = Notes(store) { 1L }
+        notes.add(" a link ", plainBody("first\r\nsecond\n\nfourth"))
+        val note = store.state.value.single()
+        assertEquals("a link", note.title)
+        assertEquals(listOf("first", "second", "", "fourth"), parseBody(note.body).map { it.text })
+    }
 }

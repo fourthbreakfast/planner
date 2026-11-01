@@ -46,11 +46,11 @@ class Notes(
     val all: Flow<List<Note>> = store.observeAll().map(::sortedNotes)
 
     /** Makes an empty note at the end and returns its id, so it can be opened and written in. */
-    suspend fun add(): String {
+    suspend fun add(title: String = "", body: String = formatBody(listOf(NoteLine()))): String {
         val now = clock()
         return store.transaction {
             val last = store.all().filterNot { it.inBin }.maxOfOrNull { it.position } ?: 0.0
-            val note = Note(position = last + 1, createdAt = now)
+            val note = Note(title = title.trim(), body = body, position = last + 1, createdAt = now)
             store.insert(listOf(note))
             note.id
         }

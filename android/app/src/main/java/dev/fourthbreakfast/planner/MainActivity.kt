@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner
 
 import android.graphics.Color
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -41,6 +42,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // a turn of the screen keeps the same intent, and it must not act twice
+        if (savedInstanceState == null) route(intent)
         val settings = (application as PlannerApp).settings
         setContent {
             val dark = when (settings.theme) {
@@ -59,8 +62,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        route(intent)
+    }
+
+    /** What a shortcut, a notification or a share is asking for. */
+    private fun route(intent: Intent?) {
+        val requests = (application as PlannerApp).requests
+        val event = intent?.getStringExtra(OPEN_EVENT)
+        val shared = intent?.getStringExtra(Intent.EXTRA_TEXT)
+        when {
+            event != null -> requests.ask(Launch.OpenEvent(event))
+            intent?.action == NEW_TASK -> requests.ask(Launch.NewTask)
+            intent?.action == NEW_EVENT -> requests.ask(Launch.NewEvent)
+            intent?.action == NEW_NOTE -> requests.ask(Launch.NewNote)
+            intent?.action == Intent.ACTION_SEND && !shared.isNullOrBlank() ->
+                requests.ask(Launch.Shared(shared, intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty()))
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         (application as PlannerApp).backUpIfDue()
+    }
+
+    companion object {
+        const val NEW_TASK = "planner.NEW_TASK"
+        const val NEW_EVENT = "planner.NEW_EVENT"
+        const val NEW_NOTE = "planner.NEW_NOTE"
+        const val OPEN_EVENT = "open_event"
     }
 }

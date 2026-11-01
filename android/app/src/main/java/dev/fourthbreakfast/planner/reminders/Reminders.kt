@@ -36,11 +36,26 @@ class Reminders(private val context: Context) {
 
     private fun set(event: Event, at: Long) {
         val intent = intentFor(event.id)
+            .putExtra(ReminderReceiver.ID, event.id)
             .putExtra(ReminderReceiver.TITLE, event.title)
             .putExtra(ReminderReceiver.MINUTE, event.minute ?: 0)
             .putExtra(ReminderReceiver.PLACE, event.location)
         val pending = pending(event.id, intent, PendingIntent.FLAG_UPDATE_CURRENT)
         // exact when the phone allows it, otherwise as close as it will go
+        if (alarms.canScheduleExactAlarms()) {
+            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+        } else {
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+        }
+    }
+
+    /** Rings the same reminder again later, from the alarm that just went off. */
+    fun snooze(source: Intent, at: Long) {
+        val id = source.getStringExtra(ReminderReceiver.ID) ?: return
+        val intent = Intent(context, ReminderReceiver::class.java)
+            .setData(Uri.parse("planner://event/$id/snooze"))
+            .putExtras(source.extras ?: return)
+        val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         if (alarms.canScheduleExactAlarms()) {
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
         } else {

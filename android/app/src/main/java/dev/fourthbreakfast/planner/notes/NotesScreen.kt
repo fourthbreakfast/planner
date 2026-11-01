@@ -1,6 +1,10 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.Launch
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
 import dev.fourthbreakfast.planner.PlannerApp
 import androidx.compose.ui.platform.LocalContext
 import dev.fourthbreakfast.planner.tasks.showUndo
@@ -91,9 +95,35 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
         scope.launch { if (snackbarHost.showUndo(binnedMessage, undoLabel)) viewModel.restore(id) }
     }
 
+    val requests = (LocalContext.current.applicationContext as PlannerApp).requests
+    val request = requests.pending
+    LaunchedEffect(request, notes) {
+        when (request) {
+            Launch.NewNote -> {
+                requests.clear()
+                binOpen = false
+                viewModel.add { openId = it }
+            }
+            is Launch.Shared -> {
+                requests.clear()
+                binOpen = false
+                viewModel.addShared(request.text, request.subject) { openId = it }
+            }
+            is Launch.OpenNote -> if (notes.any { it.id == request.id }) {
+                requests.clear()
+                binOpen = false
+                openId = request.id
+            }
+            else -> Unit
+        }
+    }
+
     val open = notes.firstOrNull { it.id == openId }
+    // the list, a note and the bin fade into one another
+    val mode = if (open != null) 1 else if (binOpen) 2 else 0
+    Crossfade(targetState = mode, animationSpec = tween(150), label = "notes") { shown ->
     when {
-        open != null -> NoteEditor(
+        shown == 1 && open != null -> NoteEditor(
             initialTitle = open.title,
             initialBody = open.body,
             toolbarAbove = settings.toolbarAbove,
@@ -103,7 +133,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
                 openId = null
             },
         )
-        binOpen -> NotesBin(binned, viewModel, onClose = { binOpen = false })
+        shown == 2 -> NotesBin(binned, viewModel, onClose = { binOpen = false })
         else -> NotesList(
             notes = notes,
             binCount = binned.size,
@@ -117,6 +147,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
             onRemove = ::moveToBinWithUndo,
             onMove = viewModel::move,
         )
+    }
     }
 }
 

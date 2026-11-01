@@ -1,6 +1,12 @@
 package dev.fourthbreakfast.planner.agenda
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.PlannerApp
+import dev.fourthbreakfast.planner.Launch
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
 import dev.fourthbreakfast.planner.tasks.showUndo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -78,8 +84,31 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
         scope.launch { if (snackbarHost.showUndo(binnedMessage, undoLabel)) viewModel.restore(id) }
     }
 
+    val requests = (LocalContext.current.applicationContext as PlannerApp).requests
+    val request = requests.pending
+    LaunchedEffect(request, events) {
+        when (request) {
+            Launch.NewEvent -> {
+                requests.clear()
+                binOpen = false
+                editingId = null
+                editorMode = 1
+            }
+            is Launch.OpenEvent -> if (events.any { it.id == request.id }) {
+                requests.clear()
+                binOpen = false
+                editingId = request.id
+                editorMode = 2
+            }
+            else -> Unit
+        }
+    }
+
+    // the list, the form and the bin fade into one another
+    val mode = if (editorMode != 0 && (editorMode == 1 || editing != null)) 1 else if (binOpen) 2 else 0
+    Crossfade(targetState = mode, animationSpec = tween(150), label = "agenda") { shown ->
     when {
-        editorMode != 0 && (editorMode == 1 || editing != null) -> EventEditor(
+        shown == 1 -> EventEditor(
             initial = if (editorMode == 1) null else editing,
             onSave = { draft ->
                 if (editorMode == 1) viewModel.add(draft) else editingId?.let { viewModel.update(it, draft) }
@@ -93,7 +122,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
             },
             onClose = { editorMode = 0 },
         )
-        binOpen -> AgendaBin(binned, viewModel, onClose = { binOpen = false })
+        shown == 2 -> AgendaBin(binned, viewModel, onClose = { binOpen = false })
         else -> AgendaList(
             events = events,
             binCount = binned.size,
@@ -112,6 +141,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
             },
             onRemove = ::moveToBinWithUndo,
         )
+    }
     }
 }
 

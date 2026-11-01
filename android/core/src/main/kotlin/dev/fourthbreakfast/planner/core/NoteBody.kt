@@ -101,6 +101,14 @@ fun numberLabels(lines: List<NoteLine>): List<Int?> {
     }
 }
 
+/** A body of plain lines from plain text, one line to a line, for text that comes from somewhere else. */
+fun plainBody(text: String): String = formatBody(
+    text.replace("\r\n", "\n").replace('\r', '\n').split('\n').map { line ->
+        val clean = cleanLineText(line)
+        NoteLine(text = clean, styles = List(clean.length) { 0 })
+    },
+)
+
 /** True when nothing has been written: only empty lines. */
 fun isBlankBody(body: String): Boolean = parseBody(body).all { it.text.isBlank() }
 

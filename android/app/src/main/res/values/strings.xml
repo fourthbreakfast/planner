@@ -10,6 +10,10 @@
     <string name="settings_title">settings</string>
     <string name="setting_toolbar">notes toolbar</string>
     <string name="toolbar_top">top</string>
+    <string name="shortcut_task">new task</string>
+    <string name="shortcut_event">new event</string>
+    <string name="shortcut_note">new note</string>
+    <string name="snooze">snooze 10 min</string>
     <string name="setting_theme">theme</string>
     <string name="theme_system">system</string>
     <string name="theme_light">light</string>
