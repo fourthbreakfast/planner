@@ -1,9 +1,6 @@
 package dev.fourthbreakfast.planner.search
 
 import androidx.activity.compose.BackHandler
-import dev.fourthbreakfast.planner.tasks.Tab
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,57 +32,33 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.R
-import dev.fourthbreakfast.planner.agenda.AgendaViewModel
-import dev.fourthbreakfast.planner.agenda.dateText
-import dev.fourthbreakfast.planner.agenda.rememberIs24Hour
-import dev.fourthbreakfast.planner.agenda.rememberToday
-import dev.fourthbreakfast.planner.agenda.timeText
-import dev.fourthbreakfast.planner.core.eventText
 import dev.fourthbreakfast.planner.core.matchesAll
 import dev.fourthbreakfast.planner.core.noteText
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.core.searchWords
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.tasks.BackButton
-import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.ui.theme.Space
 
 private const val MOST = 40
 
-/** A search of the tab it was opened from: its tasks, its events or its notes. Touching a result goes to it. */
+/** A search of the notes: by title and by every line of text. Touching a result opens the note. */
 @Composable
-fun SearchScreen(
-    scope: Tab,
-    tasks: TasksViewModel,
-    agenda: AgendaViewModel,
-    notes: NotesViewModel,
-    onOpen: (Launch) -> Unit,
-    onClose: () -> Unit,
-) {
+fun SearchScreen(notes: NotesViewModel, onOpen: (Launch) -> Unit, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val colors = MaterialTheme.colorScheme
     var query by rememberSaveable { mutableStateOf("") }
-    val allTasks by tasks.all.collectAsStateWithLifecycle(initialValue = emptyList())
-    val allEvents by agenda.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val allNotes by notes.all.collectAsStateWithLifecycle(initialValue = emptyList())
-    val today = rememberToday()
-    val is24Hour = rememberIs24Hour()
     val words = searchWords(query)
-    val foundTasks = remember(allTasks, query) {
-        if (scope != Tab.TASKS) emptyList() else allTasks.filter { !it.inBin && matchesAll(it.title, words) }.take(MOST)
-    }
-    val foundEvents = remember(allEvents, query) {
-        if (scope != Tab.AGENDA) emptyList() else allEvents.filter { !it.inBin && matchesAll(eventText(it), words) }.take(MOST)
-    }
-    val foundNotes = remember(allNotes, query) {
-        if (scope != Tab.NOTES) emptyList() else allNotes.filter { !it.inBin && matchesAll(noteText(it), words) }.take(MOST)
-    }
+    val found = remember(allNotes, query) { allNotes.filter { !it.inBin && matchesAll(noteText(it), words) }.take(MOST) }
     val focus = remember { FocusRequester() }
     val searchLabel = stringResource(R.string.search)
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -121,25 +94,11 @@ fun SearchScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize()) {
-            if (foundTasks.isNotEmpty()) {
-                items(foundTasks, key = { "t-" + it.id }) { task ->
-                    val parent = allTasks.firstOrNull { it.id == task.parentId }?.title
-                    Result(task.title, parent) { onOpen(Launch.ShowTask(task.id)) }
-                }
+            items(found, key = { it.id }) { note ->
+                val line = noteText(note).lines().drop(1).firstOrNull { l -> words.any { it in l.lowercase() } }?.trim()
+                Result(noteTitle(note), line) { onOpen(Launch.OpenNote(note.id)) }
             }
-            if (foundEvents.isNotEmpty()) {
-                items(foundEvents, key = { "e-" + it.id }) { event ->
-                    val when_ = dateText(event.day, today) + (event.minute?.let { " · " + timeText(it, is24Hour) } ?: "")
-                    Result(event.title, when_) { onOpen(Launch.OpenEvent(event.id)) }
-                }
-            }
-            if (foundNotes.isNotEmpty()) {
-                items(foundNotes, key = { "n-" + it.id }) { note ->
-                    val line = noteText(note).lines().drop(1).firstOrNull { l -> words.any { it in l.lowercase() } }?.trim()
-                    Result(noteTitle(note), line) { onOpen(Launch.OpenNote(note.id)) }
-                }
-            }
-            if (words.isNotEmpty() && foundTasks.isEmpty() && foundEvents.isEmpty() && foundNotes.isEmpty()) {
+            if (words.isNotEmpty() && found.isEmpty()) {
                 item(key = "none") {
                     Text(
                         text = stringResource(R.string.nothing_found),

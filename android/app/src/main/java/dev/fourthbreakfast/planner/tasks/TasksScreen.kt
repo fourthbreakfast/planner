@@ -1,7 +1,6 @@
 package dev.fourthbreakfast.planner.tasks
 
 import androidx.compose.ui.window.PopupPositionProvider
-import dev.fourthbreakfast.planner.core.ancestors
 import dev.fourthbreakfast.planner.search.SearchScreen
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.Launch
@@ -156,7 +155,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
     // a shortcut, a notification or a share brings the app to the right tab, which then acts on it
     LaunchedEffect(request) {
         val target = when (request) {
-            Launch.NewTask, Launch.ShowTasks, is Launch.ShowTask -> Tab.TASKS
+            Launch.NewTask, Launch.ShowTasks -> Tab.TASKS
             Launch.NewEvent, is Launch.OpenEvent -> Tab.AGENDA
             Launch.NewNote, is Launch.OpenNote, is Launch.Shared -> Tab.NOTES
             null -> null
@@ -191,9 +190,6 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
     ) { place ->
         when {
             place.search -> SearchScreen(
-                place.tab,
-                viewModel,
-                agenda,
                 notes,
                 onOpen = { launch ->
                     requests.ask(launch)
@@ -203,7 +199,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
             )
             place.settings -> SettingsScreen(viewModel, onClose = { settingsOpen = false })
             place.tab == Tab.AGENDA ->
-                AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings, onOpenSearch = openSearch)
+                AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings)
             place.tab == Tab.NOTES ->
                 NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings, onOpenSearch = openSearch)
             place.bin -> BinScreen(entries, viewModel, onClose = { binOpen = false })
@@ -216,7 +212,6 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
                         onOpenBin = { binOpen = true },
                         onSelectTab = { tab = it },
                         onOpenSettings = openSettings,
-                        onOpenSearch = openSearch,
                         viewModel = viewModel,
                     )
                 }
@@ -235,7 +230,6 @@ private fun TaskList(
     onOpenBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenSearch: () -> Unit,
     viewModel: TasksViewModel,
 ) {
     val prefs = LocalContext.current.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -285,20 +279,6 @@ private fun TaskList(
     val display = remember(rows) { rows + EndRow }
 
     val list = rememberLazyListState()
-    // a task found by the search is scrolled to, and the closed tasks above it are opened
-    LaunchedEffect(requests.pending, rows) {
-        val found = requests.pending as? Launch.ShowTask ?: return@LaunchedEffect
-        val index = rows.indexOfFirst { it.key == found.id }
-        val task = tasks.firstOrNull { it.id == found.id }
-        when {
-            index >= 0 -> {
-                requests.clear()
-                list.scrollToItem(index)
-            }
-            task != null -> collapsedIds = ArrayList(collapsedIds - ancestors(tasks, task.parentId).map { it.id }.toSet())
-            else -> requests.clear()
-        }
-    }
     // the list first has only its end spacer, and the tasks arrive above it: left alone, it would keep the spacer in view
     // and open scrolled down. So when the tasks come in after the first look, it goes to the top once.
     val startedEmpty = remember { tasks.isEmpty() }
@@ -504,7 +484,6 @@ private fun TaskList(
                 onOpenBin = onOpenBin,
                 onSelectTab = onSelectTab,
                 onOpenSettings = onOpenSettings,
-                onOpenSearch = onOpenSearch,
             )
         },
     ) { padding ->
@@ -682,7 +661,6 @@ private fun Header(
     onOpenBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenSearch: () -> Unit,
 ) {
     Column {
         TabBar(
@@ -701,10 +679,8 @@ private fun Header(
                 count = openCount,
                 secondCount = subtasksOpen,
                 countLabel = stringResource(R.string.open_tasks_in_all, openCount, subtasksOpen),
+                modifier = Modifier.weight(1f),
             )
-            // the magnifier sits by the numbers, so the controls on the right stay as few as before
-            SearchButton(onOpenSearch)
-            Spacer(Modifier.weight(1f))
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
             ModeDot(!treeMode, onPriorityChange)
             BinButton(binCount, onOpenBin)

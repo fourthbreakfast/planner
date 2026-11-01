@@ -8,8 +8,5 @@ fun matchesAll(text: String, words: List<String>): Boolean {
     return words.isNotEmpty() && words.all { it in lower }
 }
 
-/** Everything a search looks through in an event. */
-fun eventText(event: Event): String = listOf(event.title, event.location, event.notes).joinToString("\n")
-
 /** Everything a search looks through in a note: its title and the words of every line. */
 fun noteText(note: Note): String = note.title + "\n" + parseBody(note.body).joinToString("\n") { it.text }
