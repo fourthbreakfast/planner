@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.search
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.tasks.Tab
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.clickable
@@ -57,9 +58,10 @@ import dev.fourthbreakfast.planner.ui.theme.Space
 
 private const val MOST = 40
 
-/** One search over the tasks, the agenda and the notes. Touching a result goes to it. */
+/** A search of the tab it was opened from: its tasks, its events or its notes. Touching a result goes to it. */
 @Composable
 fun SearchScreen(
+    scope: Tab,
     tasks: TasksViewModel,
     agenda: AgendaViewModel,
     notes: NotesViewModel,
@@ -75,9 +77,15 @@ fun SearchScreen(
     val today = rememberToday()
     val is24Hour = rememberIs24Hour()
     val words = searchWords(query)
-    val foundTasks = remember(allTasks, query) { allTasks.filter { !it.inBin && matchesAll(it.title, words) }.take(MOST) }
-    val foundEvents = remember(allEvents, query) { allEvents.filter { !it.inBin && matchesAll(eventText(it), words) }.take(MOST) }
-    val foundNotes = remember(allNotes, query) { allNotes.filter { !it.inBin && matchesAll(noteText(it), words) }.take(MOST) }
+    val foundTasks = remember(allTasks, query) {
+        if (scope != Tab.TASKS) emptyList() else allTasks.filter { !it.inBin && matchesAll(it.title, words) }.take(MOST)
+    }
+    val foundEvents = remember(allEvents, query) {
+        if (scope != Tab.AGENDA) emptyList() else allEvents.filter { !it.inBin && matchesAll(eventText(it), words) }.take(MOST)
+    }
+    val foundNotes = remember(allNotes, query) {
+        if (scope != Tab.NOTES) emptyList() else allNotes.filter { !it.inBin && matchesAll(noteText(it), words) }.take(MOST)
+    }
     val focus = remember { FocusRequester() }
     val searchLabel = stringResource(R.string.search)
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -114,21 +122,18 @@ fun SearchScreen(
     ) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize()) {
             if (foundTasks.isNotEmpty()) {
-                item(key = "h-tasks") { Heading(stringResource(R.string.tasks_title)) }
                 items(foundTasks, key = { "t-" + it.id }) { task ->
                     val parent = allTasks.firstOrNull { it.id == task.parentId }?.title
-                    Result(task.title, parent) { onOpen(Launch.ShowTasks) }
+                    Result(task.title, parent) { onOpen(Launch.ShowTask(task.id)) }
                 }
             }
             if (foundEvents.isNotEmpty()) {
-                item(key = "h-agenda") { Heading(stringResource(R.string.agenda_title)) }
                 items(foundEvents, key = { "e-" + it.id }) { event ->
                     val when_ = dateText(event.day, today) + (event.minute?.let { " · " + timeText(it, is24Hour) } ?: "")
                     Result(event.title, when_) { onOpen(Launch.OpenEvent(event.id)) }
                 }
             }
             if (foundNotes.isNotEmpty()) {
-                item(key = "h-notes") { Heading(stringResource(R.string.notes_title)) }
                 items(foundNotes, key = { "n-" + it.id }) { note ->
                     val line = noteText(note).lines().drop(1).firstOrNull { l -> words.any { it in l.lowercase() } }?.trim()
                     Result(noteTitle(note), line) { onOpen(Launch.OpenNote(note.id)) }
@@ -147,16 +152,6 @@ fun SearchScreen(
             item(key = "end") { Spacer(Modifier.height(Space.listEnd())) }
         }
     }
-}
-
-@Composable
-private fun Heading(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = Space.gutter, top = Space.x4, bottom = Space.x1),
-    )
 }
 
 @Composable
