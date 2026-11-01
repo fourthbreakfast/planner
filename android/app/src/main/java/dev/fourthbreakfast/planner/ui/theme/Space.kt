@@ -39,6 +39,9 @@ object Space {
     // marks
     val icon = 20.dp
     val check = 18.dp
+
+    /** The room a list mark takes before a line of a note. */
+    val markWidth = 26.dp
     val dot = 8.dp
 
     /** The priority dots differ in size as well as colour: bigger is more urgent. */

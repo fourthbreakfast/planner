@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -20,11 +19,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -35,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Priority
+import dev.fourthbreakfast.planner.ui.CheckBoxMark
 import dev.fourthbreakfast.planner.ui.theme.PriorityHigh
 import dev.fourthbreakfast.planner.ui.theme.PriorityLow
 import dev.fourthbreakfast.planner.ui.theme.PriorityMedium
@@ -59,7 +56,6 @@ fun TaskCheck(checked: Boolean, ink: Color, onCheckedChange: (Boolean) -> Unit) 
     val press = remember { MutableInteractionSource() }
     val pressed by press.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.88f else 1f, pressSpring)
-    val tick = MaterialTheme.colorScheme.background
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -77,27 +73,16 @@ fun TaskCheck(checked: Boolean, ink: Color, onCheckedChange: (Boolean) -> Unit) 
                 },
             ),
     ) {
-        Canvas(
+        CheckBoxMark(
+            checked,
+            ink,
             Modifier
                 .size(Space.check)
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
                 },
-        ) {
-            val corner = CornerRadius(Space.radiusCheck.toPx())
-            if (checked) {
-                drawRoundRect(ink, cornerRadius = corner)
-                val path = Path().apply {
-                    moveTo(size.width * 0.24f, size.height * 0.52f)
-                    lineTo(size.width * 0.43f, size.height * 0.72f)
-                    lineTo(size.width * 0.77f, size.height * 0.30f)
-                }
-                drawPath(path, tick, style = Stroke(Space.strokeThick.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-            } else {
-                drawRoundRect(ink, cornerRadius = corner, style = Stroke(Space.strokeThin.toPx()))
-            }
-        }
+        )
     }
 }
 

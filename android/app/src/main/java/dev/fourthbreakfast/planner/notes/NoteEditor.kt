@@ -7,15 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -36,31 +37,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.BOLD
 import dev.fourthbreakfast.planner.core.ITALIC
 import dev.fourthbreakfast.planner.core.LineKind
+import dev.fourthbreakfast.planner.core.NoteLine
 import dev.fourthbreakfast.planner.core.UNDERLINE
 import dev.fourthbreakfast.planner.core.numberLabels
 import dev.fourthbreakfast.planner.ui.BackButton
+import dev.fourthbreakfast.planner.ui.CheckBoxMark
 import dev.fourthbreakfast.planner.ui.QuietButton
 import dev.fourthbreakfast.planner.ui.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
@@ -128,7 +131,6 @@ fun NoteEditor(
             }
         },
     ) { padding ->
-        val numbers = numberLabels(state.lines.map { it.toLine() })
         Column(
             Modifier
                 .padding(padding)
@@ -138,93 +140,105 @@ fun NoteEditor(
                 .verticalScroll(rememberScrollState()),
         ) {
             TitleField(state)
-            state.lines.forEachIndexed { index, line ->
-                androidx.compose.runtime.key(line.id) { LineRow(line, numbers.getOrNull(index), state) }
-            }
+            NoteText(state)
             // a touch below the last line puts the cursor there
             Box(
                 Modifier
                     .fillMaxWidth()
                     .height(Space.listEnd())
-                    .clickable(interactionSource = null, indication = null) { state.focusLast() },
+                    .clickable(interactionSource = null, indication = null) { state.focusEnd() },
             )
         }
     }
 }
 
+/**
+ * The text of the note, one field for all of it. Each line is pushed in by its depth and its mark through its paragraph
+ * style, and the marks themselves are laid over the space that leaves, where the text says the line sits.
+ */
 @Composable
-private fun LineRow(line: EditLine, number: Int?, state: NoteEditState) {
+private fun NoteText(state: NoteEditState) {
     val colors = MaterialTheme.colorScheme
+    val density = LocalDensity.current
     val focus = remember { FocusRequester() }
-    val ink = if (line.checked) colors.onSurfaceVariant else colors.onBackground
-    val looks = line.looks
-    val checkedInk = line.checked
-    val transformation = remember(looks, checkedInk, ink) {
-        VisualTransformation { text ->
-            val body = text.text.drop(1)
-            val shown = buildAnnotatedString {
-                append(text.text.take(1))
-                if (looks.size == body.length) appendStyled(body, looks) else append(body)
-                if (checkedInk) addStyle(SpanStyle(color = ink), 0, length)
-            }
-            TransformedText(shown, OffsetMapping.Identity)
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val marks = state.marks
+    val looks = state.looks
+    val quiet = colors.onSurfaceVariant
+    val transformation = remember(marks, looks, quiet, density) {
+        VisualTransformation { shown ->
+            TransformedText(styledBody(shown.text, marks, looks, quiet, density), OffsetMapping.Identity)
         }
     }
     LaunchedEffect(state.focusRequest) {
-        if (state.focusRequest == line.id) {
-            focus.requestFocus()
-            state.focusRequest = null
-        }
+        focus.requestFocus()
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = Space.gutter + Space.indent * line.indent, end = Space.gutter),
-    ) {
-        when (line.kind) {
-            LineKind.PLAIN -> Unit
-            // the box is a full touch square, though the mark in it is small
-            LineKind.CHECK -> Box(
-                contentAlignment = Alignment.CenterStart,
-                modifier = Modifier
-                    .sizeIn(minWidth = Space.touch, minHeight = Space.touch)
-                    .toggleable(value = line.checked, role = Role.Checkbox) { line.checked = it },
-            ) {
-                Text(
-                    text = if (line.checked) "[x]" else "[ ]",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.onSurfaceVariant,
-                )
-            }
-            else -> Text(
-                text = if (line.kind == LineKind.BULLET) "•" else "${number ?: 1}.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier
-                    .defaultMinSize(minWidth = Space.x5)
-                    .padding(top = Space.x2, bottom = Space.x2, end = Space.x2),
-            )
-        }
+    val numbers = remember(marks) { numberLabels(marks.map { NoteLine(it.kind, it.indent) }) }
+    Box(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.x2)) {
         BasicTextField(
-            value = line.value,
-            onValueChange = { state.change(line, it) },
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = ink),
+            value = state.value,
+            onValueChange = state::change,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
             cursorBrush = SolidColor(colors.onBackground),
             visualTransformation = transformation,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+            onTextLayout = { layout = it },
             modifier = Modifier
-                .weight(1f)
-                .padding(top = if (line.kind == LineKind.CHECK) Space.x3 else Space.x2, bottom = Space.x2)
-                .focusRequester(focus)
-                .onFocusChanged { if (it.isFocused) state.focusedId = line.id },
+                .fillMaxWidth()
+                .focusRequester(focus),
         )
+        val placed = layout
+        if (placed != null) {
+            var start = 1
+            state.text.split('\n').forEachIndexed { index, words ->
+                val mark = marks.getOrNull(index)
+                if (mark != null && mark.kind != LineKind.PLAIN && start <= placed.layoutInput.text.length) {
+                    val row = placed.getLineForOffset(start)
+                    val top = with(density) { placed.getLineTop(row).toDp() }
+                    val height = with(density) { (placed.getLineBottom(row) - placed.getLineTop(row)).toDp() }
+                    LineMarker(mark, numbers.getOrNull(index), top, height) { state.toggleChecked(index) }
+                }
+                start += words.length + 1
+            }
+        }
+    }
+}
+
+@Composable
+private fun LineMarker(mark: LineMark, number: Int?, top: Dp, height: Dp, onToggle: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val left = Space.indent * mark.indent
+    if (mark.kind == LineKind.CHECK) {
+        // the touch area is taller than the line, so a thumb does not have to be exact
+        Box(
+            contentAlignment = Alignment.CenterStart,
+            modifier = Modifier
+                .offset(x = left, y = top + height / 2 - Space.touch / 2)
+                .size(Space.markWidth, Space.touch)
+                .toggleable(value = mark.checked, role = Role.Checkbox, onValueChange = { onToggle() }),
+        ) {
+            CheckBoxMark(mark.checked, colors.onSurfaceVariant)
+        }
+    } else {
+        Box(
+            contentAlignment = Alignment.CenterStart,
+            modifier = Modifier
+                .offset(x = left, y = top)
+                .height(height),
+        ) {
+            Text(
+                text = if (mark.kind == LineKind.BULLET) "•" else "${number ?: 1}.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.onSurfaceVariant,
+            )
+        }
     }
 }
 
 /** The marks along the top: pull out and push in, the three kinds of list, then bold, italic and underline. */
 @Composable
 private fun Toolbar(state: NoteEditState) {
-    val kind = state.focused?.kind
+    val kind = state.kind
     Row(
         horizontalArrangement = Arrangement.spacedBy(Space.x1),
         modifier = Modifier
@@ -236,7 +250,7 @@ private fun Toolbar(state: NoteEditState) {
         Spacer(Modifier.width(Space.x2))
         ToolButton("1.", stringResource(R.string.numbered_list), kind == LineKind.NUMBER, Modifier.weight(1f)) { state.setKind(LineKind.NUMBER) }
         ToolButton("•", stringResource(R.string.bulleted_list), kind == LineKind.BULLET, Modifier.weight(1f)) { state.setKind(LineKind.BULLET) }
-        ToolButton("[ ]", stringResource(R.string.checklist), kind == LineKind.CHECK, Modifier.weight(1f)) { state.setKind(LineKind.CHECK) }
+        ToolButton("", stringResource(R.string.checklist), kind == LineKind.CHECK, Modifier.weight(1f), box = true) { state.setKind(LineKind.CHECK) }
         Spacer(Modifier.width(Space.x2))
         ToolButton("b", stringResource(R.string.bold), state.isOn(BOLD), Modifier.weight(1f), BOLD) { state.toggle(BOLD) }
         ToolButton("i", stringResource(R.string.italic), state.isOn(ITALIC), Modifier.weight(1f), ITALIC) { state.toggle(ITALIC) }
@@ -245,7 +259,7 @@ private fun Toolbar(state: NoteEditState) {
 }
 
 @Composable
-private fun ToolButton(glyph: String, label: String, on: Boolean, modifier: Modifier, look: Int = 0, onClick: () -> Unit) {
+private fun ToolButton(glyph: String, label: String, on: Boolean, modifier: Modifier, look: Int = 0, box: Boolean = false, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,
@@ -257,11 +271,16 @@ private fun ToolButton(glyph: String, label: String, on: Boolean, modifier: Modi
                 selected = on
             },
     ) {
-        Text(
-            text = buildAnnotatedString { withStyle(spanFor(look)) { append(glyph) } },
-            style = MaterialTheme.typography.titleMedium,
-            color = if (on) colors.onBackground else colors.onSurfaceVariant,
-        )
+        val ink = if (on) colors.onBackground else colors.onSurfaceVariant
+        if (box) {
+            CheckBoxMark(false, ink)
+        } else {
+            Text(
+                text = buildAnnotatedString { withStyle(spanFor(look)) { append(glyph) } },
+                style = MaterialTheme.typography.titleMedium,
+                color = ink,
+            )
+        }
     }
 }
 
@@ -271,7 +290,7 @@ private fun TitleField(state: NoteEditState) {
     val colors = MaterialTheme.colorScheme
     val style = MaterialTheme.typography.headlineSmall
     val titleLabel = stringResource(R.string.note_name)
-    val borrowed = state.lines.firstOrNull { it.text.isNotBlank() }?.text?.trim() ?: ""
+    val borrowed = state.text.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
     Box(
         Modifier
             .fillMaxWidth()
@@ -285,7 +304,7 @@ private fun TitleField(state: NoteEditState) {
             onValueChange = {
                 if ('\n' in it) {
                     state.title = it.replace("\n", "")
-                    state.focusRequest = state.lines.first().id
+                    state.focusStart()
                 } else {
                     state.title = it
                 }

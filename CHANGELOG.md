@@ -2,6 +2,13 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 0.6.0
+
+- a note is now one text: select across lines and paragraphs to delete, restyle or turn them into a list
+- enter makes a plain new line, and two enters leave a gap for a new paragraph
+- check boxes are drawn like the ones on tasks, in notes and in their previews
+- a row only has to be swiped a quarter of the way to bin or rename it
+
 ## 0.5.2
 
 - the search is only on the notes tab, beside the bin, and it searches only the notes. the tasks and agenda bars are back to how they were

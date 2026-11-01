@@ -394,7 +394,13 @@ private fun NoteRow(note: Note, dropAbove: Boolean, swipe: RowSwipe, onOpen: () 
                     }
                 }
                 if (preview.isNotEmpty()) {
-                    Text(text = preview, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = preview,
+                        inlineContent = rememberPreviewBoxes(colors.onSurfaceVariant),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }

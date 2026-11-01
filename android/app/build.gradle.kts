@@ -84,12 +84,14 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.room.testing)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // the upgrade tests read the saved schemas with a newer one than the app pulls in by itself
+    debugImplementation(libs.kotlinx.serialization.core)
 }
 
 // these tests install and then uninstall the app, which must never be the real one
-val demoBuild = providers.gradleProperty("demo").isPresent
-tasks.matching { it.name.startsWith("connected") }.configureEach {
-    doFirst { check(demoBuild) { "device tests only run on the dev copy: add -Pdemo" } }
+if (gradle.startParameter.taskNames.any { "connected" in it } && !providers.gradleProperty("demo").isPresent) {
+    error("device tests only run on the dev copy: add -Pdemo")
 }
