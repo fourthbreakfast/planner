@@ -171,6 +171,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
     // with animations switched off in the phone's settings, screens just change
     val animated = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f }
     AnimatedContent(
+        modifier = Modifier.background(MaterialTheme.colorScheme.background),
         targetState = Place(tab, settingsOpen, binOpen, searchOpen),
         transitionSpec = {
             when {

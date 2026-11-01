@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="app_page">#FF191919</color>
     <color name="widget_page">#FF191919</color>
     <color name="widget_ink">#FFE6E6E4</color>
     <color name="widget_quiet">#FF9B9B9B</color>

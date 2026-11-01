@@ -108,7 +108,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
 
     // the list, the form and the bin fade into one another
     val mode = if (editorMode != 0 && (editorMode == 1 || editing != null)) 1 else if (binOpen) 2 else 0
-    Crossfade(targetState = mode, animationSpec = tween(150), label = "agenda") { shown ->
+    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "agenda") { shown ->
     when {
         shown == 1 -> EventEditor(
             initial = if (editorMode == 1) null else editing,
