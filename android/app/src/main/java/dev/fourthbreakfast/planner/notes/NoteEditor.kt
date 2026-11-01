@@ -60,9 +60,9 @@ import dev.fourthbreakfast.planner.core.ITALIC
 import dev.fourthbreakfast.planner.core.LineKind
 import dev.fourthbreakfast.planner.core.UNDERLINE
 import dev.fourthbreakfast.planner.core.numberLabels
-import dev.fourthbreakfast.planner.tasks.BackButton
-import dev.fourthbreakfast.planner.tasks.QuietButton
-import dev.fourthbreakfast.planner.tasks.SegmentTab
+import dev.fourthbreakfast.planner.ui.BackButton
+import dev.fourthbreakfast.planner.ui.QuietButton
+import dev.fourthbreakfast.planner.ui.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest

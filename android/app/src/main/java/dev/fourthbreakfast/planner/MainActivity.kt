@@ -14,7 +14,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.notes.NotesViewModel
-import dev.fourthbreakfast.planner.tasks.TasksScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 
@@ -57,7 +56,7 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
             }
             PlannerTheme(darkTheme = dark) {
-                TasksScreen(tasksViewModel, agendaViewModel, notesViewModel)
+                PlannerScreen(tasksViewModel, agendaViewModel, notesViewModel)
             }
         }
     }

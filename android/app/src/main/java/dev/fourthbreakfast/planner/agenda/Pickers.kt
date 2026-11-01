@@ -29,7 +29,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.REMINDER_CHOICES
-import dev.fourthbreakfast.planner.tasks.QuietButton
+import dev.fourthbreakfast.planner.ui.QuietButton
 import dev.fourthbreakfast.planner.ui.theme.Space
 import java.time.DayOfWeek
 import java.time.LocalDate

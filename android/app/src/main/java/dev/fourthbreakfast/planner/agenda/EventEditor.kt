@@ -47,9 +47,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.core.content.ContextCompat
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.tasks.BackButton
-import dev.fourthbreakfast.planner.tasks.QuietButton
-import dev.fourthbreakfast.planner.tasks.SegmentTab
+import dev.fourthbreakfast.planner.ui.BackButton
+import dev.fourthbreakfast.planner.ui.QuietButton
+import dev.fourthbreakfast.planner.ui.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
 
 /**

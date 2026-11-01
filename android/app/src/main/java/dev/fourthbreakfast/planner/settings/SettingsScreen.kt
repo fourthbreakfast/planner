@@ -37,11 +37,11 @@ import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.ThemeChoice
 import dev.fourthbreakfast.planner.backup.folderName
-import dev.fourthbreakfast.planner.tasks.BackButton
-import dev.fourthbreakfast.planner.tasks.DiscreetMessage
-import dev.fourthbreakfast.planner.tasks.SegmentTab
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.rememberBackupFiles
+import dev.fourthbreakfast.planner.ui.BackButton
+import dev.fourthbreakfast.planner.ui.DiscreetMessage
+import dev.fourthbreakfast.planner.ui.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
 import dev.fourthbreakfast.planner.widget.PlannerWidget
 

@@ -1,21 +1,8 @@
 package dev.fourthbreakfast.planner.tasks
 
 import android.content.Context
-import android.provider.Settings
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.scrollBy
@@ -23,33 +10,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,18 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -81,37 +49,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
-import dev.fourthbreakfast.planner.agenda.AgendaScreen
-import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
 import dev.fourthbreakfast.planner.core.SortOrder
 import dev.fourthbreakfast.planner.core.Task
-import dev.fourthbreakfast.planner.core.binEntries
 import dev.fourthbreakfast.planner.core.subtree
-import dev.fourthbreakfast.planner.notes.NotesScreen
-import dev.fourthbreakfast.planner.notes.NotesViewModel
-import dev.fourthbreakfast.planner.search.SearchScreen
-import dev.fourthbreakfast.planner.settings.SettingsScreen
+import dev.fourthbreakfast.planner.ui.BinButton
+import dev.fourthbreakfast.planner.ui.DiscreetMessage
+import dev.fourthbreakfast.planner.ui.RowSwipe
+import dev.fourthbreakfast.planner.ui.Tab
+import dev.fourthbreakfast.planner.ui.TabBar
+import dev.fourthbreakfast.planner.ui.TitleWithCount
+import dev.fourthbreakfast.planner.ui.rowKeyAt
+import dev.fourthbreakfast.planner.ui.showUndo
+import dev.fourthbreakfast.planner.ui.sweepAndHold
 import dev.fourthbreakfast.planner.ui.theme.Space
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -119,96 +76,9 @@ private const val PREFS = "view"
 private const val PREF_SORT = "sort"
 private const val PREF_PEEKED = "peeked"
 
-@Composable
-fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: NotesViewModel) {
-    val tasks by viewModel.all.collectAsStateWithLifecycle(initialValue = null)
-    var binOpen by rememberSaveable { mutableStateOf(false) }
-    var tab by rememberSaveable { mutableStateOf(Tab.TASKS) }
-    var settingsOpen by rememberSaveable { mutableStateOf(false) }
-    var searchOpen by rememberSaveable { mutableStateOf(false) }
-    val listState = rememberSaveableStateHolder()
-    val all = tasks
-    val entries = remember(all) { binEntries(all.orEmpty()) }
-    val active = remember(all) { all.orEmpty().filterNot { it.inBin } }
-    val openSettings = { settingsOpen = true }
-    val openSearch = { searchOpen = true }
-    val context = LocalContext.current
-    val requests = (context.applicationContext as PlannerApp).requests
-    val request = requests.pending
-    // a shortcut, a notification or a share brings the app to the right tab, which then acts on it
-    LaunchedEffect(request) {
-        val target = when (request) {
-            Launch.NewTask -> Tab.TASKS
-            Launch.NewEvent, is Launch.OpenEvent -> Tab.AGENDA
-            Launch.NewNote, is Launch.OpenNote, is Launch.Shared -> Tab.NOTES
-            null -> null
-        }
-        if (target != null) {
-            tab = target
-            settingsOpen = false
-            searchOpen = false
-            if (target == Tab.TASKS) binOpen = false
-        }
-    }
-    // with animations switched off in the phone's settings, screens just change
-    val animated = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f }
-    AnimatedContent(
-        modifier = Modifier.background(MaterialTheme.colorScheme.background),
-        targetState = Place(tab, settingsOpen, binOpen, searchOpen),
-        transitionSpec = {
-            when {
-                !animated -> EnterTransition.None togetherWith ExitTransition.None
-                // settings and the bin fade in and out; moving between tabs slides the way the finger swept
-                initialState.settings != targetState.settings || initialState.bin != targetState.bin || initialState.search != targetState.search ->
-                    fadeIn(tween(160)) togetherWith fadeOut(tween(120))
-                else -> {
-                    val way = if (targetState.tab.ordinal > initialState.tab.ordinal) 1 else -1
-                    (slideInHorizontally(tween(220)) { way * it / 5 } + fadeIn(tween(220))) togetherWith
-                        (slideOutHorizontally(tween(220)) { -way * it / 5 } + fadeOut(tween(140)))
-                }
-            }
-        },
-        label = "screen",
-    ) { place ->
-        when {
-            place.search -> SearchScreen(
-                notes,
-                onOpen = { launch ->
-                    requests.ask(launch)
-                    searchOpen = false
-                },
-                onClose = { searchOpen = false },
-            )
-            place.settings -> SettingsScreen(viewModel, onClose = { settingsOpen = false })
-            place.tab == Tab.AGENDA ->
-                AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings)
-            place.tab == Tab.NOTES ->
-                NotesScreen(notes, onShowAgenda = {
-                    tab = Tab.AGENDA
-                }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings, onOpenSearch = openSearch)
-            place.bin -> BinScreen(entries, viewModel, onClose = { binOpen = false })
-            else ->
-                // keeps the aim and collapsed tasks while the bin is open
-                listState.SaveableStateProvider("list") {
-                    TaskList(
-                        tasks = active,
-                        binCount = entries.size,
-                        onOpenBin = { binOpen = true },
-                        onSelectTab = { tab = it },
-                        onOpenSettings = openSettings,
-                        viewModel = viewModel,
-                    )
-                }
-        }
-    }
-}
-
-/** Which screen is showing, as one value, so a change of it can be animated. */
-private data class Place(val tab: Tab, val settings: Boolean, val bin: Boolean, val search: Boolean)
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TaskList(
+internal fun TaskList(
     tasks: List<Task>,
     binCount: Int,
     onOpenBin: () -> Unit,
@@ -572,66 +442,6 @@ private fun reorderSpring() = spring<IntOffset>(
     visibilityThreshold = IntOffset(1, 1),
 )
 
-/** Shows where a drop would land: a line above or below the row, or the row lit up for nesting. */
-@Composable
-private fun Modifier.dropHint(zone: DropZone?, depth: Int = 0): Modifier {
-    if (zone == null) return this
-    val line = MaterialTheme.colorScheme.onBackground
-    val fill = MaterialTheme.colorScheme.secondaryContainer
-    return drawWithContent {
-        if (zone == DropZone.INTO) drawRect(fill)
-        drawContent()
-        val thickness = Space.strokeThick.toPx()
-        // the line starts where the dropped task would sit, so its depth can be seen
-        val start = (Space.rowPad + Space.indent * depth).toPx()
-        when (zone) {
-            DropZone.BEFORE -> drawRect(line, topLeft = Offset(start, 0f), size = size.copy(width = size.width - start, height = thickness))
-            DropZone.AFTER -> drawRect(
-                line,
-                topLeft = Offset(start, size.height - thickness),
-                size = size.copy(width = size.width - start, height = thickness),
-            )
-            DropZone.INTO -> Unit
-        }
-    }
-}
-
-/** How long the undo pill stays, long enough to reach it with a thumb. */
-private const val UNDO_MILLIS = 6000L
-
-/** Shows [message] with an undo button and takes it away after a while. True when undo was touched. */
-suspend fun SnackbarHostState.showUndo(message: String, undoLabel: String): Boolean = coroutineScope {
-    currentSnackbarData?.dismiss()
-    val timer = launch {
-        delay(UNDO_MILLIS)
-        currentSnackbarData?.dismiss()
-    }
-    val result = showSnackbar(message = message, actionLabel = undoLabel, duration = SnackbarDuration.Indefinite)
-    timer.cancel()
-    result == SnackbarResult.ActionPerformed
-}
-
-/** A small pill: says what happened and offers the way back, without covering the list. */
-@Composable
-fun DiscreetMessage(message: String, action: String? = null, onAction: () -> Unit = {}) {
-    Box(Modifier.fillMaxWidth().padding(bottom = Space.x1), contentAlignment = Alignment.Center) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(percent = 50))
-                .padding(start = Space.gutter, end = if (action == null) Space.gutter else Space.rowPad)
-                .then(if (action == null) Modifier.padding(vertical = Space.x3) else Modifier),
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (action != null) QuietButton(action, onAction)
-        }
-    }
-}
-
 @Composable
 private fun Header(
     openCount: Int,
@@ -669,217 +479,5 @@ private fun Header(
             ModeDot(!treeMode, onPriorityChange)
             BinButton(binCount, onOpenBin)
         }
-    }
-}
-
-/** Under a swiping row: swiping right removes it, swiping left renames it. */
-@Composable
-internal fun SwipeBackground(renaming: Boolean, removeLabel: String, renameLabel: String, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        contentAlignment = if (renaming) Alignment.CenterEnd else Alignment.CenterStart,
-        modifier = modifier
-            .background(if (renaming) colors.secondaryContainer else colors.primary)
-            .padding(horizontal = Space.gutter),
-    ) {
-        Text(
-            text = if (renaming) renameLabel else removeLabel,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (renaming) colors.onSecondaryContainer else colors.onPrimary,
-        )
-    }
-}
-
-@Composable
-private fun TaskRow(
-    node: TaskNode,
-    aimed: Boolean,
-    renaming: Boolean,
-    onStartRename: () -> Unit,
-    onRename: (String) -> Unit,
-    onCancelRename: () -> Unit,
-    swipe: RowSwipe,
-    dragging: Boolean,
-    dropHint: DropZone?,
-    dropDepth: Int,
-    onAim: () -> Unit,
-    onDoneChange: (Boolean) -> Unit,
-    onCyclePriority: () -> Unit,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val task = node.task
-    val removeLabel = stringResource(R.string.remove_task)
-    val renameLabel = stringResource(R.string.rename)
-    val aimLabel = stringResource(R.string.aim_at_task)
-    val colors = MaterialTheme.colorScheme
-    SwipeRow(
-        key = task.id,
-        swipe = swipe,
-        removeLabel = removeLabel,
-        renameLabel = renameLabel,
-        modifier = modifier.semantics {
-            customActions = listOf(
-                CustomAccessibilityAction(removeLabel) {
-                    onRemove()
-                    true
-                },
-                CustomAccessibilityAction(renameLabel) {
-                    onStartRename()
-                    true
-                },
-            )
-        },
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(if (aimed || dragging) colors.secondaryContainer else colors.background)
-                .dropHint(dropHint, dropDepth)
-                .clickable(enabled = !renaming, onClickLabel = aimLabel, onClick = onAim)
-                .padding(horizontal = Space.rowPad),
-        ) {
-            Spacer(Modifier.width(Space.indent * node.depth))
-            PriorityMarker(task.priority, onCyclePriority)
-            if (renaming) {
-                RenameField(
-                    title = task.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    onRename = onRename,
-                    onCancel = onCancelRename,
-                    modifier = Modifier.weight(1f).padding(vertical = Space.x3),
-                )
-            } else {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    textDecoration = if (task.done) TextDecoration.LineThrough else null,
-                    color = if (task.done) colors.onSurfaceVariant else colors.onBackground,
-                    modifier = Modifier.weight(1f).padding(vertical = Space.x3),
-                )
-            }
-            if (node.childCount > 0) {
-                Text(
-                    text = stringResource(R.string.task_progress, node.doneChildCount, node.childCount),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.onSurfaceVariant,
-                )
-            }
-            TaskCheck(task.done, colors.onBackground, onDoneChange)
-        }
-    }
-}
-
-/** Edits a title in place. Done or tapping elsewhere keeps the edit, back drops it. */
-@Composable
-private fun RenameField(title: String, style: TextStyle, onRename: (String) -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
-    var value by remember { mutableStateOf(TextFieldValue(title, TextRange(title.length))) }
-    var hadFocus by remember { mutableStateOf(false) }
-    var finished by remember { mutableStateOf(false) }
-    val focus = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    val colors = MaterialTheme.colorScheme
-
-    fun save() {
-        if (finished) return
-        finished = true
-        onRename(value.text)
-    }
-
-    LaunchedEffect(Unit) {
-        focus.requestFocus()
-        keyboard?.show()
-    }
-    BackHandler {
-        finished = true
-        onCancel()
-    }
-    BasicTextField(
-        value = value,
-        onValueChange = { value = it },
-        textStyle = style.copy(color = colors.onBackground),
-        cursorBrush = SolidColor(colors.onBackground),
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.None,
-            imeAction = ImeAction.Done,
-        ),
-        keyboardActions = KeyboardActions(onDone = { save() }),
-        modifier = modifier
-            .focusRequester(focus)
-            .onFocusChanged {
-                if (hadFocus && !it.isFocused) save()
-                hadFocus = it.isFocused
-            },
-    )
-}
-
-/** The add line stays at the bottom of the screen. A tapped task is shown as its target above the line. */
-@Composable
-private fun AddBar(
-    text: String,
-    onTextChange: (String) -> Unit,
-    aimedTitle: String?,
-    onClearAim: () -> Unit,
-    onFocusChange: (Boolean) -> Unit,
-    onAdd: () -> Unit,
-    focus: FocusRequester,
-    modifier: Modifier = Modifier,
-) {
-    val colors = MaterialTheme.colorScheme
-    var focused by remember { mutableStateOf(false) }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(colors.background)
-            .navigationBarsPadding()
-            .imePadding(),
-    ) {
-        if (aimedTitle != null) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = Space.gutter)) {
-                Text(
-                    text = stringResource(R.string.add_inside_hint, aimedTitle),
-                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 14.sp),
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f),
-                )
-                QuietButton(stringResource(R.string.clear_target), onClearAim)
-            }
-        }
-        TextField(
-            value = text,
-            onValueChange = onTextChange,
-            placeholder = { Text(stringResource(R.string.add_task_hint), maxLines = 1) },
-            // the + is an invitation, the › says the line is in use
-            leadingIcon = {
-                Text(if (focused || text.isNotEmpty()) "›" else "+", color = colors.onSurfaceVariant)
-            },
-            singleLine = true,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = colors.onBackground,
-                unfocusedTextColor = colors.onBackground,
-                focusedPlaceholderColor = colors.onSurfaceVariant,
-                unfocusedPlaceholderColor = colors.onSurfaceVariant,
-                cursorColor = colors.onBackground,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(onDone = { onAdd() }),
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focus)
-                .onFocusChanged {
-                    focused = it.isFocused
-                    onFocusChange(it.isFocused)
-                },
-        )
     }
 }
