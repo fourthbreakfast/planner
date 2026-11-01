@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.agenda
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.tasks.showUndo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -58,7 +59,7 @@ import kotlinx.coroutines.launch
 
 /** The agenda: what is coming up, soonest first, with everything about each event on view. */
 @Composable
-fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNotes: () -> Unit) {
+fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNotes: () -> Unit, onOpenSettings: () -> Unit) {
     val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val events = remember(everything) { everything.filterNot { it.inBin } }
     val binned = remember(everything) { everything.filter { it.inBin }.sortedByDescending { it.deletedAt } }
@@ -74,11 +75,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
 
     fun moveToBinWithUndo(id: String) {
         viewModel.moveToBin(id)
-        scope.launch {
-            snackbarHost.currentSnackbarData?.dismiss()
-            val result = snackbarHost.showSnackbar(message = binnedMessage, actionLabel = undoLabel, duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) viewModel.restore(id)
-        }
+        scope.launch { if (snackbarHost.showUndo(binnedMessage, undoLabel)) viewModel.restore(id) }
     }
 
     when {
@@ -103,6 +100,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
             snackbarHost = snackbarHost,
             onShowTasks = onShowTasks,
             onShowNotes = onShowNotes,
+            onOpenSettings = onOpenSettings,
             onOpenBin = { binOpen = true },
             onNew = {
                 editingId = null
@@ -124,6 +122,7 @@ private fun AgendaList(
     snackbarHost: SnackbarHostState,
     onShowTasks: () -> Unit,
     onShowNotes: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenBin: () -> Unit,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
@@ -169,6 +168,7 @@ private fun AgendaList(
                             Tab.AGENDA -> Unit
                         }
                     },
+                    onLongPress = onOpenSettings,
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -235,7 +235,7 @@ private fun DayHeading(text: String, earlier: Boolean, big: Boolean = false) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (earlier) 0.7f else 1f),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = Space.gutter, top = if (big) Space.x6 else Space.x4, bottom = Space.x1),
     )
 }

@@ -1,6 +1,9 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.PlannerApp
+import androidx.compose.ui.platform.LocalContext
+import dev.fourthbreakfast.planner.tasks.showUndo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -71,7 +74,8 @@ private const val PREVIEW_LINES = 8
 
 /** The notes: one on top of another in the order they were put, with a touch opening one to write in. */
 @Composable
-fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks: () -> Unit) {
+fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks: () -> Unit, onOpenSettings: () -> Unit) {
+    val settings = (LocalContext.current.applicationContext as PlannerApp).settings
     val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val notes = remember(everything) { everything.filterNot { it.inBin } }
     val binned = remember(everything) { everything.filter { it.inBin }.sortedByDescending { it.deletedAt } }
@@ -84,11 +88,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
 
     fun moveToBinWithUndo(id: String) {
         viewModel.moveToBin(id)
-        scope.launch {
-            snackbarHost.currentSnackbarData?.dismiss()
-            val result = snackbarHost.showSnackbar(message = binnedMessage, actionLabel = undoLabel, duration = SnackbarDuration.Short)
-            if (result == SnackbarResult.ActionPerformed) viewModel.restore(id)
-        }
+        scope.launch { if (snackbarHost.showUndo(binnedMessage, undoLabel)) viewModel.restore(id) }
     }
 
     val open = notes.firstOrNull { it.id == openId }
@@ -96,6 +96,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
         open != null -> NoteEditor(
             initialTitle = open.title,
             initialBody = open.body,
+            toolbarAbove = settings.toolbarAbove,
             onSave = { title, body -> viewModel.save(open.id, title, body) },
             onClose = { title, body ->
                 viewModel.close(open.id, title, body)
@@ -109,6 +110,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
             snackbarHost = snackbarHost,
             onShowAgenda = onShowAgenda,
             onShowTasks = onShowTasks,
+            onOpenSettings = onOpenSettings,
             onOpenBin = { binOpen = true },
             onNew = { viewModel.add { openId = it } },
             onOpen = { openId = it },
@@ -125,6 +127,7 @@ private fun NotesList(
     snackbarHost: SnackbarHostState,
     onShowAgenda: () -> Unit,
     onShowTasks: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenBin: () -> Unit,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
@@ -203,6 +206,7 @@ private fun NotesList(
                             Tab.NOTES -> Unit
                         }
                     },
+                    onLongPress = onOpenSettings,
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

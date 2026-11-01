@@ -138,7 +138,7 @@ fun TimeChooser(
                 Text(
                     text = stringResource(text),
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (mode == value) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = if (mode == value) colors.onBackground else colors.onSurfaceVariant,
                     modifier = Modifier
                         .heightIn(min = Space.touch)
                         .clickable {
@@ -154,14 +154,14 @@ fun TimeChooser(
                 Text(
                     text = timeText(start, true),
                     style = MaterialTheme.typography.titleLarge,
-                    color = if (!editingEnd) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = if (!editingEnd) colors.onBackground else colors.onSurfaceVariant,
                     modifier = Modifier.clickable { editingEnd = false },
                 )
                 if (mode == 2) {
                     Text(
                         text = "– " + timeText(end, true),
                         style = MaterialTheme.typography.titleLarge,
-                        color = if (editingEnd) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+                        color = if (editingEnd) colors.onBackground else colors.onSurfaceVariant,
                         modifier = Modifier.clickable { editingEnd = true },
                     )
                 }

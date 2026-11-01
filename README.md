@@ -36,7 +36,8 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
   <tr><td>plus at the bottom right of the agenda</td><td>add an event: name, day, time (all day, a start, or a start and end), place and notes</td></tr>
   <tr><td>touch an event</td><td>edit it</td></tr>
   <tr><td>hold an event, then swipe right</td><td>move it to the agenda's own bin, with undo</td></tr>
-  <tr><td>hold the tasks tab</td><td>export everything to a file, or import it back</td></tr>
+  <tr><td>hold any tab</td><td>open the settings: export and import, where the notes toolbar sits, and a list of every gesture</td></tr>
+  <tr><td>undo and redo at the top of a note</td><td>step back and forward through what you wrote and marked (ctrl+z and ctrl+b, i, u work with a keyboard)</td></tr>
 </table>
 
 ### build

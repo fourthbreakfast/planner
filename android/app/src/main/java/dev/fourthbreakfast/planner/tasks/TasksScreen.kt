@@ -1,6 +1,8 @@
 package dev.fourthbreakfast.planner.tasks
 
 import androidx.compose.ui.window.PopupPositionProvider
+import dev.fourthbreakfast.planner.settings.SettingsScreen
+import kotlinx.coroutines.coroutineScope
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.unit.LayoutDirection
@@ -119,20 +121,25 @@ import kotlinx.coroutines.launch
 
 private const val PREFS = "view"
 private const val PREF_SORT = "sort"
+private const val PREF_PEEKED = "peeked"
 
 @Composable
 fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: NotesViewModel) {
     val tasks by viewModel.all.collectAsStateWithLifecycle(initialValue = null)
     var binOpen by rememberSaveable { mutableStateOf(false) }
     var tab by rememberSaveable { mutableStateOf(Tab.TASKS) }
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
     val listState = rememberSaveableStateHolder()
     val all = tasks
     val entries = remember(all) { binEntries(all.orEmpty()) }
     val active = remember(all) { all.orEmpty().filterNot { it.inBin } }
-    if (tab == Tab.AGENDA) {
-        AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES })
+    val openSettings = { settingsOpen = true }
+    if (settingsOpen) {
+        SettingsScreen(viewModel, onClose = { settingsOpen = false })
+    } else if (tab == Tab.AGENDA) {
+        AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings)
     } else if (tab == Tab.NOTES) {
-        NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS })
+        NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings)
     } else if (binOpen) {
         BinScreen(entries, viewModel, onClose = { binOpen = false })
     } else {
@@ -143,6 +150,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
                 binCount = entries.size,
                 onOpenBin = { binOpen = true },
                 onSelectTab = { tab = it },
+                onOpenSettings = openSettings,
                 viewModel = viewModel,
             )
         }
@@ -156,6 +164,7 @@ private fun TaskList(
     binCount: Int,
     onOpenBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
+    onOpenSettings: () -> Unit,
     viewModel: TasksViewModel,
 ) {
     val prefs = LocalContext.current.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -178,7 +187,6 @@ private fun TaskList(
     var addText by rememberSaveable { mutableStateOf("") }
     var addFocused by remember { mutableStateOf(false) }
     val snackbarHost = remember { SnackbarHostState() }
-    val backup = rememberBackupFiles(viewModel) { snackbarHost.showSnackbar(it) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     val binnedMessage = stringResource(R.string.task_removed)
@@ -188,15 +196,7 @@ private fun TaskList(
     val aimed = aimedTask != null
 
     fun offerUndo(message: String, undo: () -> Unit) {
-        scope.launch {
-            snackbarHost.currentSnackbarData?.dismiss()
-            val result = snackbarHost.showSnackbar(
-                message = message,
-                actionLabel = undoLabel,
-                duration = SnackbarDuration.Short,
-            )
-            if (result == SnackbarResult.ActionPerformed) undo()
-        }
+        scope.launch { if (snackbarHost.showUndo(message, undoLabel)) undo() }
     }
 
     // one closed task is enough for the button to open everything; otherwise it closes everything
@@ -232,6 +232,16 @@ private fun TaskList(
     val currentRows by rememberUpdatedState(rows)
     val currentTasks by rememberUpdatedState(tasks)
     val swipe = remember(scope) { RowSwipe(scope, canGoLeft = true) }
+    // the first time there is a row, it slides open and shut once, so people know rows move
+    val peekPx = with(LocalDensity.current) { (Space.touch * 2).toPx() }
+    val firstKey = (rows.firstOrNull() as? TaskNode)?.task?.id
+    LaunchedEffect(firstKey) {
+        if (firstKey != null && !prefs.getBoolean(PREF_PEEKED, false)) {
+            delay(700)
+            prefs.edit().putBoolean(PREF_PEEKED, true).apply()
+            swipe.peek(firstKey, peekPx)
+        }
+    }
 
     fun updateDropTarget() {
         val row = list.layoutInfo.visibleItemsInfo.firstOrNull { dragY >= it.offset && dragY < it.offset + it.size }
@@ -393,91 +403,100 @@ private fun TaskList(
                 binCount = binCount,
                 onOpenBin = onOpenBin,
                 onSelectTab = onSelectTab,
-                onExport = backup.export,
-                onImport = backup.import,
+                onOpenSettings = onOpenSettings,
             )
         },
     ) { padding ->
-        LazyColumn(
-            state = list,
-            // otherwise the list takes the finger's movement and cancels the drag
-            userScrollEnabled = dragKey == null,
-            modifier = Modifier
-                .padding(padding)
-                .consumeWindowInsets(padding)
-                .fillMaxSize()
-                .onGloballyPositioned { listBounds = it.boundsInRoot() },
-        ) {
-            items(display, key = { it.key }) { row ->
-                val dragging = dragKey == row.key
-                val hint = mark?.takeIf { it.key == row.key }?.zone
-                val dropDepth = mark?.depth ?: 0
-                val moved = Modifier
-                    .animateItem(placementSpec = reorderSpring())
-                    .then(if (dragging) Modifier.zIndex(1f) else Modifier)
-                    .graphicsLayer {
-                        if (dragging) {
-                            val offset = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == row.key }?.offset ?: 0
-                            translationY = dragY - grabInRow - offset
-                            alpha = 0.92f
-                            shadowElevation = 12f
-                        }
-                    }
-                when (row) {
-                    is EndRow -> Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(endSpace)
-                            .animateItem()
-                            .dropHint(hint, dropDepth),
-                    )
-                    is TaskNode -> {
-                        val task = row.task
-                        val toggleCollapsed = {
-                            // never keep aiming at a row that is about to be hidden (the row itself stays)
-                            if (!row.collapsed && subtree(tasks, task.id).any { it.id == aimedId && it.id != task.id }) {
-                                aimedId = null
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = list,
+                // otherwise the list takes the finger's movement and cancels the drag
+                userScrollEnabled = dragKey == null,
+                modifier = Modifier
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+                    .fillMaxSize()
+                    .onGloballyPositioned { listBounds = it.boundsInRoot() },
+            ) {
+                items(display, key = { it.key }) { row ->
+                    val dragging = dragKey == row.key
+                    val hint = mark?.takeIf { it.key == row.key }?.zone
+                    val dropDepth = mark?.depth ?: 0
+                    val moved = Modifier
+                        .animateItem(placementSpec = reorderSpring())
+                        .then(if (dragging) Modifier.zIndex(1f) else Modifier)
+                        .graphicsLayer {
+                            if (dragging) {
+                                val offset = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == row.key }?.offset ?: 0
+                                translationY = dragY - grabInRow - offset
+                                alpha = 0.92f
+                                shadowElevation = 12f
                             }
-                            collapsedIds = ArrayList(
-                                if (row.collapsed) collapsedIds - task.id else collapsedIds + task.id,
+                        }
+                    when (row) {
+                        is EndRow -> Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(endSpace)
+                                .animateItem()
+                                .dropHint(hint, dropDepth),
+                        )
+                        is TaskNode -> {
+                            val task = row.task
+                            val toggleCollapsed = {
+                                // never keep aiming at a row that is about to be hidden (the row itself stays)
+                                if (!row.collapsed && subtree(tasks, task.id).any { it.id == aimedId && it.id != task.id }) {
+                                    aimedId = null
+                                }
+                                collapsedIds = ArrayList(
+                                    if (row.collapsed) collapsedIds - task.id else collapsedIds + task.id,
+                                )
+                            }
+                            TaskRow(
+                                node = row,
+                                aimed = task.id == aimedId,
+                                renaming = task.id == renamingId,
+                                onStartRename = {
+                                    aimedId = null
+                                    renamingId = task.id
+                                },
+                                onRename = { title ->
+                                    viewModel.rename(task.id, title)
+                                    renamingId = null
+                                },
+                                onCancelRename = { renamingId = null },
+                                swipe = swipe,
+                                dragging = dragging,
+                                dropHint = hint,
+                                dropDepth = dropDepth,
+                                // typing: a touch picks where the next task goes. Otherwise it opens or closes what is inside
+                                onAim = {
+                                    if (addFocused) {
+                                        // nothing can go inside a task on the deepest level
+                                        if (row.depth < MAX_DEPTH) aimedId = if (task.id == aimedId) null else task.id
+                                    } else if (row.childCount > 0) {
+                                        toggleCollapsed()
+                                    }
+                                },
+                                onDoneChange = { viewModel.setDone(task, it) },
+                                onCyclePriority = { viewModel.cyclePriority(task) },
+                                onRemove = {
+                                    viewModel.moveToBin(task)
+                                    offerUndo(binnedMessage) { viewModel.restore(task) }
+                                },
+                                modifier = moved,
                             )
                         }
-                        TaskRow(
-                            node = row,
-                            aimed = task.id == aimedId,
-                            renaming = task.id == renamingId,
-                            onStartRename = {
-                                aimedId = null
-                                renamingId = task.id
-                            },
-                            onRename = { title ->
-                                viewModel.rename(task.id, title)
-                                renamingId = null
-                            },
-                            onCancelRename = { renamingId = null },
-                            swipe = swipe,
-                            dragging = dragging,
-                            dropHint = hint,
-                            dropDepth = dropDepth,
-                            // typing: a touch picks where the next task goes. Otherwise it opens or closes what is inside
-                            onAim = {
-                                if (addFocused) {
-                                    // nothing can go inside a task on the deepest level
-                                    if (row.depth < MAX_DEPTH) aimedId = if (task.id == aimedId) null else task.id
-                                } else if (row.childCount > 0) {
-                                    toggleCollapsed()
-                                }
-                            },
-                            onDoneChange = { viewModel.setDone(task, it) },
-                            onCyclePriority = { viewModel.cyclePriority(task) },
-                            onRemove = {
-                                viewModel.moveToBin(task)
-                                offerUndo(binnedMessage) { viewModel.restore(task) }
-                            },
-                            modifier = moved,
-                        )
                     }
                 }
+            }
+            if (tasks.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.nothing_to_do),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(padding).align(Alignment.Center),
+                )
             }
         }
     }
@@ -513,49 +532,19 @@ private fun Modifier.dropHint(zone: DropZone?, depth: Int = 0): Modifier {
     }
 }
 
-@Composable
-private fun TasksMenu(open: Boolean, onDismiss: () -> Unit, onExport: () -> Unit, onImport: () -> Unit) {
-    if (!open) return
-    val colors = MaterialTheme.colorScheme
-    val gap = with(LocalDensity.current) { Space.rowPad.roundToPx() }
-    // under the tab it belongs to, as wide as its words and no wider
-    val below = remember(gap) {
-        object : PopupPositionProvider {
-            override fun calculatePosition(
-                anchorBounds: IntRect,
-                windowSize: IntSize,
-                layoutDirection: LayoutDirection,
-                popupContentSize: IntSize,
-            ) = IntOffset(anchorBounds.left + gap, anchorBounds.bottom)
-        }
-    }
+/** How long the undo pill stays, long enough to reach it with a thumb. */
+private const val UNDO_MILLIS = 6000L
 
-    @Composable
-    fun Entry(label: String, onClick: () -> Unit) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = colors.onBackground,
-            modifier = Modifier
-                .clickable {
-                    onDismiss()
-                    onClick()
-                }
-                .padding(horizontal = Space.x3, vertical = Space.x3),
-        )
+/** Shows [message] with an undo button and takes it away after a while. True when undo was touched. */
+suspend fun SnackbarHostState.showUndo(message: String, undoLabel: String): Boolean = coroutineScope {
+    currentSnackbarData?.dismiss()
+    val timer = launch {
+        delay(UNDO_MILLIS)
+        currentSnackbarData?.dismiss()
     }
-    // focusable, so a touch outside or the back button closes it instead of reaching the screen behind
-    Popup(popupPositionProvider = below, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        Column(
-            Modifier
-                .width(IntrinsicSize.Max)
-                .background(colors.surfaceVariant, RoundedCornerShape(Space.radiusCheck))
-                .border(Space.strokeThin, colors.outline, RoundedCornerShape(Space.radiusCheck)),
-        ) {
-            Entry(stringResource(R.string.export_tasks), onExport)
-            Entry(stringResource(R.string.import_tasks), onImport)
-        }
-    }
+    val result = showSnackbar(message = message, actionLabel = undoLabel, duration = SnackbarDuration.Indefinite)
+    timer.cancel()
+    result == SnackbarResult.ActionPerformed
 }
 
 /** A small pill: says what happened and offers the way back, without covering the list. */
@@ -591,24 +580,13 @@ private fun Header(
     binCount: Int,
     onOpenBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
-    onExport: () -> Unit,
-    onImport: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     Column {
         TabBar(
             selected = Tab.TASKS,
             onSelect = { if (it != Tab.TASKS) onSelectTab(it) },
-            // holding the tasks tab opens the little menu with export and import
-            onTasksLongPress = { menuOpen = true },
-            tasksExtra = {
-                TasksMenu(
-                    open = menuOpen,
-                    onDismiss = { menuOpen = false },
-                    onExport = onExport,
-                    onImport = onImport,
-                )
-            },
+            onLongPress = onOpenSettings,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,

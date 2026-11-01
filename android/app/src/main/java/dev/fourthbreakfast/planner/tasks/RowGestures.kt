@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.tasks
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,15 @@ class RowSwipe(private val scope: CoroutineScope, private val canGoLeft: Boolean
         travel += dx
         val x = if (canGoLeft) travel else travel.coerceAtLeast(0f)
         scope.launch { offset.snapTo(x) }
+    }
+
+    /** Slides a row open and shut once, to show that rows move. */
+    suspend fun peek(key: String, distance: Float) {
+        this.key = key
+        offset.animateTo(distance, tween(350))
+        delay(250)
+        offset.animateTo(0f, tween(300))
+        this.key = null
     }
 
     /** Past half the width it counts: to the right it leaves the screen, to the left it comes back. */
@@ -131,6 +141,7 @@ fun Modifier.sweepAndHold(
         if (!enabled) return@pointerInput
         val sweepDistance = Space.touch.toPx() * 1.5f
         val slop = viewConfiguration.touchSlop
+        val edge = Space.x6.toPx()
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             val heldKey = row(down.position)
@@ -197,14 +208,16 @@ fun Modifier.sweepAndHold(
                     if (swiping) swipe.finish(swipedRight, swipedLeft) else release(dragging)
                 }
                 false -> {
-                    // not a hold: only a sweep is left to watch for, the list and the rows do the rest
+                    // not a hold: only a sweep is left to watch for, the list and the rows do the rest.
+                    // a sweep that starts at the very edge belongs to the phone's own back gesture
+                    val fromEdge = down.position.x < edge || down.position.x > size.width - edge
                     var switched = false
                     while (true) {
                         val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
                         if (!change.pressed) break
                         dx += change.positionChangeIgnoreConsumed().x
                         dy += change.positionChangeIgnoreConsumed().y
-                        if (!switched && abs(dx) > sweepDistance && abs(dx) > 2 * abs(dy)) {
+                        if (!switched && !fromEdge && abs(dx) > sweepDistance && abs(dx) > 2 * abs(dy)) {
                             switched = true
                             if (dx < 0) left?.invoke() else right?.invoke()
                         }

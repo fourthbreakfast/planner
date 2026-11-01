@@ -1,6 +1,17 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.tasks.QuietButton
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.Key
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,6 +89,8 @@ import kotlinx.coroutines.flow.collectLatest
 // something to delete and the editor hears about it
 private const val GUARD = '​'
 private const val AUTOSAVE_MILLIS = 400L
+private const val HISTORY_MILLIS = 700L
+private const val MAX_HISTORY = 100
 
 @Stable
 private class EditLine(val id: Long, line: NoteLine, cursor: Int = line.text.length) {
@@ -105,6 +118,67 @@ private class NoteEditState(initialTitle: String, body: String) {
     val focused: EditLine? get() = lines.firstOrNull { it.id == focusedId }
 
     fun body(): String = formatBody(lines.map { it.toLine() })
+
+    // the steps back and forward: a snapshot each time writing pauses, and before every mark or look is changed
+    private class Snap(val title: String, val body: String) {
+        override fun equals(other: Any?) = other is Snap && other.title == title && other.body == body
+        override fun hashCode() = 31 * title.hashCode() + body.hashCode()
+    }
+
+    private val history = arrayListOf(Snap(initialTitle, formatBody(lines.map { it.toLine() })))
+    private var at by mutableIntStateOf(0)
+    private var count by mutableIntStateOf(1)
+
+    private fun current() = Snap(title, body())
+
+    val canUndo: Boolean get() = at > 0 || current() != history[at]
+
+    val canRedo: Boolean get() = at < count - 1 && current() == history[at]
+
+    fun commit() {
+        val now = current()
+        if (now == history[at]) return
+        while (history.size > at + 1) history.removeAt(history.size - 1)
+        history.add(now)
+        if (history.size > MAX_HISTORY) history.removeAt(0)
+        at = history.size - 1
+        count = history.size
+    }
+
+    fun undo() {
+        commit()
+        if (at == 0) return
+        at -= 1
+        restore(history[at])
+    }
+
+    fun redo() {
+        if (!canRedo) return
+        at += 1
+        restore(history[at])
+    }
+
+    private fun restore(snap: Snap) {
+        title = snap.title
+        lines.clear()
+        parseBody(snap.body).forEach { lines.add(EditLine(nextId++, it)) }
+        typing = 0
+        focusRequest = lines.last().id
+    }
+
+    /** The shortcuts of a keyboard: control with b, i, u, z (and shift z, or y, to go forward). */
+    fun handleKey(event: KeyEvent): Boolean {
+        if (event.type != KeyEventType.KeyDown || !event.isCtrlPressed) return false
+        when (event.key) {
+            Key.B -> toggle(BOLD)
+            Key.I -> toggle(ITALIC)
+            Key.U -> toggle(UNDERLINE)
+            Key.Z -> if (event.isShiftPressed) redo() else undo()
+            Key.Y -> redo()
+            else -> return false
+        }
+        return true
+    }
 
     fun focusLast() {
         val last = lines.last()
@@ -196,17 +270,20 @@ private class NoteEditState(initialTitle: String, body: String) {
 
     fun setKind(kind: LineKind) {
         val line = focused ?: return
+        commit()
         line.kind = if (line.kind == kind) LineKind.PLAIN else kind
         line.checked = false
     }
 
     fun push(by: Int) {
         val line = focused ?: return
+        commit()
         line.indent = (line.indent + by).coerceIn(0, MAX_INDENT)
     }
 
     fun toggle(bit: Int) {
         val line = focused ?: return
+        commit()
         val selection = line.value.selection
         val from = minOf(selection.start, selection.end) - 1
         val to = maxOf(selection.start, selection.end) - 1
@@ -224,7 +301,7 @@ private class NoteEditState(initialTitle: String, body: String) {
 
 /** Writing one note: a row of marks at the top, then lines of text, each of which can be a list item. */
 @Composable
-fun NoteEditor(initialTitle: String, initialBody: String, onSave: (String, String) -> Unit, onClose: (String, String) -> Unit) {
+fun NoteEditor(initialTitle: String, initialBody: String, toolbarAbove: Boolean, onSave: (String, String) -> Unit, onClose: (String, String) -> Unit) {
     val state = remember { NoteEditState(initialTitle, initialBody) }
     BackHandler { onClose(state.title, state.body()) }
     LaunchedEffect(state) {
@@ -236,6 +313,12 @@ fun NoteEditor(initialTitle: String, initialBody: String, onSave: (String, Strin
             }
             delay(AUTOSAVE_MILLIS)
             onSave(title, body)
+        }
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.title to state.body() }.collectLatest {
+            delay(HISTORY_MILLIS)
+            state.commit()
         }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onSave(state.title, state.body()) }
@@ -252,9 +335,16 @@ fun NoteEditor(initialTitle: String, initialBody: String, onSave: (String, Strin
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
                     SegmentTab(stringResource(R.string.note_title), Modifier.weight(1f))
+                    QuietButton(stringResource(R.string.undo), state.canUndo) { state.undo() }
+                    QuietButton(stringResource(R.string.redo), state.canRedo) { state.redo() }
                     BackButton { onClose(state.title, state.body()) }
                 }
-                Toolbar(state)
+                if (!toolbarAbove) Toolbar(state)
+            }
+        },
+        bottomBar = {
+            if (toolbarAbove) {
+                Box(Modifier.navigationBarsPadding().imePadding()) { Toolbar(state) }
             }
         },
     ) { padding ->
@@ -263,7 +353,8 @@ fun NoteEditor(initialTitle: String, initialBody: String, onSave: (String, Strin
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .imePadding()
+                .then(if (toolbarAbove) Modifier else Modifier.imePadding())
+                .onPreviewKeyEvent { state.handleKey(it) }
                 .verticalScroll(rememberScrollState()),
         ) {
             TitleField(state)
@@ -312,14 +403,19 @@ private fun LineRow(line: EditLine, number: Int?, state: NoteEditState) {
     ) {
         when (line.kind) {
             LineKind.PLAIN -> Unit
-            LineKind.CHECK -> Text(
-                text = if (line.checked) "[x]" else "[ ]",
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.onSurfaceVariant,
+            // the box is a full touch square, though the mark in it is small
+            LineKind.CHECK -> Box(
+                contentAlignment = Alignment.CenterStart,
                 modifier = Modifier
-                    .toggleable(value = line.checked, role = Role.Checkbox) { line.checked = it }
-                    .padding(top = Space.x2, bottom = Space.x2, end = Space.x2),
-            )
+                    .sizeIn(minWidth = Space.touch, minHeight = Space.touch)
+                    .toggleable(value = line.checked, role = Role.Checkbox) { line.checked = it },
+            ) {
+                Text(
+                    text = if (line.checked) "[x]" else "[ ]",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurfaceVariant,
+                )
+            }
             else -> Text(
                 text = if (line.kind == LineKind.BULLET) "•" else "${number ?: 1}.",
                 style = MaterialTheme.typography.bodyLarge,
@@ -338,7 +434,7 @@ private fun LineRow(line: EditLine, number: Int?, state: NoteEditState) {
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = Space.x2)
+                .padding(top = if (line.kind == LineKind.CHECK) Space.x3 else Space.x2, bottom = Space.x2)
                 .focusRequester(focus)
                 .onFocusChanged { if (it.isFocused) state.focusedId = line.id },
         )
@@ -391,7 +487,7 @@ private fun ToolButton(
         Text(
             text = buildAnnotatedString { withStyle(spanFor(look)) { append(glyph) } },
             style = MaterialTheme.typography.titleMedium,
-            color = if (on) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+            color = if (on) colors.onBackground else colors.onSurfaceVariant,
         )
     }
 }
@@ -408,7 +504,7 @@ private fun TitleField(state: NoteEditState) {
             .padding(start = Space.gutter, end = Space.gutter, top = Space.x2, bottom = Space.x1),
     ) {
         if (state.title.isEmpty() && borrowed.isNotEmpty()) {
-            Text(text = borrowed, style = style, color = colors.onSurfaceVariant.copy(alpha = 0.5f), maxLines = 1)
+            Text(text = borrowed, style = style, color = colors.onSurfaceVariant, maxLines = 1)
         }
         BasicTextField(
             value = state.title,

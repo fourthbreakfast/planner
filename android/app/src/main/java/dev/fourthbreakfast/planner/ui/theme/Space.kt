@@ -40,6 +40,11 @@ object Space {
     val icon = 20.dp
     val check = 18.dp
     val dot = 8.dp
+
+    /** The priority dots differ in size as well as colour: bigger is more urgent. */
+    val dotHigh = 5.dp
+    val dotMedium = 4.dp
+    val dotLow = 3.dp
     val dotLane = 40.dp
     val modeDot = 10.dp
     val radiusCheck = 3.dp

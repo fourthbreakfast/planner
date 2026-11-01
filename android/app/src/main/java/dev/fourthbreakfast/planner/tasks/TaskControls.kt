@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.tasks
 
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -129,17 +130,24 @@ private fun priorityColor(priority: Priority): Color = when (priority) {
     Priority.NONE -> Color.Transparent
 }
 
-// every level is the same size, so only the color tells them apart
-
-/** A dot that shows the level twice, by color and by size. An outline means no priority. */
+/** A dot that shows the level twice, by color and by size, so it reads without color. A grey ring means no priority. */
 @Composable
 fun PriorityDot(priority: Priority, modifier: Modifier = Modifier) {
     val outline = MaterialTheme.colorScheme.onSurfaceVariant
     val color by animateColorAsState(priorityColor(priority))
-    Canvas(modifier.size(Space.dot)) {
-        drawCircle(color)
+    val radius by animateDpAsState(
+        when (priority) {
+            Priority.HIGH -> Space.dotHigh
+            Priority.MEDIUM -> Space.dotMedium
+            Priority.LOW -> Space.dotLow
+            Priority.NONE -> Space.dot / 2
+        },
+    )
+    Canvas(modifier.size(Space.modeDot)) {
+        val r = radius.toPx()
+        drawCircle(color, radius = r)
         if (priority == Priority.NONE) {
-            drawCircle(outline, radius = size.minDimension / 2 - (Space.strokeThin / 2).toPx(), style = Stroke(Space.strokeThin.toPx()))
+            drawCircle(outline, radius = r - (Space.strokeThin / 2).toPx(), style = Stroke(Space.strokeThin.toPx()))
         }
     }
 }
@@ -269,7 +277,7 @@ fun TitleWithCount(
         if (secondCount != null) {
             SegmentNumber(
                 value = secondCount,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 modifier = Modifier.padding(start = Space.x3).semantics { contentDescription = countLabel },
             )
         }
@@ -279,51 +287,31 @@ fun TitleWithCount(
 enum class Tab { TASKS, AGENDA, NOTES }
 
 /**
- * The three tabs along the top: tasks at the left, agenda in the middle, notes at the right. The one you are on is in full ink,
- * the other is quiet. Holding the tasks tab opens its menu, which [tasksExtra] draws.
+ * The three tabs along the top: tasks at the left, agenda in the middle, notes at the right. The one you are on is in
+ * full ink, the other is quiet, and a tab dims a little while it is pressed. Holding any tab opens the settings.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TabBar(
     selected: Tab,
     onSelect: (Tab) -> Unit,
     modifier: Modifier = Modifier,
-    onTasksLongPress: (() -> Unit)? = null,
-    tasksExtra: @Composable () -> Unit = {},
+    onLongPress: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = Space.rowPad),
+            .padding(horizontal = Space.rowPad)
+            .selectableGroup(),
     ) {
         Box(Modifier.weight(1f)) {
-            TabWord(
-                text = stringResource(R.string.tasks_title),
-                active = selected == Tab.TASKS,
-                alignment = Alignment.CenterStart,
-                onClick = { onSelect(Tab.TASKS) },
-                onLongClick = onTasksLongPress,
-            )
-            tasksExtra()
+            TabWord(stringResource(R.string.tasks_title), selected == Tab.TASKS, Alignment.CenterStart, { onSelect(Tab.TASKS) }, onLongPress)
         }
         Box(Modifier.weight(1f)) {
-            TabWord(
-                text = stringResource(R.string.agenda_title),
-                active = selected == Tab.AGENDA,
-                alignment = Alignment.Center,
-                onClick = { onSelect(Tab.AGENDA) },
-                onLongClick = null,
-            )
+            TabWord(stringResource(R.string.agenda_title), selected == Tab.AGENDA, Alignment.Center, { onSelect(Tab.AGENDA) }, onLongPress)
         }
         Box(Modifier.weight(1f)) {
-            TabWord(
-                text = stringResource(R.string.notes_title),
-                active = selected == Tab.NOTES,
-                alignment = Alignment.CenterEnd,
-                onClick = { onSelect(Tab.NOTES) },
-                onLongClick = null,
-            )
+            TabWord(stringResource(R.string.notes_title), selected == Tab.NOTES, Alignment.CenterEnd, { onSelect(Tab.NOTES) }, onLongPress)
         }
     }
 }
@@ -339,13 +327,16 @@ private fun TabWord(
 ) {
     val haptics = LocalHapticFeedback.current
     val colors = MaterialTheme.colorScheme
+    val press = remember { MutableInteractionSource() }
+    val pressed by press.collectIsPressedAsState()
     Box(
         contentAlignment = alignment,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Space.touch)
+            .graphicsLayer { alpha = if (pressed) 0.55f else 1f }
             .combinedClickable(
-                interactionSource = null,
+                interactionSource = press,
                 indication = null,
                 role = Role.Tab,
                 onClick = onClick,
@@ -361,7 +352,7 @@ private fun TabWord(
     ) {
         SegmentText(
             text = text,
-            color = if (active) colors.onBackground else colors.onSurfaceVariant.copy(alpha = 0.7f),
+            color = if (active) colors.onBackground else colors.onSurfaceVariant,
             scale = TAB_SCALE,
         )
     }
