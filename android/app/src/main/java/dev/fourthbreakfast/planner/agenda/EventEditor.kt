@@ -1,6 +1,13 @@
 package dev.fourthbreakfast.planner.agenda
 
 import dev.fourthbreakfast.planner.tasks.SegmentTab
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.os.Build
+import android.content.pm.PackageManager
+import android.Manifest
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
@@ -66,7 +73,11 @@ fun EventEditor(
     var location by rememberSaveable { mutableStateOf(initial?.location ?: "") }
     var notes by rememberSaveable { mutableStateOf(initial?.notes ?: "") }
     var pickingDay by rememberSaveable { mutableStateOf(false) }
+    var reminder by rememberSaveable { mutableStateOf(initial?.reminder) }
     var pickingTime by rememberSaveable { mutableStateOf(false) }
+    var pickingReminder by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val askToNotify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val is24Hour = rememberIs24Hour()
     val colors = MaterialTheme.colorScheme
     val nameFocus = remember { FocusRequester() }
@@ -99,7 +110,7 @@ fun EventEditor(
                     .heightIn(min = Space.touch)
                     .background(colors.surfaceVariant, RoundedCornerShape(Space.radiusCheck))
                     .border(Space.strokeThin, colors.outline, RoundedCornerShape(Space.radiusCheck))
-                    .clickable(enabled = ready) { onSave(EventDraft(title, day, start, end, location, notes)) },
+                    .clickable(enabled = ready) { onSave(EventDraft(title, day, start, end, location, notes, reminder.takeIf { timeSet && start != null })) },
             ) {
                 Text(
                     text = stringResource(R.string.save),
@@ -121,6 +132,11 @@ fun EventEditor(
             Choice(if (daySet) dateText(day, today()) else "") { pickingDay = true }
             Label(R.string.event_time)
             Choice(if (timeSet) timeRangeText(start, end, is24Hour) else "") { pickingTime = true }
+            // a reminder needs a time to count back from
+            if (timeSet && start != null) {
+                Label(R.string.event_reminder)
+                Choice(reminder?.let { reminderText(it) } ?: "") { pickingReminder = true }
+            }
             Label(R.string.event_location)
             QuietField(location, { location = it })
             Label(R.string.event_notes)
@@ -138,6 +154,22 @@ fun EventEditor(
                 pickingDay = false
             },
             onCancel = { pickingDay = false },
+        )
+    }
+    if (pickingReminder) {
+        ReminderChooser(
+            current = reminder,
+            onPick = { picked ->
+                reminder = picked
+                pickingReminder = false
+                // the first reminder asks to be allowed to notify
+                if (picked != null && Build.VERSION.SDK_INT >= 33 &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    askToNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            },
+            onCancel = { pickingReminder = false },
         )
     }
     if (pickingTime) {

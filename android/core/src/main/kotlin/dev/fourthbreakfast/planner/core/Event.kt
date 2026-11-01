@@ -13,6 +13,8 @@ data class Event(
     val day: Long,
     val minute: Int? = null,
     val endMinute: Int? = null,
+    /** Minutes before the start to remind, or null for no reminder. Only an event with a start time can have one. */
+    val reminder: Int? = null,
     val location: String = "",
     val notes: String = "",
     val createdAt: Long,

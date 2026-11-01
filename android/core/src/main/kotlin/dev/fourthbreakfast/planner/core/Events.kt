@@ -12,7 +12,7 @@ class Events(
     val all: Flow<List<Event>> = store.observeAll().map(::sortedEvents)
 
     /** A blank title is ignored, so an event can never be nameless. */
-    suspend fun add(title: String, day: Long, minute: Int?, location: String, notes: String, endMinute: Int? = null) {
+    suspend fun add(title: String, day: Long, minute: Int?, location: String, notes: String, endMinute: Int? = null, reminder: Int? = null) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
         store.insert(
@@ -22,6 +22,7 @@ class Events(
                     day = day,
                     minute = minute?.let(::clampMinute),
                     endMinute = validEnd(minute, endMinute),
+                    reminder = validReminder(minute, reminder),
                     location = location.trim(),
                     notes = notes.trim(),
                     createdAt = clock(),
@@ -31,7 +32,7 @@ class Events(
     }
 
     /** A blank title leaves the event as it was. Only events outside the bin can change. */
-    suspend fun update(id: String, title: String, day: Long, minute: Int?, location: String, notes: String, endMinute: Int? = null) {
+    suspend fun update(id: String, title: String, day: Long, minute: Int?, location: String, notes: String, endMinute: Int? = null, reminder: Int? = null) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
         store.transaction {
@@ -41,6 +42,7 @@ class Events(
                 day = day,
                 minute = minute?.let(::clampMinute),
                 endMinute = validEnd(minute, endMinute),
+                reminder = validReminder(minute, reminder),
                 location = location.trim(),
                 notes = notes.trim(),
             )
@@ -76,6 +78,9 @@ class Events(
     }
 
     private fun clampMinute(minute: Int) = minute.coerceIn(0, 24 * 60 - 1)
+
+    /** A reminder only counts with a start time, and cannot be a negative number of minutes. */
+    private fun validReminder(start: Int?, reminder: Int?): Int? = reminder?.takeIf { start != null && it >= 0 }
 
     /** An end only counts when there is a start and it comes after it, on the same day. */
     private fun validEnd(start: Int?, end: Int?): Int? {

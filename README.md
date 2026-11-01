@@ -33,7 +33,7 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
   <tr><td>touch a note</td><td>write in it: the row at the top sets pull out, push in, numbered list, bulleted list, checkbox, bold, italic and underline; enter makes a new line and ends an empty list item</td></tr>
   <tr><td>hold a note and drag</td><td>put it in another place in the list</td></tr>
   <tr><td>hold a note, then swipe right</td><td>move it to the notes bin, with undo</td></tr>
-  <tr><td>plus at the bottom right of the agenda</td><td>add an event: name, day, time (all day, a start, or a start and end), place and notes</td></tr>
+  <tr><td>plus at the bottom right of the agenda</td><td>add an event: name, day, time (all day, a start, or a start and end), place and notes, and a reminder (none, at the time, 10 minutes or an hour before) once it has a start time</td></tr>
   <tr><td>touch an event</td><td>edit it</td></tr>
   <tr><td>hold an event, then swipe right</td><td>move it to the agenda's own bin, with undo</td></tr>
   <tr><td>hold any tab</td><td>open the settings: export and import, where the notes toolbar sits, and a list of every gesture</td></tr>

@@ -156,4 +156,46 @@ class EventsTest {
         events.deleteForever("missing")
         assertEquals(emptyList<Event>(), store.state.value)
     }
+
+    @Test
+    fun aReminderNeedsAStartTimeAndNeverGoesNegative() = runBlocking {
+        events.add("timed", day = 20_000, minute = 570, location = "", notes = "", reminder = 10)
+        events.add("all day", day = 20_000, minute = null, location = "", notes = "", reminder = 10)
+        events.add("odd", day = 20_000, minute = 600, location = "", notes = "", reminder = -5)
+        assertEquals(10, get("timed").reminder)
+        assertNull(get("all day").reminder)
+        assertNull(get("odd").reminder)
+    }
+
+    @Test
+    fun takingTheTimeAwayTakesTheReminderAway() = runBlocking {
+        events.add("walk", day = 20_000, minute = 570, location = "", notes = "", reminder = 60)
+        events.update(get("walk").id, "walk", 20_000, null, "", "", reminder = 60)
+        assertNull(get("walk").reminder)
+    }
+}
+
+class ReminderTimeTest {
+    private val utc = java.time.ZoneId.of("UTC")
+
+    @Test
+    fun theReminderIsTheStartMinusTheMinutesBefore() {
+        val event = Event(title = "dentist", day = 20_000, minute = 9 * 60 + 30, reminder = 10, createdAt = 0)
+        val start = 20_000L * 86_400_000L + (9 * 60 + 30) * 60_000L
+        assertEquals(start - 10 * 60_000L, reminderAt(event, utc))
+        assertEquals(start, reminderAt(event.copy(reminder = 0), utc))
+    }
+
+    @Test
+    fun noReminderOrNoStartMeansNoTime() {
+        assertNull(reminderAt(Event(title = "a", day = 1, minute = 60, createdAt = 0), utc))
+        assertNull(reminderAt(Event(title = "a", day = 1, reminder = 10, createdAt = 0), utc))
+    }
+
+    @Test
+    fun theSameWallClockTimeIsADifferentMomentInAnotherZone() {
+        val event = Event(title = "a", day = 20_000, minute = 600, reminder = 0, createdAt = 0)
+        val paris = java.time.ZoneId.of("Europe/Paris")
+        org.junit.Assert.assertTrue(reminderAt(event, utc)!! > reminderAt(event, paris)!!)
+    }
 }

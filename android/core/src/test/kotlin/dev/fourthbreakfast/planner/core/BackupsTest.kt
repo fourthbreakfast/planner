@@ -39,7 +39,7 @@ class BackupsTest {
     private val groceries = Note(id = "n", title = "shop", body = formatBody(listOf(NoteLine(LineKind.CHECK, 1, true, "milk", listOf(BOLD, 0, 0, 0)))), position = 2.0, createdAt = 4, deletedAt = 8)
     private val parent = Task(id = "p", title = "parent", createdAt = 1)
     private val child = Task(id = "c", title = "child", parentId = "p", priority = Priority.HIGH, deletedAt = 9, createdAt = 2)
-    private val dentist = Event(id = "e", title = "dentist", day = 20_000, minute = 570, endMinute = 640, location = "clinic", notes = "card", createdAt = 3, deletedAt = 7)
+    private val dentist = Event(id = "e", title = "dentist", day = 20_000, minute = 570, endMinute = 640, reminder = 10, location = "clinic", notes = "card", createdAt = 3, deletedAt = 7)
 
     @Test
     fun importedThingsAreExactlyWhatWasExported() = runBlocking {
