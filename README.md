@@ -44,6 +44,10 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
 
 planner is written in kotlin with jetpack compose, and stores tasks with room. to build it, open the `android` folder in android studio and press run. the tool versions it was tested with are in [android/README.md](android/README.md), and the look is documented in the [design system](docs/design-system).
 
+### credits
+
+the body font is [inter](https://github.com/rsms/inter), under the SIL open font license ([docs/licenses/Inter-OFL.txt](docs/licenses/Inter-OFL.txt)).
+
 ### license
 
 [agpl-3.0](LICENSE)
