@@ -7,6 +7,25 @@
     <string name="task_removed">moved to bin</string>
     <string name="tasks_menu">open the menu</string>
     <string name="agenda_title">agenda</string>
+    <string name="settings_title">settings</string>
+    <string name="setting_toolbar">notes toolbar</string>
+    <string name="toolbar_top">top</string>
+    <string name="toolbar_keyboard">above keyboard</string>
+    <string name="guide_title">how it works</string>
+    <string name="nothing_to_do">nothing to do</string>
+    <string name="redo">redo</string>
+    <string-array name="guide">
+        <item>touch the dot on a task|change its priority</item>
+        <item>hold a task, then swipe right|move it to the bin</item>
+        <item>hold a task, then swipe left|rename it</item>
+        <item>hold a task, then drag|move it: the middle of a task puts it inside, a line puts it above the task under the line</item>
+        <item>touch a task while typing|add the next task inside it</item>
+        <item>the dot at the top|switch between your own order and priority order</item>
+        <item>sweep sideways anywhere|switch tabs</item>
+        <item>hold a note or an event, then swipe right|move it to its bin</item>
+        <item>hold a note, then drag|put it somewhere else in the list</item>
+        <item>hold any tab|open the settings</item>
+    </string-array>
     <string name="notes_title">notes</string>
     <string name="note_title">note</string>
     <string name="add_note">add a note</string>

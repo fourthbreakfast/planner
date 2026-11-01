@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 val PageLight = Color(0xFFFFFFFF)
 val InkLight = Color(0xFF37352F)
-val QuietLight = Color(0xFF787774)
+val QuietLight = Color(0xFF6F6E6A)
 val LineLight = Color(0xFFE9E9E7)
 val PanelLight = Color(0xFFF7F6F3)
 val AimLight = Color(0xFFEFEEEB)

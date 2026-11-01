@@ -19,6 +19,8 @@ class PlannerApp : Application() {
     private val eventStore by lazy { RoomEventStore(database) }
     private val noteStore by lazy { RoomNoteStore(database) }
 
+    val settings: UiSettings by lazy { UiSettings(this) }
+
     val tasks: Tasks by lazy { Tasks(taskStore) }
     val events: Events by lazy { Events(eventStore) }
     val notes: Notes by lazy { Notes(noteStore) }
