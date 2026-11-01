@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.agenda
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.tasks.SearchButton
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.Launch
 import androidx.compose.ui.platform.LocalContext
@@ -65,7 +66,7 @@ import kotlinx.coroutines.launch
 
 /** The agenda: what is coming up, soonest first, with everything about each event on view. */
 @Composable
-fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNotes: () -> Unit, onOpenSettings: () -> Unit) {
+fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNotes: () -> Unit, onOpenSettings: () -> Unit, onOpenSearch: () -> Unit) {
     val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val events = remember(everything) { everything.filterNot { it.inBin } }
     val binned = remember(everything) { everything.filter { it.inBin }.sortedByDescending { it.deletedAt } }
@@ -130,6 +131,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
             onShowTasks = onShowTasks,
             onShowNotes = onShowNotes,
             onOpenSettings = onOpenSettings,
+            onOpenSearch = onOpenSearch,
             onOpenBin = { binOpen = true },
             onNew = {
                 editingId = null
@@ -153,6 +155,7 @@ private fun AgendaList(
     onShowTasks: () -> Unit,
     onShowNotes: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
     onOpenBin: () -> Unit,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
@@ -212,6 +215,7 @@ private fun AgendaList(
                         countLabel = pluralStringResource(R.plurals.upcoming_events, upcoming, upcoming),
                         modifier = Modifier.weight(1f),
                     )
+                    SearchButton(onOpenSearch)
                     BinButton(binCount, onOpenBin)
                 }
             }

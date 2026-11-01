@@ -200,6 +200,27 @@ fun ModeDot(priority: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
+/** A magnifying glass, in the row of controls beside the bin. */
+@Composable
+fun SearchButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.search)
+    val ink = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(Space.touch)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = label },
+    ) {
+        Canvas(Modifier.size(Space.icon)) {
+            val stroke = Space.strokeThin.toPx()
+            val w = size.width
+            drawCircle(ink, radius = w * 0.34f, center = Offset(w * 0.42f, w * 0.42f), style = Stroke(stroke, cap = StrokeCap.Round))
+            drawLine(ink, Offset(w * 0.68f, w * 0.68f), Offset(w * 0.92f, w * 0.92f), strokeWidth = stroke, cap = StrokeCap.Round)
+        }
+    }
+}
+
 @Composable
 fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val label = if (binCount > 0) stringResource(R.string.bin_with_count, binCount) else stringResource(R.string.bin)

@@ -10,6 +10,11 @@
     <string name="settings_title">settings</string>
     <string name="setting_toolbar">notes toolbar</string>
     <string name="toolbar_top">top</string>
+    <string name="pin">pin</string>
+    <string name="unpin">unpin</string>
+    <string name="pinned">pinned</string>
+    <string name="search">search</string>
+    <string name="nothing_found">nothing found</string>
     <string name="shortcut_task">new task</string>
     <string name="shortcut_event">new event</string>
     <string name="shortcut_note">new note</string>

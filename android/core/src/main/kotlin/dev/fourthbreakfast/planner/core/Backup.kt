@@ -48,6 +48,7 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
         append("\n    {\"id\": ").append(quoted(note.id))
         append(", \"title\": ").append(quoted(note.title))
         append(", \"body\": ").append(quoted(note.body))
+        append(", \"pinned\": ").append(note.pinned)
         append(", \"position\": ").append(note.position)
         append(", \"createdAt\": ").append(note.createdAt)
         append(", \"updatedAt\": ").append(note.updatedAt)
@@ -109,6 +110,7 @@ fun decodeBackup(text: String): Backup {
             createdAt = createdAt,
             updatedAt = note["updatedAt"]?.let { number(it).toLong() } ?: createdAt,
             deletedAt = note["deletedAt"]?.let { number(it).toLong() },
+            pinned = note["pinned"] == true,
         )
     }
     return Backup(taskList, events, notes)

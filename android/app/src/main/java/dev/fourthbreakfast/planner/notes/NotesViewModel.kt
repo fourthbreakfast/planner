@@ -34,6 +34,10 @@ class NotesViewModel(private val notes: Notes) : ViewModel() {
         }
     }
 
+    fun setPinned(id: String, pinned: Boolean) {
+        viewModelScope.launch { notes.setPinned(id, pinned) }
+    }
+
     fun move(id: String, beforeId: String?) {
         viewModelScope.launch { notes.move(id, beforeId) }
     }

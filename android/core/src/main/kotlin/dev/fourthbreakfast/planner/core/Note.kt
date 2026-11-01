@@ -16,6 +16,8 @@ data class Note(
     val updatedAt: Long = createdAt,
     /** Set while the note is in the bin. */
     val deletedAt: Long? = null,
+    /** A pinned note stays above the others. */
+    val pinned: Boolean = false,
 ) {
     val inBin: Boolean get() = deletedAt != null
 }
@@ -35,7 +37,7 @@ interface NoteStore {
     suspend fun <T> transaction(block: suspend () -> T): T
 }
 
-fun sortedNotes(notes: List<Note>): List<Note> = notes.sortedWith(compareBy({ it.position }, { it.createdAt }))
+fun sortedNotes(notes: List<Note>): List<Note> = notes.sortedWith(compareBy({ !it.pinned }, { it.position }, { it.createdAt }))
 
 /** Everything the app can do with notes. */
 class Notes(
@@ -80,6 +82,14 @@ class Notes(
                     if (item.position != position) item.copy(position = position, updatedAt = now) else null
                 },
             )
+        }
+    }
+
+    suspend fun setPinned(id: String, pinned: Boolean) {
+        val now = clock()
+        store.transaction {
+            val note = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
+            if (note.pinned != pinned) store.update(listOf(note.copy(pinned = pinned, updatedAt = now)))
         }
     }
 

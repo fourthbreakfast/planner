@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.tasks.SearchButton
 import dev.fourthbreakfast.planner.Launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.tween
@@ -78,7 +79,7 @@ private const val PREVIEW_LINES = 8
 
 /** The notes: one on top of another in the order they were put, with a touch opening one to write in. */
 @Composable
-fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks: () -> Unit, onOpenSettings: () -> Unit) {
+fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks: () -> Unit, onOpenSettings: () -> Unit, onOpenSearch: () -> Unit) {
     val settings = (LocalContext.current.applicationContext as PlannerApp).settings
     val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val notes = remember(everything) { everything.filterNot { it.inBin } }
@@ -126,6 +127,8 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
         shown == 1 && open != null -> NoteEditor(
             initialTitle = open.title,
             initialBody = open.body,
+            pinned = open.pinned,
+            onPin = { viewModel.setPinned(open.id, !open.pinned) },
             toolbarAbove = settings.toolbarAbove,
             onSave = { title, body -> viewModel.save(open.id, title, body) },
             onClose = { title, body ->
@@ -141,6 +144,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
             onShowAgenda = onShowAgenda,
             onShowTasks = onShowTasks,
             onOpenSettings = onOpenSettings,
+            onOpenSearch = onOpenSearch,
             onOpenBin = { binOpen = true },
             onNew = { viewModel.add { openId = it } },
             onOpen = { openId = it },
@@ -159,6 +163,7 @@ private fun NotesList(
     onShowAgenda: () -> Unit,
     onShowTasks: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
     onOpenBin: () -> Unit,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
@@ -251,6 +256,7 @@ private fun NotesList(
                         countLabel = pluralStringResource(R.plurals.notes_count, notes.size, notes.size),
                         modifier = Modifier.weight(1f),
                     )
+                    SearchButton(onOpenSearch)
                     BinButton(binCount, onOpenBin)
                 }
             }
@@ -354,8 +360,25 @@ private fun NoteRow(
                 .padding(horizontal = Space.gutter, vertical = Space.x5),
         ) {
             Column {
-                if (title.isNotEmpty()) {
-                    Text(text = title, style = MaterialTheme.typography.titleLarge, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (title.isNotEmpty() || note.pinned) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colors.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (note.pinned) {
+                            Text(
+                                text = stringResource(R.string.pinned),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colors.onSurfaceVariant,
+                                modifier = Modifier.padding(start = Space.x2),
+                            )
+                        }
+                    }
                 }
                 if (preview.isNotEmpty()) {
                     Text(text = preview, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, overflow = TextOverflow.Ellipsis)

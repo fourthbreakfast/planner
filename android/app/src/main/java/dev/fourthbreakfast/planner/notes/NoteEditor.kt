@@ -301,7 +301,7 @@ private class NoteEditState(initialTitle: String, body: String) {
 
 /** Writing one note: a row of marks at the top, then lines of text, each of which can be a list item. */
 @Composable
-fun NoteEditor(initialTitle: String, initialBody: String, toolbarAbove: Boolean, onSave: (String, String) -> Unit, onClose: (String, String) -> Unit) {
+fun NoteEditor(initialTitle: String, initialBody: String, pinned: Boolean, onPin: () -> Unit, toolbarAbove: Boolean, onSave: (String, String) -> Unit, onClose: (String, String) -> Unit) {
     val state = remember { NoteEditState(initialTitle, initialBody) }
     BackHandler { onClose(state.title, state.body()) }
     LaunchedEffect(state) {
@@ -335,6 +335,7 @@ fun NoteEditor(initialTitle: String, initialBody: String, toolbarAbove: Boolean,
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
                     SegmentTab(stringResource(R.string.note_title), Modifier.weight(1f))
+                    QuietButton(stringResource(if (pinned) R.string.unpin else R.string.pin), onPin)
                     QuietButton(stringResource(R.string.undo), state.canUndo) { state.undo() }
                     QuietButton(stringResource(R.string.redo), state.canRedo) { state.redo() }
                     BackButton { onClose(state.title, state.body()) }
