@@ -204,4 +204,36 @@ class NoteTitleTest {
         assertEquals("a link", note.title)
         assertEquals(listOf("first", "second", "", "fourth"), parseBody(note.body).map { it.text })
     }
+
+    @Test
+    fun pinnedNotesStayAboveTheOthersAndKeepTheirOwnOrder() = runBlocking {
+        val store = MemoryNoteStore()
+        val notes = Notes(store) { 1L }
+        val a = notes.add()
+        val b = notes.add()
+        val c = notes.add()
+        notes.setPinned(c, true)
+        assertEquals(listOf(c, a, b), sortedNotes(store.state.value).map { it.id })
+        notes.setPinned(b, true)
+        assertEquals(listOf(b, c, a), sortedNotes(store.state.value).map { it.id })
+        notes.setPinned(c, false)
+        assertEquals(listOf(b, a, c), sortedNotes(store.state.value).map { it.id })
+    }
+
+    @Test
+    fun aSearchNeedsEveryWordAndIgnoresCase() {
+        val words = searchWords("  Milk  EGGS ")
+        assertEquals(listOf("milk", "eggs"), words)
+        assertTrue(matchesAll("buy eggs and Milk", words))
+        assertTrue(!matchesAll("buy eggs", words))
+        assertTrue(!matchesAll("anything", emptyList()))
+    }
+
+    @Test
+    fun aNoteIsSearchedByTitleAndBody() {
+        val note = Note(title = "shopping", body = formatBody(listOf(NoteLine(text = "oat milk", styles = List(8) { 0 }))), createdAt = 1)
+        assertTrue(matchesAll(noteText(note), searchWords("shop milk")))
+        assertTrue(!matchesAll(noteText(note), searchWords("bread")))
+        assertTrue(matchesAll(eventText(Event(title = "dentist", day = 1, location = "main street", createdAt = 1)), searchWords("street")))
+    }
 }

@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.tasks
 
 import androidx.compose.ui.window.PopupPositionProvider
+import dev.fourthbreakfast.planner.search.SearchScreen
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.Launch
 import androidx.compose.animation.togetherWith
@@ -141,11 +142,13 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
     var binOpen by rememberSaveable { mutableStateOf(false) }
     var tab by rememberSaveable { mutableStateOf(Tab.TASKS) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
     val listState = rememberSaveableStateHolder()
     val all = tasks
     val entries = remember(all) { binEntries(all.orEmpty()) }
     val active = remember(all) { all.orEmpty().filterNot { it.inBin } }
     val openSettings = { settingsOpen = true }
+    val openSearch = { searchOpen = true }
     val context = LocalContext.current
     val requests = (context.applicationContext as PlannerApp).requests
     val request = requests.pending
@@ -160,6 +163,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
         if (target != null) {
             tab = target
             settingsOpen = false
+            searchOpen = false
             if (target == Tab.TASKS) binOpen = false
             if (request == Launch.ShowTasks) requests.clear()
         }
@@ -167,12 +171,12 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
     // with animations switched off in the phone's settings, screens just change
     val animated = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f }
     AnimatedContent(
-        targetState = Place(tab, settingsOpen, binOpen),
+        targetState = Place(tab, settingsOpen, binOpen, searchOpen),
         transitionSpec = {
             when {
                 !animated -> EnterTransition.None togetherWith ExitTransition.None
                 // settings and the bin fade in and out; moving between tabs slides the way the finger swept
-                initialState.settings != targetState.settings || initialState.bin != targetState.bin ->
+                initialState.settings != targetState.settings || initialState.bin != targetState.bin || initialState.search != targetState.search ->
                     fadeIn(tween(160)) togetherWith fadeOut(tween(120))
                 else -> {
                     val way = if (targetState.tab.ordinal > initialState.tab.ordinal) 1 else -1
@@ -184,11 +188,21 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
         label = "screen",
     ) { place ->
         when {
+            place.search -> SearchScreen(
+                viewModel,
+                agenda,
+                notes,
+                onOpen = { launch ->
+                    requests.ask(launch)
+                    searchOpen = false
+                },
+                onClose = { searchOpen = false },
+            )
             place.settings -> SettingsScreen(viewModel, onClose = { settingsOpen = false })
             place.tab == Tab.AGENDA ->
-                AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings)
+                AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings, onOpenSearch = openSearch)
             place.tab == Tab.NOTES ->
-                NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings)
+                NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings, onOpenSearch = openSearch)
             place.bin -> BinScreen(entries, viewModel, onClose = { binOpen = false })
             else ->
                 // keeps the aim and collapsed tasks while the bin is open
@@ -199,6 +213,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
                         onOpenBin = { binOpen = true },
                         onSelectTab = { tab = it },
                         onOpenSettings = openSettings,
+                        onOpenSearch = openSearch,
                         viewModel = viewModel,
                     )
                 }
@@ -207,7 +222,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
 }
 
 /** Which screen is showing, as one value, so a change of it can be animated. */
-private data class Place(val tab: Tab, val settings: Boolean, val bin: Boolean)
+private data class Place(val tab: Tab, val settings: Boolean, val bin: Boolean, val search: Boolean)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -217,6 +232,7 @@ private fun TaskList(
     onOpenBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
     viewModel: TasksViewModel,
 ) {
     val prefs = LocalContext.current.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -465,6 +481,7 @@ private fun TaskList(
                 onOpenBin = onOpenBin,
                 onSelectTab = onSelectTab,
                 onOpenSettings = onOpenSettings,
+                onOpenSearch = onOpenSearch,
             )
         },
     ) { padding ->
@@ -642,6 +659,7 @@ private fun Header(
     onOpenBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
 ) {
     Column {
         TabBar(
@@ -664,6 +682,7 @@ private fun Header(
             )
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
             ModeDot(!treeMode, onPriorityChange)
+            SearchButton(onOpenSearch)
             BinButton(binCount, onOpenBin)
         }
     }
