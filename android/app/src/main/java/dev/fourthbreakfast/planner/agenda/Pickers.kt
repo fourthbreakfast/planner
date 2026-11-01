@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.agenda
 
 import androidx.compose.foundation.background
+import dev.fourthbreakfast.planner.core.REMINDER_CHOICES
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +60,38 @@ private fun ChooserPanel(onDismiss: () -> Unit, content: @Composable () -> Unit)
                 .border(Space.strokeThin, colors.outline, RoundedCornerShape(Space.radiusCheck))
                 .padding(Space.x4),
         ) { content() }
+    }
+}
+
+/** What a reminder is called: none, at the time, or so many minutes before. */
+@Composable
+fun reminderText(minutes: Int): String = when (minutes) {
+    0 -> stringResource(R.string.reminder_at)
+    10 -> stringResource(R.string.reminder_10)
+    60 -> stringResource(R.string.reminder_60)
+    else -> stringResource(R.string.reminder_other, minutes)
+}
+
+/** The few reminders there are, one to a line, the chosen one in ink. Touching one picks it. */
+@Composable
+fun ReminderChooser(current: Int?, onPick: (Int?) -> Unit, onCancel: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    ChooserPanel(onDismiss = onCancel) {
+        REMINDER_CHOICES.forEach { choice ->
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Space.touch)
+                    .clickable { onPick(choice) },
+            ) {
+                Text(
+                    text = if (choice == null) stringResource(R.string.reminder_none) else reminderText(choice),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (choice == current) colors.onBackground else colors.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

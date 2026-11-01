@@ -33,6 +33,7 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
         append(", \"day\": ").append(event.day)
         append(", \"minute\": ").append(event.minute ?: "null")
         append(", \"endMinute\": ").append(event.endMinute ?: "null")
+        append(", \"reminder\": ").append(event.reminder ?: "null")
         append(", \"location\": ").append(quoted(event.location))
         append(", \"notes\": ").append(quoted(event.notes))
         append(", \"createdAt\": ").append(event.createdAt)
@@ -88,6 +89,7 @@ fun decodeBackup(text: String): Backup {
             day = number(event["day"]).toLong(),
             minute = event["minute"]?.let { number(it).toInt() },
             endMinute = event["endMinute"]?.let { number(it).toInt() },
+            reminder = event["reminder"]?.let { number(it).toInt() },
             location = event["location"] as? String ?: "",
             notes = event["notes"] as? String ?: "",
             createdAt = createdAt,
