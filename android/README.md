@@ -5,10 +5,16 @@ tested 2026-11-01: builds from the command line and runs on a moto g84 5g (andro
 
 STRUCTURE
 core: everything the app knows, as plain kotlin with no android, tested on a computer with gradlew :core:test. tasks, events and notes each have a rules class (Tasks, Events, Notes) that is the only way to change them, a store interface they are kept behind, and tests with an in-memory store. also here: the note text format and its looks (NoteBody), the backup file (Backup, Backups), reminder times (Reminder), what the widget says (WidgetLines) and search (Search)
-app: the android side. screens in tasks, agenda, notes, search and settings, one folder each; data holds the room tables behind the core stores; reminders sets the alarms and shows the notifications; widget is the home screen widget; backup writes the daily file; ui/theme holds the colours, the type and the spacing scale (Space.kt), which the design system in ../docs/design-system mirrors; Requests carries a shortcut, a share or a notification to the right screen
+app: the android side. PlannerScreen is the root and moves between the tabs; tasks, agenda, notes, search and settings hold one screen each, one folder each; ui holds what they share (the tab bar, buttons, the bin list, the undo pill, the gestures and the calculator lettering); data holds the room tables behind the core stores; reminders sets the alarms and shows the notifications; widget is the home screen widget; backup writes the daily file; ui/theme holds the colours, the type and the spacing scale (Space.kt), which the design system in ../docs/design-system mirrors; Requests carries a shortcut, a share or a notification to the right screen
 
 DATABASE
-room, schema files in app/schemas, a new version for every change with an auto migration so nothing a person has saved is ever lost. a change to the database needs an upgrade test on a phone with data in it before a release
+room, schema files in app/schemas, a new version for every change with an auto migration so nothing a person has saved is ever lost. add the new version to the upgrade tests in app/src/androidTest
+
+CHECKS
+gradlew ktlintFormat fixes the style, gradlew ktlintCheck reports it
+gradlew :core:test testDebugUnitTest runs the tests that need no phone: the rules, the list layout and the note editor
+gradlew connectedDebugAndroidTest -Pdemo runs the database upgrade tests on a connected phone. it installs and then uninstalls the dev copy, and refuses to run without -Pdemo so the real app is never touched
+github runs the style check, the tests and a build on every push (../.github/workflows/build.yml), but not the phone tests, so run those before a release that changes the database
 
 BUILD from the command line, no android studio window needed
 set JAVA_HOME to the jdk that ships with android studio (C:\Program Files\Android\Android Studio\jbr)
@@ -38,6 +44,7 @@ kotlin 2.4.21
 compose bom 2026.09.00
 core-ktx 1.19.1, lifecycle (runtime-ktx, runtime-compose, viewmodel-compose) 2.11.0, activity-compose 1.13.0
 room 2.8.5, ksp 2.3.13, kotlinx-coroutines 1.11.0
+ktlint gradle plugin 14.2.0
 fonts bundled in app/src/main/res/font: ibm plex sans (regular, bold, italic) and ibm plex mono (regular, medium), licence in ../docs/licenses
 compilesdk 37, targetsdk 37, minsdk 26
 

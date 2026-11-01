@@ -1,18 +1,24 @@
-package dev.fourthbreakfast.planner.tasks
+package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -225,5 +231,23 @@ fun Modifier.sweepAndHold(
                 }
             }
         }
+    }
+}
+
+/** Under a swiping row: swiping right removes it, swiping left renames it. */
+@Composable
+internal fun SwipeBackground(renaming: Boolean, removeLabel: String, renameLabel: String, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        contentAlignment = if (renaming) Alignment.CenterEnd else Alignment.CenterStart,
+        modifier = modifier
+            .background(if (renaming) colors.secondaryContainer else colors.primary)
+            .padding(horizontal = Space.gutter),
+    ) {
+        Text(
+            text = if (renaming) renameLabel else removeLabel,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (renaming) colors.onSecondaryContainer else colors.onPrimary,
+        )
     }
 }

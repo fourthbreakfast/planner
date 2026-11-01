@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -56,20 +54,18 @@ import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.isBlankBody
 import dev.fourthbreakfast.planner.core.linesUnderTitle
 import dev.fourthbreakfast.planner.core.noteTitle
-import dev.fourthbreakfast.planner.tasks.AddButton
-import dev.fourthbreakfast.planner.tasks.BinBar
-import dev.fourthbreakfast.planner.tasks.BinButton
-import dev.fourthbreakfast.planner.tasks.DiscreetMessage
-import dev.fourthbreakfast.planner.tasks.QuietButton
-import dev.fourthbreakfast.planner.tasks.RowSwipe
-import dev.fourthbreakfast.planner.tasks.SearchButton
-import dev.fourthbreakfast.planner.tasks.SwipeRow
-import dev.fourthbreakfast.planner.tasks.Tab
-import dev.fourthbreakfast.planner.tasks.TabBar
-import dev.fourthbreakfast.planner.tasks.TitleWithCount
-import dev.fourthbreakfast.planner.tasks.rowKeyAt
-import dev.fourthbreakfast.planner.tasks.showUndo
-import dev.fourthbreakfast.planner.tasks.sweepAndHold
+import dev.fourthbreakfast.planner.ui.AddButton
+import dev.fourthbreakfast.planner.ui.BinButton
+import dev.fourthbreakfast.planner.ui.DiscreetMessage
+import dev.fourthbreakfast.planner.ui.RowSwipe
+import dev.fourthbreakfast.planner.ui.SearchButton
+import dev.fourthbreakfast.planner.ui.SwipeRow
+import dev.fourthbreakfast.planner.ui.Tab
+import dev.fourthbreakfast.planner.ui.TabBar
+import dev.fourthbreakfast.planner.ui.TitleWithCount
+import dev.fourthbreakfast.planner.ui.rowKeyAt
+import dev.fourthbreakfast.planner.ui.showUndo
+import dev.fourthbreakfast.planner.ui.sweepAndHold
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.launch
 
@@ -402,65 +398,5 @@ private fun NoteRow(note: Note, dropAbove: Boolean, swipe: RowSwipe, onOpen: () 
                 }
             }
         }
-    }
-}
-
-/** What a confirmation is waiting for: one note, or the whole bin when the note is null. */
-private data class PendingDelete(val note: Note?)
-
-/** The bin for notes, laid out like the bin for events. */
-@Composable
-private fun NotesBin(entries: List<Note>, viewModel: NotesViewModel, onClose: () -> Unit) {
-    var pending by remember { mutableStateOf<PendingDelete?>(null) }
-    BackHandler(onBack = onClose)
-    val colors = MaterialTheme.colorScheme
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = { BinBar(entries.size, Tab.NOTES, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
-    ) { padding ->
-        if (entries.isEmpty()) {
-            Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.bin_is_empty))
-            }
-        } else {
-            LazyColumn(Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(bottom = Space.listEnd())) {
-                items(entries, key = { it.id }) { note ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.animateItem().padding(start = Space.gutter, end = Space.rowPad),
-                    ) {
-                        Text(
-                            text = noteTitle(note),
-                            maxLines = 2,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.onBackground,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f).padding(vertical = Space.x3),
-                        )
-                        QuietButton(stringResource(R.string.restore)) { viewModel.restore(note.id) }
-                        QuietButton(stringResource(R.string.delete)) { pending = PendingDelete(note) }
-                    }
-                }
-            }
-        }
-    }
-
-    pending?.let { request ->
-        AlertDialog(
-            onDismissRequest = { pending = null },
-            text = {
-                Text(
-                    if (request.note != null) stringResource(R.string.confirm_delete_note) else stringResource(R.string.confirm_empty_bin),
-                )
-            },
-            confirmButton = {
-                QuietButton(stringResource(R.string.delete_forever)) {
-                    if (request.note != null) viewModel.deleteForever(request.note.id) else viewModel.emptyBin()
-                    pending = null
-                }
-            },
-            dismissButton = { QuietButton(stringResource(R.string.cancel)) { pending = null } },
-        )
     }
 }

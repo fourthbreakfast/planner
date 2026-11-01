@@ -45,7 +45,7 @@ import dev.fourthbreakfast.planner.core.noteText
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.core.searchWords
 import dev.fourthbreakfast.planner.notes.NotesViewModel
-import dev.fourthbreakfast.planner.tasks.BackButton
+import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.theme.Space
 
 private const val MOST = 40

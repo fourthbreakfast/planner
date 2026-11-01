@@ -1,4 +1,4 @@
-package dev.fourthbreakfast.planner.tasks
+package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
