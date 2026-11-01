@@ -100,3 +100,27 @@ fun rankedDestination(tasks: List<Task>, taskId: String, to: Destination): Desti
     shown.lastOrNull(::alike)?.let { return Destination(to.parentId, afterId = it.id) }
     return to
 }
+
+/** Where the drop line is drawn: along which edge of which row, starting at which depth. */
+data class DropMark(val key: String, val zone: DropZone, val depth: Int)
+
+/**
+ * The line for a drop in priority mode, drawn where the task will really end up and not under the finger: a green
+ * dragged to the very top shows its line at the top of the greens. It sits above the sibling that will come right
+ * after the task, or below the last sibling and everything inside it.
+ */
+fun rankedMark(rows: List<ListRow>, tasks: List<Task>, taskId: String, to: Destination, depth: Int): DropMark? {
+    val task = tasks.firstOrNull { it.id == taskId } ?: return null
+    val shown = sorted(siblings(tasks, to.parentId).filter { it.id != taskId }, SortOrder.PRIORITY)
+    val beforeId = rankedDestination(tasks, taskId, to).beforeId
+    val below = shown.firstOrNull { it.id == beforeId && it.priority == task.priority && it.done == task.done }
+        ?: shown.firstOrNull { it.done > task.done || (it.done == task.done && it.priority < task.priority) }
+    if (below != null) return DropMark(below.id, DropZone.BEFORE, depth)
+    val moving = subtree(tasks, taskId).mapTo(HashSet()) { it.id }
+    val visible = rows.filterIsInstance<TaskNode>().filter { it.task.id !in moving }
+    val last = shown.lastOrNull() ?: return to.parentId?.let { DropMark(it, DropZone.AFTER, depth) }
+    val index = visible.indexOfFirst { it.task.id == last.id }
+    if (index < 0) return null
+    val next = visible.drop(index + 1).firstOrNull { it.depth <= visible[index].depth }
+    return if (next != null) DropMark(next.key, DropZone.BEFORE, depth) else DropMark(visible.last().key, DropZone.AFTER, depth)
+}

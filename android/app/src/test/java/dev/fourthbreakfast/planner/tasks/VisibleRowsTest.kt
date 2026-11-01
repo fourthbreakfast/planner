@@ -159,6 +159,33 @@ class VisibleRowsTest {
     }
 
     @Test
+    fun theLineStaysAtTheTopOfTheColourWhenDraggedAboveIt() {
+        val rows = rows(ranked, SortOrder.PRIORITY)
+        assertEquals(DropMark("yellow1", DropZone.BEFORE, 0), rankedMark(rows, ranked, "yellow2", Destination(beforeId = "red"), 0))
+    }
+
+    @Test
+    fun aColourWithNoOthersShowsItsLineWhereThatColourWouldSit() {
+        val rows = rows(ranked, SortOrder.PRIORITY)
+        // plain, dragged to the top, can only go under the yellows, which is where it is the last of everything
+        assertEquals(DropMark("yellow2", DropZone.AFTER, 0), rankedMark(rows, ranked, "plain", Destination(beforeId = "red"), 0))
+        val green = ranked + task("green", position = 5.0).copy(priority = Priority.LOW)
+        assertEquals(DropMark("plain", DropZone.BEFORE, 0), rankedMark(rows(green, SortOrder.PRIORITY), green, "green", Destination(beforeId = "red"), 0))
+    }
+
+    @Test
+    fun theLineBelowTheLastSiblingClearsWhatIsInsideIt() {
+        val nested = listOf(
+            task("p", position = 1.0).copy(priority = Priority.HIGH),
+            task("kid", parentId = "p", position = 1.0),
+            task("q", position = 2.0).copy(priority = Priority.MEDIUM),
+            task("r", position = 3.0).copy(priority = Priority.MEDIUM),
+        )
+        val rows = rows(nested, SortOrder.PRIORITY)
+        assertEquals(DropMark("r", DropZone.AFTER, 0), rankedMark(rows, nested, "q", Destination(), 0))
+    }
+
+    @Test
     fun aTaskCannotBeDroppedInsideItself() {
         assertNull(resolveDrop(rows(tasks), tasks, "a", "a1x", DropZone.INTO)?.destination)
         assertNull(resolveDrop(rows(tasks), tasks, "a", "a", DropZone.INTO)?.destination)
