@@ -1,6 +1,16 @@
 package dev.fourthbreakfast.planner.agenda
 
 import android.text.format.DateFormat
+import kotlinx.coroutines.delay
+import java.time.LocalDateTime
+import java.time.Duration
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -10,6 +20,19 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 fun today(): Long = LocalDate.now().toEpochDay()
+
+/** Today, kept right: it changes at midnight and when the app comes back to the front, so nothing shows yesterday. */
+@Composable
+fun rememberToday(): Long {
+    var day by remember { mutableLongStateOf(today()) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { day = today() }
+    LaunchedEffect(day) {
+        val untilMidnight = Duration.between(LocalDateTime.now(), LocalDate.now().plusDays(1).atStartOfDay())
+        delay(untilMidnight.toMillis() + 500)
+        day = today()
+    }
+    return day
+}
 
 /** "sat 31 oct", with the year added when it is not this one. Always lowercase, like everything the app says. */
 fun dateText(day: Long, today: Long): String {

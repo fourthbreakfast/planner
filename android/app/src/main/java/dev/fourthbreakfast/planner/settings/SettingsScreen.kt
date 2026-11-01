@@ -1,6 +1,11 @@
 package dev.fourthbreakfast.planner.settings
 
 import androidx.activity.compose.BackHandler
+import dev.fourthbreakfast.planner.backup.folderName
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.net.Uri
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +41,8 @@ import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.rememberBackupFiles
 import dev.fourthbreakfast.planner.ui.theme.Space
 
+private const val RELEASES = "https://github.com/fourthbreakfast/planner/releases/latest"
+
 /** What can be set, the backup, and a list of every gesture. Reached by holding any of the three tabs. */
 @Composable
 fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
@@ -49,6 +56,16 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
     val settings = (context.applicationContext as PlannerApp).settings
     val snackbarHost = remember { SnackbarHostState() }
     val backup = rememberBackupFiles(viewModel) { snackbarHost.showSnackbar(it) }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { folder: Uri? ->
+        if (folder != null) {
+            context.contentResolver.takePersistableUriPermission(
+                folder,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+            settings.chooseBackupFolder(folder.toString())
+            (context.applicationContext as PlannerApp).backUpIfDue()
+        }
+    }
     val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
 
     Scaffold(
@@ -70,6 +87,25 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
                 label = stringResource(R.string.setting_toolbar),
                 value = stringResource(if (settings.toolbarAbove) R.string.toolbar_keyboard else R.string.toolbar_top),
             ) { settings.chooseToolbarAbove(!settings.toolbarAbove) }
+            Setting(
+                label = stringResource(R.string.setting_theme),
+                value = stringResource(
+                    when (settings.theme) {
+                        1 -> R.string.theme_light
+                        2 -> R.string.theme_dark
+                        else -> R.string.theme_system
+                    },
+                ),
+            ) { settings.chooseTheme((settings.theme + 1) % 3) }
+            Setting(
+                label = stringResource(R.string.setting_backup),
+                value = settings.backupFolder?.let { folderName(it) } ?: stringResource(R.string.backup_off),
+            ) {
+                if (settings.backupFolder != null) settings.chooseBackupFolder(null) else pickFolder.launch(null)
+            }
+            Setting(stringResource(R.string.setting_updates), version) {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES)))
+            }
             Setting(stringResource(R.string.guide_title), null) { guideOpen = true }
             Text(
                 text = stringResource(R.string.app_name) + " " + version,

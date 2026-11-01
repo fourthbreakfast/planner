@@ -79,6 +79,7 @@ fun EventEditor(
     val context = LocalContext.current
     val askToNotify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val is24Hour = rememberIs24Hour()
+    val today = rememberToday()
     val colors = MaterialTheme.colorScheme
     val nameFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (initial == null) nameFocus.requestFocus() }
@@ -129,7 +130,7 @@ fun EventEditor(
             Label(R.string.event_name)
             QuietField(title, { title = it }, Modifier.focusRequester(nameFocus))
             Label(R.string.event_day)
-            Choice(if (daySet) dateText(day, today()) else "") { pickingDay = true }
+            Choice(if (daySet) dateText(day, today) else "") { pickingDay = true }
             Label(R.string.event_time)
             Choice(if (timeSet) timeRangeText(start, end, is24Hour) else "") { pickingTime = true }
             // a reminder needs a time to count back from
@@ -147,7 +148,7 @@ fun EventEditor(
     if (pickingDay) {
         DayChooser(
             initialDay = if (daySet) day else null,
-            today = today(),
+            today = today,
             onSet = {
                 day = it
                 daySet = true
