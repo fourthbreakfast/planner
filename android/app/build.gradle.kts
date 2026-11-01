@@ -64,6 +64,8 @@ android {
     buildFeatures {
         compose = true
     }
+    // the database upgrade tests read the saved schemas
+    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
 }
 
 dependencies {
@@ -81,10 +83,13 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    androidTestImplementation(libs.androidx.room.testing)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+// these tests install and then uninstall the app, which must never be the real one
+val demoBuild = providers.gradleProperty("demo").isPresent
+tasks.matching { it.name.startsWith("connected") }.configureEach {
+    doFirst { check(demoBuild) { "device tests only run on the dev copy: add -Pdemo" } }
 }

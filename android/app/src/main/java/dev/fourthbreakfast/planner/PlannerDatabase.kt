@@ -13,9 +13,13 @@ import dev.fourthbreakfast.planner.data.NoteEntity
 import dev.fourthbreakfast.planner.data.TaskDao
 import dev.fourthbreakfast.planner.data.TaskEntity
 
+object PlannerDatabaseVersion {
+    const val LATEST = 11
+}
+
 @Database(
     entities = [TaskEntity::class, EventEntity::class, NoteEntity::class],
-    version = 11,
+    version = PlannerDatabaseVersion.LATEST,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),

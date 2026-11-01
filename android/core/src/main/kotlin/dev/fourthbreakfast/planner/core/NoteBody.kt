@@ -35,6 +35,9 @@ data class NoteLine(
     }
 }
 
+/** Whether a character is one of the look markers the format keeps for itself. */
+fun isLookMark(char: Char): Boolean = char in BOLD_MARK..UNDERLINE_MARK
+
 /** Text made safe for a line: no line breaks and none of the markers the format keeps for itself. */
 fun cleanLineText(text: String): String = text.filterNot { it == '\n' || it == '\r' || it in BOLD_MARK..UNDERLINE_MARK }
 
