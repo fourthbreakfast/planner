@@ -5,7 +5,10 @@ import dev.fourthbreakfast.planner.backup.folderName
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.net.Uri
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
+import dev.fourthbreakfast.planner.widget.PlannerWidget
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -105,6 +108,12 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
             }
             Setting(stringResource(R.string.setting_updates), version) {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES)))
+            }
+            val manager = remember { AppWidgetManager.getInstance(context) }
+            if (manager.isRequestPinAppWidgetSupported) {
+                Setting(stringResource(R.string.setting_widget), null) {
+                    manager.requestPinAppWidget(ComponentName(context, PlannerWidget::class.java), null, null)
+                }
             }
             Setting(stringResource(R.string.guide_title), null) { guideOpen = true }
             Text(
