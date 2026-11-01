@@ -685,11 +685,12 @@ private fun Header(
                 count = openCount,
                 secondCount = subtasksOpen,
                 countLabel = stringResource(R.string.open_tasks_in_all, openCount, subtasksOpen),
-                modifier = Modifier.weight(1f),
             )
+            // the magnifier sits by the numbers, so the controls on the right stay as few as before
+            SearchButton(onOpenSearch)
+            Spacer(Modifier.weight(1f))
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
             ModeDot(!treeMode, onPriorityChange)
-            SearchButton(onOpenSearch)
             BinButton(binCount, onOpenBin)
         }
     }
