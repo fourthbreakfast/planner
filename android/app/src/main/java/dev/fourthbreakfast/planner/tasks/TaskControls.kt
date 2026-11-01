@@ -251,10 +251,10 @@ fun TitleWithCount(
         modifier = modifier.padding(vertical = Space.x2),
     ) {
         if (title != null) {
-            SegmentText(
+            Text(
                 text = title,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
-                scale = TAB_SCALE,
                 modifier = Modifier.semantics { heading() },
             )
         }

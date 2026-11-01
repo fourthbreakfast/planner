@@ -16,7 +16,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,9 +47,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxState
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -113,7 +109,6 @@ import dev.fourthbreakfast.planner.notes.NotesScreen
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.ui.theme.Space
-import kotlin.math.roundToInt
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
 import dev.fourthbreakfast.planner.core.SortOrder
 import dev.fourthbreakfast.planner.core.Task
@@ -169,7 +164,7 @@ private fun TaskList(
             SortOrder.entries.firstOrNull { it.name == prefs.getString(PREF_SORT, null) } ?: SortOrder.TREE,
         )
     }
-    // two modes: the tree, the only one where things can be dragged, or everything ranked by priority
+    // two modes: the tree in the order things were put, or ranked by priority among their neighbours
     val treeMode = order == SortOrder.TREE
 
     fun setOrder(new: SortOrder) {
@@ -233,13 +228,11 @@ private fun TaskList(
     var grabInRow by remember { mutableFloatStateOf(0f) }
     var dropKey by remember { mutableStateOf<String?>(null) }
     var dropZone by remember { mutableStateOf(DropZone.INTO) }
-    var dragDx by remember { mutableFloatStateOf(0f) }
     var dropDepth by remember { mutableIntStateOf(0) }
     var lastDrop by remember { mutableStateOf<Drop?>(null) }
-    val indentPx = with(LocalDensity.current) { Space.indent.toPx() }
     val currentRows by rememberUpdatedState(rows)
     val currentTasks by rememberUpdatedState(tasks)
-    var ignoreTaps by remember { mutableStateOf(false) }
+    val swipe = remember(scope) { RowSwipe(scope, canGoLeft = true) }
 
     fun updateDropTarget() {
         val row = list.layoutInfo.visibleItemsInfo.firstOrNull { dragY >= it.offset && dragY < it.offset + it.size }
@@ -249,18 +242,15 @@ private fun TaskList(
             return
         }
         val fraction = (dragY - row.offset) / row.size
-        dropKey = key
         dropZone = when {
             fraction < 0.28f -> DropZone.BEFORE
             fraction > 0.72f -> DropZone.AFTER
             else -> DropZone.INTO
         }
         val moved = dragKey ?: return
-        val drop = resolveDrop(
-            currentRows, currentTasks, moved, key,
-            if (key == EndRow.key) DropZone.BEFORE else dropZone,
-            (dragDx / indentPx).roundToInt(),
-        )
+        val drop = resolveDrop(currentRows, currentTasks, moved, key, if (key == EndRow.key) DropZone.BEFORE else dropZone)
+        // a place nothing can land on shows nothing
+        dropKey = key.takeIf { drop != null }
         dropDepth = drop?.depth ?: 0
         // a small tick each time the drop spot changes, so moving around has a feel
         if (drop != lastDrop) {
@@ -292,15 +282,12 @@ private fun TaskList(
         val target = dropKey
         dragKey = null
         dropKey = null
-        ignoreTaps = true
-        scope.launch {
-            delay(250)
-            ignoreTaps = false
-        }
         if (key == null || target == null) return
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-        resolveDrop(currentRows, currentTasks, key, target, dropZone, (dragDx / indentPx).roundToInt())?.let { drop ->
-            viewModel.move(key, drop.destination)
+        resolveDrop(currentRows, currentTasks, key, target, dropZone)?.let { drop ->
+            // in priority mode a task snaps back among its own colour
+            val to = if (order == SortOrder.PRIORITY) rankedDestination(currentTasks, key, drop.destination) else drop.destination
+            viewModel.move(key, to)
             drop.destination.parentId?.let { parent -> collapsedIds = ArrayList(collapsedIds - parent) }
         }
     }
@@ -308,6 +295,37 @@ private fun TaskList(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
+            .sweepAndHold(
+                enabled = renamingId == null,
+                onSweepLeft = { onSelectTab(Tab.AGENDA) },
+                onSweepRight = null,
+                rowAt = { at -> (list.rowKeyAt(at, listBounds) as? String)?.takeIf { it != EndRow.key } },
+                swipe = swipe,
+                onSwipedRight = { id ->
+                    tasks.firstOrNull { it.id == id }?.let { task ->
+                        viewModel.moveToBin(task)
+                        offerUndo(binnedMessage) { viewModel.restore(task) }
+                    }
+                },
+                onSwipedLeft = { id ->
+                    aimedId = null
+                    renamingId = id
+                },
+                onHold = { key, at ->
+                    dragKey = key
+                    dragY = at.y - listBounds.top
+                    lastDrop = null
+                    grabInRow = dragY - (list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset ?: 0)
+                },
+                onDrag = { dy ->
+                    dragY += dy
+                    updateDropTarget()
+                },
+                onRelease = { moved ->
+                    if (!moved) dropKey = null
+                    finishDrag()
+                },
+            )
             // the cursor only lives while the add line is in use, so a touch ends it, except on a task:
             // picking where the next task goes is part of typing it
             .pointerInput(addFocused) {
@@ -362,7 +380,11 @@ private fun TaskList(
                     }
                 },
                 treeMode = treeMode,
-                onPriorityChange = { setOrder(if (it) SortOrder.PRIORITY else SortOrder.TREE) },
+                onPriorityChange = {
+                    setOrder(if (it) SortOrder.PRIORITY else SortOrder.TREE)
+                    // back to the top of the list, with everything left open or closed as it was
+                    list.requestScrollToItem(0)
+                },
                 binCount = binCount,
                 onOpenBin = onOpenBin,
                 onSelectTab = onSelectTab,
@@ -379,47 +401,7 @@ private fun TaskList(
                 .padding(padding)
                 .consumeWindowInsets(padding)
                 .fillMaxSize()
-                .onGloballyPositioned { listBounds = it.boundsInRoot() }
-                // a sweep to the left across empty space opens the agenda; rows keep their own swipes
-                .switchTabBySwiping(
-                    towardsLeft = true,
-                    onRow = { at ->
-                        list.layoutInfo.visibleItemsInfo.any {
-                            it.key != EndRow.key && at.y >= it.offset && at.y < it.offset + it.size
-                        }
-                    },
-                    onSwitch = { onSelectTab(Tab.AGENDA) },
-                )
-                .pointerInput(order == SortOrder.TREE && renamingId == null) {
-                    if (order != SortOrder.TREE || renamingId != null) return@pointerInput
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { start: Offset ->
-                            ignoreTaps = true
-                            val row = list.layoutInfo.visibleItemsInfo
-                                .firstOrNull { start.y >= it.offset && start.y < it.offset + it.size }
-                            val key = row?.key as? String
-                            if (row != null && key != null && key != EndRow.key) {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                dragKey = key
-                                dragY = start.y
-                                dragDx = 0f
-                                lastDrop = null
-                                grabInRow = start.y - row.offset
-                            }
-                        },
-                        onDrag = { change, amount ->
-                            if (dragKey != null) {
-                                change.consume()
-                                dragY += amount.y
-                                dragDx += amount.x
-                                updateDropTarget()
-                            }
-                        },
-                        onDragEnd = { finishDrag() },
-                        // a row can claim the finger's release, so this also ends a normal drag
-                        onDragCancel = { finishDrag() },
-                    )
-                },
+                .onGloballyPositioned { listBounds = it.boundsInRoot() },
         ) {
             items(display, key = { it.key }) { row ->
                 val dragging = dragKey == row.key
@@ -467,19 +449,17 @@ private fun TaskList(
                                 renamingId = null
                             },
                             onCancelRename = { renamingId = null },
+                            swipe = swipe,
                             dragging = dragging,
-                            dragActive = dragKey != null,
                             dropHint = hint,
                             dropDepth = dropDepth,
                             // typing: a touch picks where the next task goes. Otherwise it opens or closes what is inside
                             onAim = {
-                                if (!ignoreTaps) {
-                                    if (addFocused) {
-                                        // nothing can go inside a task on the deepest level
-                                        if (row.depth < MAX_DEPTH) aimedId = if (task.id == aimedId) null else task.id
-                                    } else if (row.childCount > 0) {
-                                        toggleCollapsed()
-                                    }
+                                if (addFocused) {
+                                    // nothing can go inside a task on the deepest level
+                                    if (row.depth < MAX_DEPTH) aimedId = if (task.id == aimedId) null else task.id
+                                } else if (row.childCount > 0) {
+                                    toggleCollapsed()
                                 }
                             },
                             onDoneChange = { viewModel.setDone(task, it) },
@@ -644,25 +624,13 @@ private fun Header(
     }
 }
 
-// not rememberSwipeToDismissBoxState: it saves by row key, so something brought back
-// by undo would still be dismissed and remove itself again
-@Composable
-internal fun rememberUnsavedSwipe() = remember {
-    SwipeToDismissBoxState(
-        initialValue = SwipeToDismissBoxValue.Settled,
-        positionalThreshold = { distance -> distance * 0.5f },
-    )
-}
-
 /** Under a swiping row: swiping right removes it, swiping left renames it. */
 @Composable
-internal fun SwipeBackground(direction: SwipeToDismissBoxValue, removeLabel: String, renameLabel: String) {
+internal fun SwipeBackground(renaming: Boolean, removeLabel: String, renameLabel: String, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
-    val renaming = direction == SwipeToDismissBoxValue.EndToStart
     Box(
         contentAlignment = if (renaming) Alignment.CenterEnd else Alignment.CenterStart,
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
             .background(if (renaming) colors.secondaryContainer else colors.primary)
             .padding(horizontal = Space.gutter),
     ) {
@@ -682,8 +650,8 @@ private fun TaskRow(
     onStartRename: () -> Unit,
     onRename: (String) -> Unit,
     onCancelRename: () -> Unit,
+    swipe: RowSwipe,
     dragging: Boolean,
-    dragActive: Boolean,
     dropHint: DropZone?,
     dropDepth: Int,
     onAim: () -> Unit,
@@ -697,21 +665,11 @@ private fun TaskRow(
     val renameLabel = stringResource(R.string.rename)
     val aimLabel = stringResource(R.string.aim_at_task)
     val colors = MaterialTheme.colorScheme
-    val swipe = rememberUnsavedSwipe()
-    val scope = rememberCoroutineScope()
-    SwipeToDismissBox(
-        state = swipe,
-        gesturesEnabled = !dragActive && !renaming,
-        backgroundContent = { if (!dragging) SwipeBackground(swipe.dismissDirection, removeLabel, renameLabel) },
-        onDismiss = { direction ->
-            if (direction == SwipeToDismissBoxValue.EndToStart) {
-                // renaming does not take the row away, so it comes straight back
-                onStartRename()
-                scope.launch { swipe.snapTo(SwipeToDismissBoxValue.Settled) }
-            } else {
-                onRemove()
-            }
-        },
+    SwipeRow(
+        key = task.id,
+        swipe = swipe,
+        removeLabel = removeLabel,
+        renameLabel = renameLabel,
         modifier = modifier.semantics {
             customActions = listOf(
                 CustomAccessibilityAction(removeLabel) {

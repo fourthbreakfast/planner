@@ -83,14 +83,18 @@ class VisibleRowsTest {
     }
 
     @Test
-    fun droppingOnTheEdgesOfATaskPlacesItBeside() {
+    fun aLineBetweenTwoRowsPutsTheTaskAboveTheLowerOne() {
         val rows = rows(tasks)
         assertEquals(Destination(beforeId = "b"), resolveDrop(rows, tasks, "a2", "b", DropZone.BEFORE)?.destination)
-        assertEquals(Destination(afterId = "b"), resolveDrop(rows, tasks, "a2", "b", DropZone.AFTER)?.destination)
+        // the same line reached from the row above means the same thing
+        assertEquals(Destination(beforeId = "b"), resolveDrop(rows, tasks, "a1x", "a2", DropZone.AFTER)?.destination)
+        val drop = resolveDrop(rows, tasks, "b", "a1", DropZone.BEFORE)
+        assertEquals(Destination(parentId = "a", beforeId = "a1"), drop?.destination)
+        assertEquals(1, drop?.depth)
     }
 
     @Test
-    fun droppingAfterAnOpenParentMakesItTheFirstChild() {
+    fun theLineUnderAnOpenParentIsItsFirstChild() {
         assertEquals(
             Destination(parentId = "a", beforeId = "a1"),
             resolveDrop(rows(tasks), tasks, "b", "a", DropZone.AFTER)?.destination,
@@ -98,38 +102,22 @@ class VisibleRowsTest {
     }
 
     @Test
-    fun droppingOnTheEndRowMakesTheTaskTopLevelAndLast() {
+    fun theMiddleOfATaskPutsItLastInside() {
+        assertEquals(Destination(parentId = "a"), resolveDrop(rows(tasks), tasks, "b", "a", DropZone.INTO)?.destination)
+    }
+
+    @Test
+    fun belowTheVeryLastRowItBecomesTheLastMainTask() {
+        assertEquals(Destination(), resolveDrop(rows(tasks), tasks, "a1", "b", DropZone.AFTER)?.destination)
         assertEquals(Destination(), resolveDrop(rows(tasks), tasks, "a1x", EndRow.key, DropZone.INTO)?.destination)
         assertEquals(Destination(), resolveDrop(rows(tasks), tasks, "a", EndRow.key, DropZone.BEFORE)?.destination)
     }
 
     @Test
-    fun belowTheLastSubtaskATopLevelTaskLandsOutsideItsParent() {
-        val drop = resolveDrop(rows(tasks), tasks, "b", "a2", DropZone.AFTER)
-        assertEquals(Destination(afterId = "a"), drop?.destination)
-        assertEquals(0, drop?.depth)
-    }
-
-    @Test
-    fun movingTheFingerRightKeepsItInsideTheParent() {
-        val drop = resolveDrop(rows(tasks), tasks, "b", "a2", DropZone.AFTER, shift = 1)
-        assertEquals(Destination(parentId = "a", afterId = "a2"), drop?.destination)
-        assertEquals(1, drop?.depth)
-    }
-
-    @Test
-    fun aSubtaskKeepsItsDepthBelowItsLastSiblingUnlessMovedLeft() {
+    fun theLineBelowARowSkipsTheTaskBeingMoved() {
         val rows = rows(tasks)
-        assertEquals(Destination(parentId = "a", afterId = "a1"), resolveDrop(rows, tasks, "a2", "a1x", DropZone.AFTER)?.destination)
-        assertEquals(Destination(afterId = "a"), resolveDrop(rows, tasks, "a2", "a1x", DropZone.AFTER, shift = -1)?.destination)
-    }
-
-    @Test
-    fun theDepthStaysWithinWhatTheNeighboursAllow() {
-        val rows = rows(tasks)
-        // a task cannot be pulled out of the list or pushed deeper than the row above it
-        assertEquals(0, resolveDrop(rows, tasks, "a2", "a1x", DropZone.AFTER, shift = -5)?.depth)
-        assertEquals(2, resolveDrop(rows, tasks, "a2", "a1x", DropZone.AFTER, shift = 5)?.depth)
+        assertEquals(Destination(beforeId = "b"), resolveDrop(rows, tasks, "a", "b", DropZone.BEFORE)?.destination)
+        assertEquals(Destination(parentId = "a", beforeId = "a2"), resolveDrop(rows, tasks, "a1", "a2", DropZone.BEFORE)?.destination)
     }
 
     @Test
@@ -139,7 +127,35 @@ class VisibleRowsTest {
             task("x", position = 2.0),
         )
         assertNull(resolveDrop(rows(deep), deep, "x", "l3", DropZone.INTO))
-        assertEquals(Destination(parentId = "l2", afterId = "l3"), resolveDrop(rows(deep), deep, "x", "l3", DropZone.AFTER, shift = 3)?.destination)
+        assertEquals(Destination(parentId = "l2", beforeId = "l3"), resolveDrop(rows(deep), deep, "x", "l3", DropZone.BEFORE)?.destination)
+    }
+
+    private val ranked = listOf(
+        task("red", position = 1.0).copy(priority = Priority.HIGH),
+        task("yellow1", position = 2.0).copy(priority = Priority.MEDIUM),
+        task("yellow2", position = 3.0).copy(priority = Priority.MEDIUM),
+        task("plain", position = 4.0),
+    )
+
+    @Test
+    fun aYellowDroppedAboveTheRedsBecomesTheFirstYellow() {
+        assertEquals(Destination(beforeId = "yellow1"), rankedDestination(ranked, "yellow2", Destination(beforeId = "red")))
+    }
+
+    @Test
+    fun aYellowDroppedBelowEverythingBecomesTheLastYellow() {
+        assertEquals(Destination(afterId = "yellow2"), rankedDestination(ranked, "yellow1", Destination()))
+    }
+
+    @Test
+    fun aColourAloneAmongItsNeighboursGoesWhereItWasPut() {
+        assertEquals(Destination(beforeId = "yellow1"), rankedDestination(ranked, "red", Destination(beforeId = "yellow1")))
+    }
+
+    @Test
+    fun droppedInsideAnotherTaskItRanksAmongItsNewNeighbours() {
+        val inside = ranked + task("kid", parentId = "plain", position = 1.0).copy(priority = Priority.MEDIUM)
+        assertEquals(Destination(parentId = "plain", afterId = "kid"), rankedDestination(inside, "yellow1", Destination(parentId = "plain")))
     }
 
     @Test

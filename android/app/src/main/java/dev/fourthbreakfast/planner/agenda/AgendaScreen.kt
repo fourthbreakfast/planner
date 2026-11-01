@@ -21,7 +21,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +31,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -45,12 +46,13 @@ import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.tasks.AddButton
 import dev.fourthbreakfast.planner.tasks.BinButton
 import dev.fourthbreakfast.planner.tasks.DiscreetMessage
-import dev.fourthbreakfast.planner.tasks.SwipeBackground
+import dev.fourthbreakfast.planner.tasks.RowSwipe
+import dev.fourthbreakfast.planner.tasks.SwipeRow
 import dev.fourthbreakfast.planner.tasks.Tab
 import dev.fourthbreakfast.planner.tasks.TabBar
 import dev.fourthbreakfast.planner.tasks.TitleWithCount
-import dev.fourthbreakfast.planner.tasks.rememberUnsavedSwipe
-import dev.fourthbreakfast.planner.tasks.switchTabBySwiping
+import dev.fourthbreakfast.planner.tasks.rowKeyAt
+import dev.fourthbreakfast.planner.tasks.sweepAndHold
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.launch
 
@@ -134,9 +136,22 @@ private fun AgendaList(
     val is24Hour = rememberIs24Hour()
     val list = rememberLazyListState()
     val endSpace = Space.listEnd()
+    val scope = rememberCoroutineScope()
+    val swipe = remember(scope) { RowSwipe(scope, canGoLeft = false) }
+    var listBounds by remember { mutableStateOf(Rect.Zero) }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .sweepAndHold(
+                enabled = true,
+                onSweepLeft = onShowNotes,
+                onSweepRight = onShowTasks,
+                // only events can be held, the day headings cannot
+                rowAt = { at -> list.rowKeyAt(at, listBounds)?.let { key -> events.firstOrNull { it.id == key }?.id } },
+                swipe = swipe,
+                onSwipedRight = onRemove,
+            ),
         snackbarHost = {
             SnackbarHost(snackbarHost) { data ->
                 DiscreetMessage(data.visuals.message, data.visuals.actionLabel, data::performAction)
@@ -176,9 +191,7 @@ private fun AgendaList(
             Box(
                 Modifier
                     .padding(padding)
-                    .fillMaxSize()
-                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowTasks)
-                    .switchTabBySwiping(towardsLeft = true, onRow = { false }, onSwitch = onShowNotes),
+                    .fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -188,19 +201,12 @@ private fun AgendaList(
                 )
             }
         } else {
-            val onEvent = { at: Offset ->
-                list.layoutInfo.visibleItemsInfo.any {
-                    it.key != "end" && at.y >= it.offset && at.y < it.offset + it.size
-                }
-            }
             LazyColumn(
                 state = list,
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    // a sweep to the right across empty space goes back to the tasks, to the left on to the notes
-                    .switchTabBySwiping(towardsLeft = false, onRow = onEvent, onSwitch = onShowTasks)
-                    .switchTabBySwiping(towardsLeft = true, onRow = onEvent, onSwitch = onShowNotes),
+                    .onGloballyPositioned { listBounds = it.boundsInRoot() },
             ) {
                 items(rows, key = { it.key }) { row ->
                     when (row) {
@@ -211,6 +217,7 @@ private fun AgendaList(
                             earlier = row.earlier,
                             is24Hour = is24Hour,
                             onOpen = { onOpen(row.event.id) },
+                            swipe = swipe,
                             onRemove = { onRemove(row.event.id) },
                             modifier = Modifier.animateItem(),
                         )
@@ -240,18 +247,18 @@ private fun EventRow(
     earlier: Boolean,
     is24Hour: Boolean,
     onOpen: () -> Unit,
+    swipe: RowSwipe,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val removeLabel = stringResource(R.string.remove_task)
-    val swipe = rememberUnsavedSwipe()
     val quiet = if (earlier) colors.onSurfaceVariant else colors.onBackground
-    SwipeToDismissBox(
-        state = swipe,
-        enableDismissFromEndToStart = false,
-        backgroundContent = { SwipeBackground(swipe.dismissDirection, removeLabel, "") },
-        onDismiss = { onRemove() },
+    SwipeRow(
+        key = event.id,
+        swipe = swipe,
+        removeLabel = removeLabel,
+        renameLabel = "",
         modifier = modifier.semantics {
             customActions = listOf(CustomAccessibilityAction(removeLabel) { onRemove(); true })
         },

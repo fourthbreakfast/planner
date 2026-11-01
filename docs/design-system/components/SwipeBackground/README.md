@@ -1,4 +1,4 @@
-What shows under a row as it is pulled sideways. Pull right: a `priority-high` field with "move to bin" in `on-accent` at the left edge; letting go past halfway moves the task and everything inside it to the bin and shows the undo pill. Pull left: an `aim` field with "rename" in `ink` at the right edge; letting go past halfway puts the title into edit in place and the row springs back.
+What shows under a row as it is pulled sideways. A row only swipes after a finger has rested on it for a moment; a sideways sweep without the hold switches tabs. Pull right: a `priority-high` field with "move to bin" in `on-accent` at the left edge; letting go past halfway moves the task and everything inside it to the bin and shows the undo pill. Pull left: an `aim` field with "rename" in `ink` at the right edge; letting go past halfway puts the title into edit in place and the row springs back.
 
 Both labels are `label`, lowercase, at `gutter` from the edge. Swiping is off while dragging or renaming.
 

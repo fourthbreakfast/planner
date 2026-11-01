@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -25,9 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.tasks.BackButton
+import dev.fourthbreakfast.planner.tasks.BinBar
 import dev.fourthbreakfast.planner.tasks.QuietButton
-import dev.fourthbreakfast.planner.tasks.TitleWithCount
 import dev.fourthbreakfast.planner.ui.theme.Space
 
 /** What a confirmation is waiting for: one event, or the whole bin when the event is null. */
@@ -43,26 +41,7 @@ fun AgendaBin(entries: List<Event>, viewModel: AgendaViewModel, onClose: () -> U
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = Space.gutter, end = Space.rowPad),
-            ) {
-                TitleWithCount(
-                    title = stringResource(R.string.bin),
-                    count = entries.size,
-                    countLabel = stringResource(R.string.bin_with_count, entries.size),
-                    modifier = Modifier.weight(1f),
-                )
-                if (entries.isNotEmpty()) {
-                    QuietButton(stringResource(R.string.empty_bin)) { pending = PendingDelete(null) }
-                }
-                BackButton(onClose)
-            }
-        },
+        topBar = { BinBar(entries.size, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
     ) { padding ->
         if (entries.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
