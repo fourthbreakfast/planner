@@ -37,7 +37,7 @@ private data class PendingDelete(val event: Event?)
 fun AgendaBin(entries: List<Event>, viewModel: AgendaViewModel, onClose: () -> Unit) {
     var pending by remember { mutableStateOf<PendingDelete?>(null) }
     BackHandler(onBack = onClose)
-    val today = today()
+    val today = rememberToday()
     val colors = MaterialTheme.colorScheme
 
     Scaffold(

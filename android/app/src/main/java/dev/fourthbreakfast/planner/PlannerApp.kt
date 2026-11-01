@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner
 
 import android.app.Application
+import dev.fourthbreakfast.planner.backup.AutoBackup
 import androidx.room.Room
 import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.core.Events
@@ -35,11 +36,17 @@ class PlannerApp : Application() {
     val events: Events by lazy { Events(eventStore) }
     val notes: Notes by lazy { Notes(noteStore) }
     val backups: Backups by lazy { Backups(taskStore, eventStore, noteStore) }
+    private val autoBackup by lazy { AutoBackup(this, backups, settings) }
 
     override fun onCreate() {
         super.onCreate()
         // the alarms follow the agenda: every change to an event sets or takes away its alarm
         scope.launch { events.all.collect { reminders.sync(it) } }
+    }
+
+    /** Writes the daily backup when it is due. Called whenever the app goes out of sight. */
+    fun backUpIfDue() {
+        scope.launch { autoBackup.runIfDue() }
     }
 
     /** Sets every alarm again, for after a restart or a change of the clock. */

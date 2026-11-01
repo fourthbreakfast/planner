@@ -129,7 +129,7 @@ private fun AgendaList(
     onRemove: (String) -> Unit,
 ) {
     BackHandler(onBack = onShowTasks)
-    val today = today()
+    val today = rememberToday()
     val rows = remember(events, today) { agendaRows(events, today) }
     val upcoming = upcomingCount(events, today)
     val is24Hour = rememberIs24Hour()

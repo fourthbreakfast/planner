@@ -10,6 +10,13 @@
     <string name="settings_title">settings</string>
     <string name="setting_toolbar">notes toolbar</string>
     <string name="toolbar_top">top</string>
+    <string name="setting_theme">theme</string>
+    <string name="theme_system">system</string>
+    <string name="theme_light">light</string>
+    <string name="theme_dark">dark</string>
+    <string name="setting_backup">daily backup to a folder</string>
+    <string name="backup_off">off</string>
+    <string name="setting_updates">check for updates</string>
     <string name="toolbar_keyboard">above keyboard</string>
     <string name="guide_title">how it works</string>
     <string name="nothing_to_do">nothing to do</string>
