@@ -1,4 +1,4 @@
-<!-- @dsCard group="Tasks" height=150 subtitle="four levels, one size" -->
+<!-- @dsCard group="Tasks" height=150 subtitle="four levels, by colour and by size" -->
 <style>
   body { margin: 0; background: var(--page); color: var(--ink); font: 14px/20px var(--font-sans); }
   .wrap { display: flex; gap: 32px; padding: 24px var(--gutter); flex-wrap: wrap; }
@@ -9,8 +9,8 @@
   .name { font: 500 12px/16px var(--font-mono); color: var(--quiet); }
 </style>
 <div class="wrap">
-  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-high)"></span></div><span class="name">high</span></div>
-  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-medium)"></span></div><span class="name">medium</span></div>
-  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-low)"></span></div><span class="name">low</span></div>
+  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-high); width: var(--dot-high); height: var(--dot-high)"></span></div><span class="name">high</span></div>
+  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-medium); width: var(--dot-medium); height: var(--dot-medium)"></span></div><span class="name">medium</span></div>
+  <div class="item"><div class="lane"><span class="dot" style="background: var(--priority-low); width: var(--dot-low); height: var(--dot-low)"></span></div><span class="name">low</span></div>
   <div class="item"><div class="lane"><span class="dot none"></span></div><span class="name">none</span></div>
 </div>
