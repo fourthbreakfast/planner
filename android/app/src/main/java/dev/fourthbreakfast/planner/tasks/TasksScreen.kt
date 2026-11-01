@@ -228,8 +228,7 @@ private fun TaskList(
     var grabInRow by remember { mutableFloatStateOf(0f) }
     var dropKey by remember { mutableStateOf<String?>(null) }
     var dropZone by remember { mutableStateOf(DropZone.INTO) }
-    var dropDepth by remember { mutableIntStateOf(0) }
-    var lastDrop by remember { mutableStateOf<Drop?>(null) }
+    var mark by remember { mutableStateOf<DropMark?>(null) }
     val currentRows by rememberUpdatedState(rows)
     val currentTasks by rememberUpdatedState(tasks)
     val swipe = remember(scope) { RowSwipe(scope, canGoLeft = true) }
@@ -239,6 +238,7 @@ private fun TaskList(
         val key = row?.key as? String
         if (row == null || key == null || key == dragKey) {
             dropKey = null
+            mark = null
             return
         }
         val fraction = (dragY - row.offset) / row.size
@@ -251,11 +251,16 @@ private fun TaskList(
         val drop = resolveDrop(currentRows, currentTasks, moved, key, if (key == EndRow.key) DropZone.BEFORE else dropZone)
         // a place nothing can land on shows nothing
         dropKey = key.takeIf { drop != null }
-        dropDepth = drop?.depth ?: 0
-        // a small tick each time the drop spot changes, so moving around has a feel
-        if (drop != lastDrop) {
-            lastDrop = drop
-            if (drop != null) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        val newMark = when {
+            drop == null -> null
+            order == SortOrder.PRIORITY && (key == EndRow.key || dropZone != DropZone.INTO) ->
+                rankedMark(currentRows, currentTasks, moved, drop.destination, drop.depth)
+            else -> DropMark(key, if (key == EndRow.key) DropZone.BEFORE else dropZone, drop.depth)
+        }
+        // a small tick each time the line moves, so moving around has a feel
+        if (newMark != mark) {
+            mark = newMark
+            if (newMark != null) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         }
     }
 
@@ -282,6 +287,7 @@ private fun TaskList(
         val target = dropKey
         dragKey = null
         dropKey = null
+        mark = null
         if (key == null || target == null) return
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         resolveDrop(currentRows, currentTasks, key, target, dropZone)?.let { drop ->
@@ -314,7 +320,6 @@ private fun TaskList(
                 onHold = { key, at ->
                     dragKey = key
                     dragY = at.y - listBounds.top
-                    lastDrop = null
                     grabInRow = dragY - (list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset ?: 0)
                 },
                 onDrag = { dy ->
@@ -405,7 +410,8 @@ private fun TaskList(
         ) {
             items(display, key = { it.key }) { row ->
                 val dragging = dragKey == row.key
-                val hint = if (dropKey == row.key) (if (row is EndRow) DropZone.BEFORE else dropZone) else null
+                val hint = mark?.takeIf { it.key == row.key }?.zone
+                val dropDepth = mark?.depth ?: 0
                 val moved = Modifier
                     .animateItem(placementSpec = reorderSpring())
                     .then(if (dragging) Modifier.zIndex(1f) else Modifier)
