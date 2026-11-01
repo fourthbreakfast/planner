@@ -12,9 +12,6 @@ sealed interface Launch {
 
     data object NewNote : Launch
 
-    data object ShowTasks : Launch
-
-
     data class OpenEvent(val id: String) : Launch
 
     data class OpenNote(val id: String) : Launch

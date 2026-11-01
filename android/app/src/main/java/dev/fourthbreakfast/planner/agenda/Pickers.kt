@@ -1,7 +1,6 @@
 package dev.fourthbreakfast.planner.agenda
 
 import androidx.compose.foundation.background
-import dev.fourthbreakfast.planner.core.REMINDER_CHOICES
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.fourthbreakfast.planner.R
+import dev.fourthbreakfast.planner.core.REMINDER_CHOICES
 import dev.fourthbreakfast.planner.tasks.QuietButton
 import dev.fourthbreakfast.planner.ui.theme.Space
 import java.time.DayOfWeek
@@ -41,8 +41,9 @@ import java.util.Locale
 private const val LAST_MINUTE = 24 * 60 - 1
 
 /** "09:30", "09:30 – 10:45", or "all day". Twelve hour clocks get "am" and "pm". */
+@Composable
 fun timeRangeText(start: Int?, end: Int?, is24Hour: Boolean): String = when {
-    start == null -> "all day"
+    start == null -> stringResource(R.string.all_day)
     end == null -> timeText(start, is24Hour)
     else -> timeText(start, is24Hour) + " – " + timeText(end, is24Hour)
 }
@@ -97,13 +98,7 @@ fun ReminderChooser(current: Int?, onPick: (Int?) -> Unit, onCancel: () -> Unit)
 
 /** A row of numbers to pick from, [columns] to a row. The chosen one is filled like a checked box. */
 @Composable
-private fun NumberGrid(
-    values: List<Int>,
-    columns: Int,
-    selected: Int?,
-    label: (Int) -> String,
-    onPick: (Int) -> Unit,
-) {
+private fun NumberGrid(values: List<Int>, columns: Int, selected: Int?, label: (Int) -> String, onPick: (Int) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column {
         values.chunked(columns).forEach { row ->
@@ -142,14 +137,19 @@ private fun NumberGrid(
  * numbers, the same size and look as everything else, and what is chosen is filled in.
  */
 @Composable
-fun TimeChooser(
-    initialStart: Int?,
-    initialEnd: Int?,
-    onSet: (start: Int?, end: Int?) -> Unit,
-    onCancel: () -> Unit,
-) {
+fun TimeChooser(initialStart: Int?, initialEnd: Int?, onSet: (start: Int?, end: Int?) -> Unit, onCancel: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    var mode by remember { mutableIntStateOf(if (initialStart == null) 0 else if (initialEnd == null) 1 else 2) }
+    var mode by remember {
+        mutableIntStateOf(
+            if (initialStart == null) {
+                0
+            } else if (initialEnd == null) {
+                1
+            } else {
+                2
+            },
+        )
+    }
     var start by remember { mutableIntStateOf(initialStart ?: 9 * 60) }
     var end by remember { mutableIntStateOf(initialEnd ?: minOf((initialStart ?: 9 * 60) + 60, LAST_MINUTE)) }
     var editingEnd by remember { mutableStateOf(false) }

@@ -43,4 +43,3 @@ fun Task.toEntity() = TaskEntity(
     deletedAt = deletedAt,
     position = position,
 )
-

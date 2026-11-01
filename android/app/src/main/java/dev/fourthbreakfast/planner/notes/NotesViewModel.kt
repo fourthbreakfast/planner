@@ -1,10 +1,10 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.lifecycle.ViewModel
-import dev.fourthbreakfast.planner.core.plainBody
 import androidx.lifecycle.viewModelScope
 import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.Notes
+import dev.fourthbreakfast.planner.core.plainBody
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 

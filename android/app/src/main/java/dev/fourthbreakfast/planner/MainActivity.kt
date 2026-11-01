@@ -1,7 +1,7 @@
 package dev.fourthbreakfast.planner
 
-import android.graphics.Color
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -47,9 +47,9 @@ class MainActivity : ComponentActivity() {
         val settings = (application as PlannerApp).settings
         setContent {
             val dark = when (settings.theme) {
-                1 -> false
-                2 -> true
-                else -> isSystemInDarkTheme()
+                ThemeChoice.LIGHT -> false
+                ThemeChoice.DARK -> true
+                ThemeChoice.SYSTEM -> isSystemInDarkTheme()
             }
             // the bars at the top and bottom follow the chosen theme, not only the phone's
             LaunchedEffect(dark) {

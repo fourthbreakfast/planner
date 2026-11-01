@@ -1,20 +1,13 @@
 package dev.fourthbreakfast.planner.agenda
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.ui.platform.LocalDensity
-import dev.fourthbreakfast.planner.PlannerApp
-import dev.fourthbreakfast.planner.Launch
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
-import dev.fourthbreakfast.planner.tasks.showUndo
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,12 +19,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -50,6 +44,8 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.fourthbreakfast.planner.Launch
+import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.tasks.AddButton
@@ -61,6 +57,7 @@ import dev.fourthbreakfast.planner.tasks.Tab
 import dev.fourthbreakfast.planner.tasks.TabBar
 import dev.fourthbreakfast.planner.tasks.TitleWithCount
 import dev.fourthbreakfast.planner.tasks.rowKeyAt
+import dev.fourthbreakfast.planner.tasks.showUndo
 import dev.fourthbreakfast.planner.tasks.sweepAndHold
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.launch
@@ -107,43 +104,49 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
     }
 
     // the list, the form and the bin fade into one another
-    val mode = if (editorMode != 0 && (editorMode == 1 || editing != null)) 1 else if (binOpen) 2 else 0
-    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "agenda") { shown ->
-    when {
-        shown == 1 -> EventEditor(
-            initial = if (editorMode == 1) null else editing,
-            onSave = { draft ->
-                if (editorMode == 1) viewModel.add(draft) else editingId?.let { viewModel.update(it, draft) }
-                editorMode = 0
-            },
-            onDelete = editing?.takeIf { editorMode == 2 }?.let { event ->
-                {
-                    editorMode = 0
-                    moveToBinWithUndo(event.id)
-                }
-            },
-            onClose = { editorMode = 0 },
-        )
-        shown == 2 -> AgendaBin(binned, viewModel, onClose = { binOpen = false })
-        else -> AgendaList(
-            events = events,
-            binCount = binned.size,
-            snackbarHost = snackbarHost,
-            onShowTasks = onShowTasks,
-            onShowNotes = onShowNotes,
-            onOpenSettings = onOpenSettings,
-            onOpenBin = { binOpen = true },
-            onNew = {
-                editingId = null
-                editorMode = 1
-            },
-            onOpen = { id ->
-                editingId = id
-                editorMode = 2
-            },
-            onRemove = ::moveToBinWithUndo,
-        )
+    val mode = if (editorMode != 0 && (editorMode == 1 || editing != null)) {
+        1
+    } else if (binOpen) {
+        2
+    } else {
+        0
     }
+    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "agenda") { shown ->
+        when {
+            shown == 1 -> EventEditor(
+                initial = if (editorMode == 1) null else editing,
+                onSave = { draft ->
+                    if (editorMode == 1) viewModel.add(draft) else editingId?.let { viewModel.update(it, draft) }
+                    editorMode = 0
+                },
+                onDelete = editing?.takeIf { editorMode == 2 }?.let { event ->
+                    {
+                        editorMode = 0
+                        moveToBinWithUndo(event.id)
+                    }
+                },
+                onClose = { editorMode = 0 },
+            )
+            shown == 2 -> AgendaBin(binned, viewModel, onClose = { binOpen = false })
+            else -> AgendaList(
+                events = events,
+                binCount = binned.size,
+                snackbarHost = snackbarHost,
+                onShowTasks = onShowTasks,
+                onShowNotes = onShowNotes,
+                onOpenSettings = onOpenSettings,
+                onOpenBin = { binOpen = true },
+                onNew = {
+                    editingId = null
+                    editorMode = 1
+                },
+                onOpen = { id ->
+                    editingId = id
+                    editorMode = 2
+                },
+                onRemove = ::moveToBinWithUndo,
+            )
+        }
     }
 }
 
@@ -292,7 +295,12 @@ private fun EventRow(
         removeLabel = removeLabel,
         renameLabel = "",
         modifier = modifier.semantics {
-            customActions = listOf(CustomAccessibilityAction(removeLabel) { onRemove(); true })
+            customActions = listOf(
+                CustomAccessibilityAction(removeLabel) {
+                    onRemove()
+                    true
+                },
+            )
         },
     ) {
         Row(

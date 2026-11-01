@@ -46,7 +46,14 @@ class PlannerWidget : AppWidgetProvider() {
                 // as many lines as the widget is tall: a header, then a line for each 18dp
                 val height = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
                 val rows = ((height - 52) / 18).coerceIn(1, LINES.size)
-                val lines = widgetLines(events, tasks, day, rows) { timeText(it, is24Hour) }
+                val lines = widgetLines(
+                    events,
+                    tasks,
+                    day,
+                    rows,
+                    context.getString(R.string.all_day),
+                    { context.getString(R.string.widget_more, it) },
+                ) { timeText(it, is24Hour) }
                 val views = RemoteViews(context.packageName, R.layout.widget)
                 views.setTextViewText(R.id.date, dateText(day, day))
                 views.setTextViewText(R.id.count, context.getString(R.string.widget_open, open))

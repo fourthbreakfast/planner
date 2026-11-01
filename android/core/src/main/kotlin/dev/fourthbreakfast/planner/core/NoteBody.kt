@@ -132,6 +132,12 @@ fun toggleStyle(styles: List<Int>, from: Int, to: Int, bit: Int): List<Int> {
     if (start == end) return styles
     val allHave = (start until end).all { styles[it] and bit != 0 }
     return styles.mapIndexed { i, look ->
-        if (i !in start until end) look else if (allHave) look and bit.inv() else look or bit
+        if (i !in start until end) {
+            look
+        } else if (allHave) {
+            look and bit.inv()
+        } else {
+            look or bit
+        }
     }
 }

@@ -1,21 +1,14 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.activity.compose.BackHandler
-import dev.fourthbreakfast.planner.tasks.SearchButton
-import dev.fourthbreakfast.planner.Launch
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
-import dev.fourthbreakfast.planner.PlannerApp
-import androidx.compose.ui.platform.LocalContext
-import dev.fourthbreakfast.planner.tasks.showUndo
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,12 +20,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,10 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -56,6 +49,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.fourthbreakfast.planner.Launch
+import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.isBlankBody
@@ -67,11 +62,13 @@ import dev.fourthbreakfast.planner.tasks.BinButton
 import dev.fourthbreakfast.planner.tasks.DiscreetMessage
 import dev.fourthbreakfast.planner.tasks.QuietButton
 import dev.fourthbreakfast.planner.tasks.RowSwipe
+import dev.fourthbreakfast.planner.tasks.SearchButton
 import dev.fourthbreakfast.planner.tasks.SwipeRow
 import dev.fourthbreakfast.planner.tasks.Tab
 import dev.fourthbreakfast.planner.tasks.TabBar
 import dev.fourthbreakfast.planner.tasks.TitleWithCount
 import dev.fourthbreakfast.planner.tasks.rowKeyAt
+import dev.fourthbreakfast.planner.tasks.showUndo
 import dev.fourthbreakfast.planner.tasks.sweepAndHold
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.launch
@@ -130,37 +127,43 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
 
     val open = notes.firstOrNull { it.id == openId }
     // the list, a note and the bin fade into one another
-    val mode = if (open != null) 1 else if (binOpen) 2 else 0
-    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "notes") { shown ->
-    when {
-        shown == 1 && open != null -> NoteEditor(
-            initialTitle = open.title,
-            initialBody = open.body,
-            pinned = open.pinned,
-            onPin = { viewModel.setPinned(open.id, !open.pinned) },
-            toolbarAbove = settings.toolbarAbove,
-            onSave = { title, body -> viewModel.save(open.id, title, body) },
-            onClose = { title, body ->
-                viewModel.close(open.id, title, body)
-                openId = null
-            },
-        )
-        shown == 2 -> NotesBin(binned, viewModel, onClose = { binOpen = false })
-        else -> NotesList(
-            notes = notes,
-            binCount = binned.size,
-            snackbarHost = snackbarHost,
-            onShowAgenda = onShowAgenda,
-            onShowTasks = onShowTasks,
-            onOpenSettings = onOpenSettings,
-            onOpenSearch = onOpenSearch,
-            onOpenBin = { binOpen = true },
-            onNew = { viewModel.add { openId = it } },
-            onOpen = { openId = it },
-            onRemove = ::moveToBinWithUndo,
-            onMove = viewModel::move,
-        )
+    val mode = if (open != null) {
+        1
+    } else if (binOpen) {
+        2
+    } else {
+        0
     }
+    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "notes") { shown ->
+        when {
+            shown == 1 && open != null -> NoteEditor(
+                initialTitle = open.title,
+                initialBody = open.body,
+                pinned = open.pinned,
+                onPin = { viewModel.setPinned(open.id, !open.pinned) },
+                toolbarAbove = settings.toolbarAbove,
+                onSave = { title, body -> viewModel.save(open.id, title, body) },
+                onClose = { title, body ->
+                    viewModel.close(open.id, title, body)
+                    openId = null
+                },
+            )
+            shown == 2 -> NotesBin(binned, viewModel, onClose = { binOpen = false })
+            else -> NotesList(
+                notes = notes,
+                binCount = binned.size,
+                snackbarHost = snackbarHost,
+                onShowAgenda = onShowAgenda,
+                onShowTasks = onShowTasks,
+                onOpenSettings = onOpenSettings,
+                onOpenSearch = onOpenSearch,
+                onOpenBin = { binOpen = true },
+                onNew = { viewModel.add { openId = it } },
+                onOpen = { openId = it },
+                onRemove = ::moveToBinWithUndo,
+                onMove = viewModel::move,
+            )
+        }
     }
 }
 
@@ -323,7 +326,12 @@ private fun NotesList(
                             .height(endSpace)
                             .drawBehind {
                                 if (dropKey == END_KEY) {
-                                    drawLine(colors.onBackground, Offset(Space.gutter.toPx(), 0f), Offset(size.width - Space.gutter.toPx(), 0f), Space.strokeThick.toPx())
+                                    drawLine(
+                                        colors.onBackground,
+                                        Offset(Space.gutter.toPx(), 0f),
+                                        Offset(size.width - Space.gutter.toPx(), 0f),
+                                        Space.strokeThick.toPx(),
+                                    )
                                 }
                             },
                     )
@@ -335,14 +343,7 @@ private fun NotesList(
 
 /** One note as it will read: its first lines, marked and pushed in as written. A touch opens it, a swipe right bins it. */
 @Composable
-private fun NoteRow(
-    note: Note,
-    dropAbove: Boolean,
-    swipe: RowSwipe,
-    onOpen: () -> Unit,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun NoteRow(note: Note, dropAbove: Boolean, swipe: RowSwipe, onOpen: () -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val removeLabel = stringResource(R.string.remove_task)
     val title = noteTitle(note)
@@ -358,7 +359,14 @@ private fun NoteRow(
                     drawLine(colors.onBackground, Offset(Space.gutter.toPx(), 0f), Offset(size.width - Space.gutter.toPx(), 0f), Space.strokeThick.toPx())
                 }
             }
-            .semantics { customActions = listOf(CustomAccessibilityAction(removeLabel) { onRemove(); true }) },
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction(removeLabel) {
+                        onRemove()
+                        true
+                    },
+                )
+            },
     ) {
         Box(
             modifier = Modifier

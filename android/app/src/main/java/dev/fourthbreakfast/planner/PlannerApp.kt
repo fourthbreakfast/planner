@@ -1,14 +1,12 @@
 package dev.fourthbreakfast.planner
 
 import android.app.Application
-import kotlinx.coroutines.flow.combine
-import dev.fourthbreakfast.planner.widget.PlannerWidget
-import androidx.core.graphics.drawable.IconCompat
-import androidx.core.content.pm.ShortcutManagerCompat
-import androidx.core.content.pm.ShortcutInfoCompat
 import android.content.Intent
-import dev.fourthbreakfast.planner.backup.AutoBackup
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 import androidx.room.Room
+import dev.fourthbreakfast.planner.backup.AutoBackup
 import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.core.Events
 import dev.fourthbreakfast.planner.core.Notes
@@ -17,10 +15,12 @@ import dev.fourthbreakfast.planner.data.RoomEventStore
 import dev.fourthbreakfast.planner.data.RoomNoteStore
 import dev.fourthbreakfast.planner.data.RoomTaskStore
 import dev.fourthbreakfast.planner.reminders.Reminders
+import dev.fourthbreakfast.planner.widget.PlannerWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 

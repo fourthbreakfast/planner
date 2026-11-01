@@ -4,10 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Everything the app can do with the agenda. */
-class Events(
-    private val store: EventStore,
-    private val clock: () -> Long = System::currentTimeMillis,
-) {
+class Events(private val store: EventStore, private val clock: () -> Long = System::currentTimeMillis) {
     /** Every event, the bin included, soonest first. */
     val all: Flow<List<Event>> = store.observeAll().map(::sortedEvents)
 

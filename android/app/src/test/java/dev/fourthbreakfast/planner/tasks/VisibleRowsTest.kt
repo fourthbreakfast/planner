@@ -20,8 +20,7 @@ class VisibleRowsTest {
         task("b", position = 2.0),
     )
 
-    private fun rows(tasks: List<Task>, order: SortOrder = SortOrder.TREE, collapsed: List<String> = emptyList()) =
-        arrange(tasks, order, collapsed)
+    private fun rows(tasks: List<Task>, order: SortOrder = SortOrder.TREE, collapsed: List<String> = emptyList()) = arrange(tasks, order, collapsed)
 
     private fun List<ListRow>.keys() = map { it.key }
 
@@ -123,7 +122,10 @@ class VisibleRowsTest {
     @Test
     fun nothingCanBeDroppedInsideAFourthLevelTask() {
         val deep = listOf(
-            task("l0", position = 1.0), task("l1", parentId = "l0"), task("l2", parentId = "l1"), task("l3", parentId = "l2"),
+            task("l0", position = 1.0),
+            task("l1", parentId = "l0"),
+            task("l2", parentId = "l1"),
+            task("l3", parentId = "l2"),
             task("x", position = 2.0),
         )
         assertNull(resolveDrop(rows(deep), deep, "x", "l3", DropZone.INTO))

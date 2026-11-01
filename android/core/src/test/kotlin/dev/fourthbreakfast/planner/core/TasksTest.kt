@@ -37,8 +37,7 @@ class TasksTest {
         override suspend fun <T> transaction(block: suspend () -> T): T = block()
     }
 
-    private fun order(parentId: String? = null) =
-        siblings(store.state.value, parentId).map { it.title }
+    private fun order(parentId: String? = null) = siblings(store.state.value, parentId).map { it.title }
 
     private suspend fun abc() {
         tasks.add("a")
