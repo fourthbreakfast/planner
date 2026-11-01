@@ -282,6 +282,12 @@ private fun TaskList(
     val display = remember(rows) { rows + EndRow }
 
     val list = rememberLazyListState()
+    // the list first has only its end spacer, and the tasks arrive above it: left alone, it would keep the spacer in view
+    // and open scrolled down. So when the tasks come in after the first look, it goes to the top once.
+    val startedEmpty = remember { tasks.isEmpty() }
+    LaunchedEffect(tasks.isNotEmpty()) {
+        if (startedEmpty && tasks.isNotEmpty()) list.scrollToItem(0)
+    }
     val endSpace = Space.listEnd()
     val focusManager = LocalFocusManager.current
     // the add line stays in use after enter. It ends when the keyboard goes away (back) or on a touch elsewhere

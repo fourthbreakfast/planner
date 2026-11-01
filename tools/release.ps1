@@ -35,8 +35,19 @@ finally { Pop-Location }
 $apk = "$root\android\app\build\outputs\apk\release\planner-$Version.apk"
 Move-Item -Force "$root\android\app\build\outputs\apk\release\app-release.apk" $apk
 
+# the release notes are this version's part of CHANGELOG.md; without one, github writes its own
+$notes = @('--generate-notes')
+$changelog = Get-Content "$root\CHANGELOG.md" -Raw -ErrorAction SilentlyContinue
+if ($changelog -match "(?ms)^## $([regex]::Escape($Version))[^\r\n]*\r?\n(.*?)(?=^## |\z)") {
+    $notesFile = Join-Path $env:TEMP "planner-$Version-notes.md"
+    [System.IO.File]::WriteAllText($notesFile, $Matches[1].Trim(), (New-Object System.Text.UTF8Encoding $false))
+    $notes = @('--notes-file', (wsl -d NixOS -- wslpath -a ($notesFile -replace '\\', '/')))
+} else {
+    Write-Host "no section for $Version in CHANGELOG.md, using github's own notes"
+}
+
 # gh is signed in on nixos
 $linuxApk = (wsl -d NixOS -- wslpath -a ($apk -replace '\\', '/'))
-wsl -d NixOS -- gh release create "v$Version" $linuxApk --repo fourthbreakfast/planner --title "planner $Version" --generate-notes
+wsl -d NixOS -- gh release create "v$Version" $linuxApk --repo fourthbreakfast/planner --title "planner $Version" @notes
 if ($LASTEXITCODE) { throw 'publishing failed' }
 Write-Host "published v$Version"
