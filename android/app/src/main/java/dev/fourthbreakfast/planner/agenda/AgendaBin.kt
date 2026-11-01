@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.tasks.BinBar
+import dev.fourthbreakfast.planner.tasks.Tab
 import dev.fourthbreakfast.planner.tasks.QuietButton
 import dev.fourthbreakfast.planner.ui.theme.Space
 
@@ -41,7 +42,7 @@ fun AgendaBin(entries: List<Event>, viewModel: AgendaViewModel, onClose: () -> U
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { BinBar(entries.size, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
+        topBar = { BinBar(entries.size, Tab.AGENDA, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
     ) { padding ->
         if (entries.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {

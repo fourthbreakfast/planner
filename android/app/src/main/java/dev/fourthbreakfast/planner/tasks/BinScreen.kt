@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,6 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -44,7 +45,7 @@ fun BinScreen(entries: List<BinEntry>, viewModel: TasksViewModel, onClose: () ->
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { BinBar(entries.size, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
+        topBar = { BinBar(entries.size, Tab.TASKS, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
     ) { padding ->
         if (entries.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -105,11 +106,43 @@ fun BinScreen(entries: List<BinEntry>, viewModel: TasksViewModel, onClose: () ->
     }
 }
 
-/** The top of a bin. Its word is plain type, not a tab, and it sits low enough that the arrow is where the bin button was. */
+/**
+ * The top of a bin. The word "bin" is in the calculator lettering, in the place of the tab it was opened from (tasks
+ * at the left, agenda in the middle, notes at the right), and the row under it is the main screen's row: the count
+ * at the left, the arrow where the bin button was.
+ */
 @Composable
-fun BinBar(count: Int, onEmpty: () -> Unit, onClose: () -> Unit) {
-    Column(Modifier.statusBarsPadding()) {
-        Spacer(Modifier.height(Space.touch))
+fun BinBar(count: Int, from: Tab, onEmpty: () -> Unit, onClose: () -> Unit) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = Space.rowPad),
+        ) {
+            listOf(Tab.TASKS, Tab.AGENDA, Tab.NOTES).forEach { tab ->
+                Box(
+                    contentAlignment = when (tab) {
+                        Tab.TASKS -> Alignment.CenterStart
+                        Tab.AGENDA -> Alignment.Center
+                        Tab.NOTES -> Alignment.CenterEnd
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = Space.touch)
+                        .padding(horizontal = Space.gutter - Space.rowPad),
+                ) {
+                    if (tab == from) {
+                        SegmentText(
+                            text = stringResource(R.string.bin),
+                            color = MaterialTheme.colorScheme.onBackground,
+                            scale = TAB_SCALE,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                    }
+                }
+            }
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -117,7 +150,7 @@ fun BinBar(count: Int, onEmpty: () -> Unit, onClose: () -> Unit) {
                 .padding(start = Space.gutter, end = Space.rowPad),
         ) {
             TitleWithCount(
-                title = stringResource(R.string.bin),
+                title = null,
                 count = count,
                 countLabel = stringResource(R.string.bin_with_count, count),
                 modifier = Modifier.weight(1f),

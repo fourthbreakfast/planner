@@ -346,7 +346,7 @@ private fun NotesBin(entries: List<Note>, viewModel: NotesViewModel, onClose: ()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { BinBar(entries.size, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
+        topBar = { BinBar(entries.size, Tab.NOTES, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
     ) { padding ->
         if (entries.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
