@@ -2,6 +2,11 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 0.5.1
+
+- the search magnifier now sits right after the count on every tab, so the controls at the right edge stay as few as before
+- fixed: a white flash between screens in dark mode
+
 ## 0.5.0
 
 - a search over tasks, events and notes, from the magnifying glass beside the bin
