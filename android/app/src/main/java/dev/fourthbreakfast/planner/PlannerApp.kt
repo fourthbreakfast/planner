@@ -1,6 +1,10 @@
 package dev.fourthbreakfast.planner
 
 import android.app.Application
+import androidx.core.graphics.drawable.IconCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.content.pm.ShortcutInfoCompat
+import android.content.Intent
 import dev.fourthbreakfast.planner.backup.AutoBackup
 import androidx.room.Room
 import dev.fourthbreakfast.planner.core.Backups
@@ -31,6 +35,7 @@ class PlannerApp : Application() {
     private val reminders by lazy { Reminders(this) }
 
     val settings: UiSettings by lazy { UiSettings(this) }
+    val requests = Requests()
 
     val tasks: Tasks by lazy { Tasks(taskStore) }
     val events: Events by lazy { Events(eventStore) }
@@ -40,8 +45,26 @@ class PlannerApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        setUpShortcuts()
         // the alarms follow the agenda: every change to an event sets or takes away its alarm
         scope.launch { events.all.collect { reminders.sync(it) } }
+    }
+
+    /** The launcher's long-press shortcuts: a new task, a new event, a new note. */
+    private fun setUpShortcuts() {
+        fun shortcut(id: String, label: Int, action: String) = ShortcutInfoCompat.Builder(this, id)
+            .setShortLabel(getString(label))
+            .setIcon(IconCompat.createWithResource(this, R.drawable.ic_shortcut_add))
+            .setIntent(Intent(this, MainActivity::class.java).setAction(action))
+            .build()
+        ShortcutManagerCompat.setDynamicShortcuts(
+            this,
+            listOf(
+                shortcut("new_task", R.string.shortcut_task, MainActivity.NEW_TASK),
+                shortcut("new_event", R.string.shortcut_event, MainActivity.NEW_EVENT),
+                shortcut("new_note", R.string.shortcut_note, MainActivity.NEW_NOTE),
+            ),
+        )
     }
 
     /** Writes the daily backup when it is due. Called whenever the app goes out of sight. */

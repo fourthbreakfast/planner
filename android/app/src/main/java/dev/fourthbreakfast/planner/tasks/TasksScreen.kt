@@ -1,6 +1,18 @@
 package dev.fourthbreakfast.planner.tasks
 
 import androidx.compose.ui.window.PopupPositionProvider
+import dev.fourthbreakfast.planner.PlannerApp
+import dev.fourthbreakfast.planner.Launch
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.AnimatedContent
+import android.provider.Settings
 import dev.fourthbreakfast.planner.settings.SettingsScreen
 import kotlinx.coroutines.coroutineScope
 import androidx.compose.ui.window.PopupProperties
@@ -134,28 +146,68 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
     val entries = remember(all) { binEntries(all.orEmpty()) }
     val active = remember(all) { all.orEmpty().filterNot { it.inBin } }
     val openSettings = { settingsOpen = true }
-    if (settingsOpen) {
-        SettingsScreen(viewModel, onClose = { settingsOpen = false })
-    } else if (tab == Tab.AGENDA) {
-        AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings)
-    } else if (tab == Tab.NOTES) {
-        NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings)
-    } else if (binOpen) {
-        BinScreen(entries, viewModel, onClose = { binOpen = false })
-    } else {
-        // keeps the aim and collapsed tasks while the bin is open
-        listState.SaveableStateProvider("list") {
-            TaskList(
-                tasks = active,
-                binCount = entries.size,
-                onOpenBin = { binOpen = true },
-                onSelectTab = { tab = it },
-                onOpenSettings = openSettings,
-                viewModel = viewModel,
-            )
+    val context = LocalContext.current
+    val requests = (context.applicationContext as PlannerApp).requests
+    val request = requests.pending
+    // a shortcut, a notification or a share brings the app to the right tab, which then acts on it
+    LaunchedEffect(request) {
+        val target = when (request) {
+            Launch.NewTask, Launch.ShowTasks -> Tab.TASKS
+            Launch.NewEvent, is Launch.OpenEvent -> Tab.AGENDA
+            Launch.NewNote, is Launch.OpenNote, is Launch.Shared -> Tab.NOTES
+            null -> null
+        }
+        if (target != null) {
+            tab = target
+            settingsOpen = false
+            if (target == Tab.TASKS) binOpen = false
+            if (request == Launch.ShowTasks) requests.clear()
+        }
+    }
+    // with animations switched off in the phone's settings, screens just change
+    val animated = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f }
+    AnimatedContent(
+        targetState = Place(tab, settingsOpen, binOpen),
+        transitionSpec = {
+            when {
+                !animated -> EnterTransition.None togetherWith ExitTransition.None
+                // settings and the bin fade in and out; moving between tabs slides the way the finger swept
+                initialState.settings != targetState.settings || initialState.bin != targetState.bin ->
+                    fadeIn(tween(160)) togetherWith fadeOut(tween(120))
+                else -> {
+                    val way = if (targetState.tab.ordinal > initialState.tab.ordinal) 1 else -1
+                    (slideInHorizontally(tween(220)) { way * it / 5 } + fadeIn(tween(220))) togetherWith
+                        (slideOutHorizontally(tween(220)) { -way * it / 5 } + fadeOut(tween(140)))
+                }
+            }
+        },
+        label = "screen",
+    ) { place ->
+        when {
+            place.settings -> SettingsScreen(viewModel, onClose = { settingsOpen = false })
+            place.tab == Tab.AGENDA ->
+                AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings)
+            place.tab == Tab.NOTES ->
+                NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings)
+            place.bin -> BinScreen(entries, viewModel, onClose = { binOpen = false })
+            else ->
+                // keeps the aim and collapsed tasks while the bin is open
+                listState.SaveableStateProvider("list") {
+                    TaskList(
+                        tasks = active,
+                        binCount = entries.size,
+                        onOpenBin = { binOpen = true },
+                        onSelectTab = { tab = it },
+                        onOpenSettings = openSettings,
+                        viewModel = viewModel,
+                    )
+                }
         }
     }
 }
+
+/** Which screen is showing, as one value, so a change of it can be animated. */
+private data class Place(val tab: Tab, val settings: Boolean, val bin: Boolean)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -168,6 +220,14 @@ private fun TaskList(
     viewModel: TasksViewModel,
 ) {
     val prefs = LocalContext.current.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    val addFocus = remember { FocusRequester() }
+    val requests = (LocalContext.current.applicationContext as PlannerApp).requests
+    LaunchedEffect(requests.pending) {
+        if (requests.pending == Launch.NewTask) {
+            requests.clear()
+            addFocus.requestFocus()
+        }
+    }
     var order by remember {
         mutableStateOf(
             SortOrder.entries.firstOrNull { it.name == prefs.getString(PREF_SORT, null) } ?: SortOrder.TREE,
@@ -376,6 +436,7 @@ private fun TaskList(
                     aimedTask?.let { collapsedIds = ArrayList(collapsedIds - it.id) }
                     addText = ""
                 },
+                focus = addFocus,
                 modifier = Modifier.onGloballyPositioned { addBarBounds = it.boundsInRoot() },
             )
         },
@@ -766,6 +827,7 @@ private fun AddBar(
     onClearAim: () -> Unit,
     onFocusChange: (Boolean) -> Unit,
     onAdd: () -> Unit,
+    focus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -816,6 +878,7 @@ private fun AddBar(
             keyboardActions = KeyboardActions(onDone = { onAdd() }),
             modifier = Modifier
                 .fillMaxWidth()
+                .focusRequester(focus)
                 .onFocusChanged {
                     focused = it.isFocused
                     onFocusChange(it.isFocused)

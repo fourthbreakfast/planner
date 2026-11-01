@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.lifecycle.ViewModel
+import dev.fourthbreakfast.planner.core.plainBody
 import androidx.lifecycle.viewModelScope
 import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.Notes
@@ -14,6 +15,11 @@ class NotesViewModel(private val notes: Notes) : ViewModel() {
     /** Makes an empty note and hands over its id once it exists. */
     fun add(onAdded: (String) -> Unit) {
         viewModelScope.launch { onAdded(notes.add()) }
+    }
+
+    /** Makes a note out of text shared from another app. */
+    fun addShared(text: String, subject: String, onAdded: (String) -> Unit) {
+        viewModelScope.launch { onAdded(notes.add(subject, plainBody(text))) }
     }
 
     fun save(id: String, title: String, body: String) {
