@@ -1,11 +1,14 @@
 planner, android app
 kotlin, jetpack compose, minsdk 26, targetsdk 37, package dev.fourthbreakfast.planner
 built on windows with android studio, nothing here depends on nixos
-tested 2026-10-31: builds from the command line and runs on a moto g84 5g (android 17, api 37)
+tested 2026-11-01: builds from the command line and runs on a moto g84 5g (android 17, api 37)
 
 STRUCTURE
-core: tasks and all their rules, plain kotlin with no android, the only way to change tasks is the Tasks class. tested on a computer with gradlew :core:test
-app: the android screens, and data/ which keeps tasks in room behind the TaskStore interface from core
+core: everything the app knows, as plain kotlin with no android, tested on a computer with gradlew :core:test. tasks, events and notes each have a rules class (Tasks, Events, Notes) that is the only way to change them, a store interface they are kept behind, and tests with an in-memory store. also here: the note text format and its looks (NoteBody), the backup file (Backup, Backups), reminder times (Reminder), what the widget says (WidgetLines) and search (Search)
+app: the android side. screens in tasks, agenda, notes, search and settings, one folder each; data holds the room tables behind the core stores; reminders sets the alarms and shows the notifications; widget is the home screen widget; backup writes the daily file; ui/theme holds the colours, the type and the spacing scale (Space.kt), which the design system in ../docs/design-system mirrors; Requests carries a shortcut, a share or a notification to the right screen
+
+DATABASE
+room, schema files in app/schemas, a new version for every change with an auto migration so nothing a person has saved is ever lost. a change to the database needs an upgrade test on a phone with data in it before a release
 
 BUILD from the command line, no android studio window needed
 set JAVA_HOME to the jdk that ships with android studio (C:\Program Files\Android\Android Studio\jbr)
@@ -35,6 +38,7 @@ kotlin 2.4.21
 compose bom 2026.09.00
 core-ktx 1.19.1, lifecycle (runtime-ktx, runtime-compose, viewmodel-compose) 2.11.0, activity-compose 1.13.0
 room 2.8.5, ksp 2.3.13, kotlinx-coroutines 1.11.0
+fonts bundled in app/src/main/res/font: ibm plex sans (regular, bold, italic) and ibm plex mono (regular, medium), licence in ../docs/licenses
 compilesdk 37, targetsdk 37, minsdk 26
 
 MOVING FORWARD, only on purpose, one commit per round
