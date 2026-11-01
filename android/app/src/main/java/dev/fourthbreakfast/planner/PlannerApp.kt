@@ -1,6 +1,8 @@
 package dev.fourthbreakfast.planner
 
 import android.app.Application
+import kotlinx.coroutines.flow.combine
+import dev.fourthbreakfast.planner.widget.PlannerWidget
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.content.pm.ShortcutInfoCompat
@@ -48,6 +50,8 @@ class PlannerApp : Application() {
         setUpShortcuts()
         // the alarms follow the agenda: every change to an event sets or takes away its alarm
         scope.launch { events.all.collect { reminders.sync(it) } }
+        // and the widget on the home screen follows the events and the tasks
+        scope.launch { combine(events.all, tasks.all) { e, t -> e to t }.collect { (e, t) -> PlannerWidget.update(this@PlannerApp, e, t) } }
     }
 
     /** The launcher's long-press shortcuts: a new task, a new event, a new note. */
@@ -70,6 +74,11 @@ class PlannerApp : Application() {
     /** Writes the daily backup when it is due. Called whenever the app goes out of sight. */
     fun backUpIfDue() {
         scope.launch { autoBackup.runIfDue() }
+    }
+
+    /** Draws the home screen widgets again, for when the widget is added or resized or the day changes. */
+    fun refreshWidgets() {
+        scope.launch { PlannerWidget.update(this@PlannerApp, events.all.first(), tasks.all.first()) }
     }
 
     /** Sets every alarm again, for after a restart or a change of the clock. */
