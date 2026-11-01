@@ -8,8 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import dev.fourthbreakfast.planner.ui.theme.Space
 import androidx.compose.ui.unit.dp
+import dev.fourthbreakfast.planner.ui.theme.Space
 
 // which of the seven bars light up for each digit: top, top right, bottom right, bottom, bottom left, top left, middle
 private val DIGITS = listOf(
@@ -37,6 +37,7 @@ private fun DrawScope.drawBar(bar: Char, left: Float, scale: Float, color: Color
     val gap = 0.45.dp.toPx() * scale
     val slant = 0.12f
     val half = t / 2
+
     // the bars lean right, the higher the further
     fun x(px: Float, py: Float) = left + px + (h - py) * slant
     val path = Path()

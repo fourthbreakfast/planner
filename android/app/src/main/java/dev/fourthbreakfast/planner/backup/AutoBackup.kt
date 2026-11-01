@@ -67,5 +67,4 @@ class AutoBackup(private val context: Context, private val backups: Backups, pri
 }
 
 /** A folder address as something short to read: "documents/backups". */
-fun folderName(folder: String): String =
-    Uri.decode(Uri.parse(folder).lastPathSegment.orEmpty()).substringAfter(':').ifEmpty { "/" }
+fun folderName(folder: String): String = Uri.decode(Uri.parse(folder).lastPathSegment.orEmpty()).substringAfter(':').ifEmpty { "/" }

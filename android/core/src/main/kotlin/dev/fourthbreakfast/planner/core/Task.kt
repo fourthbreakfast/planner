@@ -33,9 +33,4 @@ data class Task(
 enum class SortOrder { TREE, PRIORITY }
 
 /** Where a moved task lands. With neither [beforeId] nor [afterId] it goes last among its new siblings. */
-data class Destination(
-    val parentId: String? = null,
-    val beforeId: String? = null,
-    val afterId: String? = null,
-)
-
+data class Destination(val parentId: String? = null, val beforeId: String? = null, val afterId: String? = null)

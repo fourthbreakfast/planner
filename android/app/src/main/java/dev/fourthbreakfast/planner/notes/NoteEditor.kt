@@ -1,17 +1,6 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.activity.compose.BackHandler
-import dev.fourthbreakfast.planner.tasks.QuietButton
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.Key
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,14 +13,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -40,22 +31,31 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -63,7 +63,6 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -80,6 +79,7 @@ import dev.fourthbreakfast.planner.core.parseBody
 import dev.fourthbreakfast.planner.core.restyle
 import dev.fourthbreakfast.planner.core.toggleStyle
 import dev.fourthbreakfast.planner.tasks.BackButton
+import dev.fourthbreakfast.planner.tasks.QuietButton
 import dev.fourthbreakfast.planner.tasks.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.delay
@@ -301,7 +301,15 @@ private class NoteEditState(initialTitle: String, body: String) {
 
 /** Writing one note: a row of marks at the top, then lines of text, each of which can be a list item. */
 @Composable
-fun NoteEditor(initialTitle: String, initialBody: String, pinned: Boolean, onPin: () -> Unit, toolbarAbove: Boolean, onSave: (String, String) -> Unit, onClose: (String, String) -> Unit) {
+fun NoteEditor(
+    initialTitle: String,
+    initialBody: String,
+    pinned: Boolean,
+    onPin: () -> Unit,
+    toolbarAbove: Boolean,
+    onSave: (String, String) -> Unit,
+    onClose: (String, String) -> Unit,
+) {
     val state = remember { NoteEditState(initialTitle, initialBody) }
     BackHandler { onClose(state.title, state.body()) }
     LaunchedEffect(state) {
@@ -466,14 +474,7 @@ private fun Toolbar(state: NoteEditState) {
 }
 
 @Composable
-private fun ToolButton(
-    glyph: String,
-    label: String,
-    on: Boolean,
-    modifier: Modifier,
-    look: Int = 0,
-    onClick: () -> Unit,
-) {
+private fun ToolButton(glyph: String, label: String, on: Boolean, modifier: Modifier, look: Int = 0, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
         contentAlignment = Alignment.Center,

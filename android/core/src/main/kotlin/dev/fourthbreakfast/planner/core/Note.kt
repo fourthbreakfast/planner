@@ -40,10 +40,7 @@ interface NoteStore {
 fun sortedNotes(notes: List<Note>): List<Note> = notes.sortedWith(compareBy({ !it.pinned }, { it.position }, { it.createdAt }))
 
 /** Everything the app can do with notes. */
-class Notes(
-    private val store: NoteStore,
-    private val clock: () -> Long = System::currentTimeMillis,
-) {
+class Notes(private val store: NoteStore, private val clock: () -> Long = System::currentTimeMillis) {
     /** Every note, the bin included, in the order they were put in. */
     val all: Flow<List<Note>> = store.observeAll().map(::sortedNotes)
 
@@ -126,8 +123,7 @@ class Notes(
 }
 
 /** What a note is called: its own title, or else its first line of words. */
-fun noteTitle(note: Note): String =
-    note.title.trim().ifEmpty { parseBody(note.body).firstOrNull { it.text.isNotBlank() }?.text?.trim() ?: "" }
+fun noteTitle(note: Note): String = note.title.trim().ifEmpty { parseBody(note.body).firstOrNull { it.text.isNotBlank() }?.text?.trim() ?: "" }
 
 /** The lines to show under the title: all of them, or all but the first when that line is what the title is borrowing. */
 fun linesUnderTitle(note: Note): List<NoteLine> {

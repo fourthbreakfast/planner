@@ -97,13 +97,7 @@ private fun cellWidth(char: Char) = when (char) {
  * such a display can do.
  */
 @Composable
-fun SegmentText(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-    scale: Float = 1f,
-    lit: Boolean = true,
-) {
+fun SegmentText(text: String, color: Color, modifier: Modifier = Modifier, scale: Float = 1f, lit: Boolean = true) {
     val lower = text.lowercase()
     val units = lower.sumOf { cellWidth(it).toDouble() }.toFloat() + LETTER_GAP * (lower.length - 1).coerceAtLeast(0) + CELL_H * SLANT
     Canvas(
@@ -156,7 +150,14 @@ private fun DrawScope.drawBar(bar: Int, left: Float, scale: Float, color: Color)
         listOf(x0 to yc, x0 + half to yc - half, x1 - half to yc - half, x1 to yc, x1 - half to yc + half, x0 + half to yc + half),
     )
     fun vertical(xc: Float, y0: Float, y1: Float) = polygon(
-        listOf(xc to y0 + gap, xc + half to y0 + half + gap, xc + half to y1 - half - gap, xc to y1 - gap, xc - half to y1 - half - gap, xc - half to y0 + half + gap),
+        listOf(
+            xc to y0 + gap,
+            xc + half to y0 + half + gap,
+            xc + half to y1 - half - gap,
+            xc to y1 - gap,
+            xc - half to y1 - half - gap,
+            xc - half to y0 + half + gap,
+        ),
     )
     fun diagonal(x0: Float, y0: Float, x1: Float, y1: Float) =
         drawLine(color, Offset(x(x0, y0), y0), Offset(x(x1, y1), y1), strokeWidth = t * 0.85f, cap = StrokeCap.Butt)

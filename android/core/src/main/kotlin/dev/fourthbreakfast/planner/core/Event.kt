@@ -26,5 +26,4 @@ data class Event(
 }
 
 /** Soonest first. Within a day, the whole-day events come before the timed ones. Ties keep the order they were made in. */
-fun sortedEvents(events: List<Event>): List<Event> =
-    events.sortedWith(compareBy<Event>({ it.day }, { it.minute ?: -1 }, { it.createdAt }))
+fun sortedEvents(events: List<Event>): List<Event> = events.sortedWith(compareBy<Event>({ it.day }, { it.minute ?: -1 }, { it.createdAt }))

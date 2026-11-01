@@ -4,10 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Everything the app can do with tasks. Any screen, on any platform, goes through here. */
-class Tasks(
-    private val store: TaskStore,
-    private val clock: () -> Long = System::currentTimeMillis,
-) {
+class Tasks(private val store: TaskStore, private val clock: () -> Long = System::currentTimeMillis) {
     /** Every task, including the bin, in tree order. */
     val all: Flow<List<Task>> = store.observeAll().map { sorted(it, SortOrder.TREE) }
 

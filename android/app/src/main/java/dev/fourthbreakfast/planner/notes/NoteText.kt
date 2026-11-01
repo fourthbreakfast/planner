@@ -3,10 +3,10 @@ package dev.fourthbreakfast.planner.notes
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import dev.fourthbreakfast.planner.core.BOLD
 import dev.fourthbreakfast.planner.core.ITALIC
 import dev.fourthbreakfast.planner.core.LineKind

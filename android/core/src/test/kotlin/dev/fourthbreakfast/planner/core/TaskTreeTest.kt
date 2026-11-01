@@ -4,8 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class TaskTreeTest {
-    private fun task(id: String, parentId: String? = null, done: Boolean = false) =
-        Task(id = id, title = id, parentId = parentId, done = done, createdAt = 0)
+    private fun task(id: String, parentId: String? = null, done: Boolean = false) = Task(id = id, title = id, parentId = parentId, done = done, createdAt = 0)
 
     private val tasks = listOf(
         task("a"),

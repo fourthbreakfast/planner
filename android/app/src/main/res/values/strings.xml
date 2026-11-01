@@ -14,6 +14,7 @@
     <string name="setting_widget">add the widget to the home screen</string>
     <string name="widget_description">today\'s events and your open tasks</string>
     <string name="widget_open">%1$d open</string>
+    <string name="widget_more">+%1$d more</string>
     <string name="widget_nothing">nothing today</string>
     <string name="pin">pin</string>
     <string name="unpin">unpin</string>

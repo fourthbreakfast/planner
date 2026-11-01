@@ -2,9 +2,9 @@ package dev.fourthbreakfast.planner.tasks
 
 import dev.fourthbreakfast.planner.core.Destination
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
-import dev.fourthbreakfast.planner.core.height
 import dev.fourthbreakfast.planner.core.SortOrder
 import dev.fourthbreakfast.planner.core.Task
+import dev.fourthbreakfast.planner.core.height
 import dev.fourthbreakfast.planner.core.siblings
 import dev.fourthbreakfast.planner.core.sorted
 import dev.fourthbreakfast.planner.core.subtree
@@ -13,13 +13,7 @@ sealed interface ListRow {
     val key: String
 }
 
-data class TaskNode(
-    val task: Task,
-    val depth: Int,
-    val childCount: Int,
-    val doneChildCount: Int,
-    val collapsed: Boolean,
-) : ListRow {
+data class TaskNode(val task: Task, val depth: Int, val childCount: Int, val doneChildCount: Int, val collapsed: Boolean) : ListRow {
     override val key get() = task.id
 }
 

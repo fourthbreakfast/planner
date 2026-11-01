@@ -1,17 +1,13 @@
 package dev.fourthbreakfast.planner.agenda
 
-import dev.fourthbreakfast.planner.tasks.SegmentTab
-import androidx.core.content.ContextCompat
-import androidx.compose.ui.platform.LocalContext
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.rememberLauncherForActivityResult
-import android.os.Build
-import android.content.pm.PackageManager
 import android.Manifest
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.border
-import androidx.compose.foundation.background
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,14 +20,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,12 +40,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.core.content.ContextCompat
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.tasks.BackButton
 import dev.fourthbreakfast.planner.tasks.QuietButton
+import dev.fourthbreakfast.planner.tasks.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
 
 /**
@@ -57,12 +57,7 @@ import dev.fourthbreakfast.planner.ui.theme.Space
  * Saving needs a name. A day left empty means today, a time left empty means the whole day.
  */
 @Composable
-fun EventEditor(
-    initial: Event?,
-    onSave: (EventDraft) -> Unit,
-    onDelete: (() -> Unit)?,
-    onClose: () -> Unit,
-) {
+fun EventEditor(initial: Event?, onSave: (EventDraft) -> Unit, onDelete: (() -> Unit)?, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     var title by rememberSaveable { mutableStateOf(initial?.title ?: "") }
     var day by rememberSaveable { mutableLongStateOf(initial?.day ?: today()) }
@@ -164,7 +159,8 @@ fun EventEditor(
                 reminder = picked
                 pickingReminder = false
                 // the first reminder asks to be allowed to notify
-                if (picked != null && Build.VERSION.SDK_INT >= 33 &&
+                if (picked != null &&
+                    Build.VERSION.SDK_INT >= 33 &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                 ) {
                     askToNotify.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -215,12 +211,7 @@ private fun Choice(text: String, onClick: () -> Unit) {
 
 /** A plain text field with nothing around it, like the add line. */
 @Composable
-private fun QuietField(
-    value: String,
-    onChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    singleLine: Boolean = true,
-) {
+private fun QuietField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, singleLine: Boolean = true) {
     val colors = MaterialTheme.colorScheme
     TextField(
         value = value,

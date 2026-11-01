@@ -1,14 +1,12 @@
 package dev.fourthbreakfast.planner.settings
 
-import androidx.activity.compose.BackHandler
-import dev.fourthbreakfast.planner.backup.folderName
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.rememberLauncherForActivityResult
-import android.net.Uri
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
-import dev.fourthbreakfast.planner.widget.PlannerWidget
+import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,12 +35,15 @@ import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
+import dev.fourthbreakfast.planner.ThemeChoice
+import dev.fourthbreakfast.planner.backup.folderName
 import dev.fourthbreakfast.planner.tasks.BackButton
 import dev.fourthbreakfast.planner.tasks.DiscreetMessage
 import dev.fourthbreakfast.planner.tasks.SegmentTab
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.rememberBackupFiles
 import dev.fourthbreakfast.planner.ui.theme.Space
+import dev.fourthbreakfast.planner.widget.PlannerWidget
 
 private const val RELEASES = "https://github.com/fourthbreakfast/planner/releases/latest"
 
@@ -94,12 +95,12 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
                 label = stringResource(R.string.setting_theme),
                 value = stringResource(
                     when (settings.theme) {
-                        1 -> R.string.theme_light
-                        2 -> R.string.theme_dark
-                        else -> R.string.theme_system
+                        ThemeChoice.LIGHT -> R.string.theme_light
+                        ThemeChoice.DARK -> R.string.theme_dark
+                        ThemeChoice.SYSTEM -> R.string.theme_system
                     },
                 ),
-            ) { settings.chooseTheme((settings.theme + 1) % 3) }
+            ) { settings.chooseTheme(ThemeChoice.entries[(settings.theme.ordinal + 1) % ThemeChoice.entries.size]) }
             Setting(
                 label = stringResource(R.string.setting_backup),
                 value = settings.backupFolder?.let { folderName(it) } ?: stringResource(R.string.backup_off),

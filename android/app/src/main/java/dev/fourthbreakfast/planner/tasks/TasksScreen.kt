@@ -1,52 +1,38 @@
 package dev.fourthbreakfast.planner.tasks
 
-import androidx.compose.ui.window.PopupPositionProvider
-import dev.fourthbreakfast.planner.search.SearchScreen
-import dev.fourthbreakfast.planner.PlannerApp
-import dev.fourthbreakfast.planner.Launch
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.AnimatedContent
-import android.provider.Settings
-import dev.fourthbreakfast.planner.settings.SettingsScreen
-import kotlinx.coroutines.coroutineScope
-import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.border
 import android.content.Context
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,7 +41,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -69,7 +54,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -84,28 +68,23 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -114,21 +93,25 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.fourthbreakfast.planner.Launch
+import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.agenda.AgendaScreen
-import dev.fourthbreakfast.planner.notes.NotesScreen
-import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
-import dev.fourthbreakfast.planner.ui.theme.Space
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
 import dev.fourthbreakfast.planner.core.SortOrder
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.binEntries
 import dev.fourthbreakfast.planner.core.subtree
+import dev.fourthbreakfast.planner.notes.NotesScreen
+import dev.fourthbreakfast.planner.notes.NotesViewModel
+import dev.fourthbreakfast.planner.search.SearchScreen
+import dev.fourthbreakfast.planner.settings.SettingsScreen
+import dev.fourthbreakfast.planner.ui.theme.Space
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -155,7 +138,7 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
     // a shortcut, a notification or a share brings the app to the right tab, which then acts on it
     LaunchedEffect(request) {
         val target = when (request) {
-            Launch.NewTask, Launch.ShowTasks -> Tab.TASKS
+            Launch.NewTask -> Tab.TASKS
             Launch.NewEvent, is Launch.OpenEvent -> Tab.AGENDA
             Launch.NewNote, is Launch.OpenNote, is Launch.Shared -> Tab.NOTES
             null -> null
@@ -165,7 +148,6 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
             settingsOpen = false
             searchOpen = false
             if (target == Tab.TASKS) binOpen = false
-            if (request == Launch.ShowTasks) requests.clear()
         }
     }
     // with animations switched off in the phone's settings, screens just change
@@ -201,7 +183,9 @@ fun TasksScreen(viewModel: TasksViewModel, agenda: AgendaViewModel, notes: Notes
             place.tab == Tab.AGENDA ->
                 AgendaScreen(agenda, onShowTasks = { tab = Tab.TASKS }, onShowNotes = { tab = Tab.NOTES }, onOpenSettings = openSettings)
             place.tab == Tab.NOTES ->
-                NotesScreen(notes, onShowAgenda = { tab = Tab.AGENDA }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings, onOpenSearch = openSearch)
+                NotesScreen(notes, onShowAgenda = {
+                    tab = Tab.AGENDA
+                }, onShowTasks = { tab = Tab.TASKS }, onOpenSettings = openSettings, onOpenSearch = openSearch)
             place.bin -> BinScreen(entries, viewModel, onClose = { binOpen = false })
             else ->
                 // keeps the aim and collapsed tasks while the bin is open
@@ -789,13 +773,7 @@ private fun TaskRow(
 
 /** Edits a title in place. Done or tapping elsewhere keeps the edit, back drops it. */
 @Composable
-private fun RenameField(
-    title: String,
-    style: TextStyle,
-    onRename: (String) -> Unit,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun RenameField(title: String, style: TextStyle, onRename: (String) -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
     var value by remember { mutableStateOf(TextFieldValue(title, TextRange(title.length))) }
     var hadFocus by remember { mutableStateOf(false) }
     var finished by remember { mutableStateOf(false) }
