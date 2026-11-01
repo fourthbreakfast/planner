@@ -130,7 +130,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
     val open = notes.firstOrNull { it.id == openId }
     // the list, a note and the bin fade into one another
     val mode = if (open != null) 1 else if (binOpen) 2 else 0
-    Crossfade(targetState = mode, animationSpec = tween(150), label = "notes") { shown ->
+    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "notes") { shown ->
     when {
         shown == 1 && open != null -> NoteEditor(
             initialTitle = open.title,

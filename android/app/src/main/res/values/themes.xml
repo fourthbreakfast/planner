@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Planner" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Planner" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- what shows before the first frame and behind a moving screen is the page colour, in dark as in light -->
+        <item name="android:windowBackground">@color/app_page</item>
+    </style>
 
     <style name="WidgetLine">
         <item name="android:layout_width">match_parent</item>
