@@ -57,6 +57,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.core.Note
+import dev.fourthbreakfast.planner.core.isBlankBody
 import dev.fourthbreakfast.planner.core.linesUnderTitle
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.tasks.AddButton
@@ -117,6 +118,13 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
             }
             else -> Unit
         }
+    }
+
+    // a note nobody wrote in does not stay: one left behind when the app was killed is taken away
+    LaunchedEffect(notes, openId) {
+        val now = System.currentTimeMillis()
+        notes.filter { it.id != openId && now - it.createdAt > 3000 && it.title.isBlank() && isBlankBody(it.body) }
+            .forEach { viewModel.dropEmpty(it.id) }
     }
 
     val open = notes.firstOrNull { it.id == openId }

@@ -498,6 +498,7 @@ private fun ToolButton(
 private fun TitleField(state: NoteEditState) {
     val colors = MaterialTheme.colorScheme
     val style = MaterialTheme.typography.headlineSmall
+    val titleLabel = stringResource(R.string.note_name)
     val borrowed = state.lines.firstOrNull { it.text.isNotBlank() }?.text?.trim() ?: ""
     Box(
         Modifier
@@ -520,7 +521,9 @@ private fun TitleField(state: NoteEditState) {
             textStyle = style.copy(color = colors.onBackground),
             cursorBrush = SolidColor(colors.onBackground),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { if (state.title.isEmpty()) contentDescription = titleLabel },
         )
     }
 }
