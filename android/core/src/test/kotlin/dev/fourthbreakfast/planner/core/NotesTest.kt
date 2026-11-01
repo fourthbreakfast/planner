@@ -234,7 +234,6 @@ class NoteTitleTest {
         val note = Note(title = "shopping", body = formatBody(listOf(NoteLine(text = "oat milk", styles = List(8) { 0 }))), createdAt = 1)
         assertTrue(matchesAll(noteText(note), searchWords("shop milk")))
         assertTrue(!matchesAll(noteText(note), searchWords("bread")))
-        assertTrue(matchesAll(eventText(Event(title = "dentist", day = 1, location = "main street", createdAt = 1)), searchWords("street")))
     }
 
     @Test

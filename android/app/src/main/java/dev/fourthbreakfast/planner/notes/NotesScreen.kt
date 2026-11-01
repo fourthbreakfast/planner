@@ -263,9 +263,9 @@ private fun NotesList(
                         title = null,
                         count = notes.size,
                         countLabel = pluralStringResource(R.plurals.notes_count, notes.size, notes.size),
+                        modifier = Modifier.weight(1f),
                     )
                     SearchButton(onOpenSearch)
-                    Spacer(Modifier.weight(1f))
                     BinButton(binCount, onOpenBin)
                 }
             }

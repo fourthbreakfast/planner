@@ -2,6 +2,10 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 0.5.2
+
+- the search is only on the notes tab, beside the bin, and it searches only the notes. the tasks and agenda bars are back to how they were
+
 ## 0.5.1
 
 - the search magnifier now sits right after the count on every tab, so the controls at the right edge stay as few as before, and it searches the tab you are on: tasks, events or notes. a task you touch in the results is scrolled to, with the closed tasks above it opened
