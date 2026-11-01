@@ -4,7 +4,7 @@ what changed in each release, newest first. these notes are also the text of eac
 
 ## 0.5.1
 
-- the search magnifier now sits right after the count on every tab, so the controls at the right edge stay as few as before
+- the search magnifier now sits right after the count on every tab, so the controls at the right edge stay as few as before, and it searches the tab you are on: tasks, events or notes. a task you touch in the results is scrolled to, with the closed tasks above it opened
 - fixed: a white flash between screens in dark mode
 
 ## 0.5.0
