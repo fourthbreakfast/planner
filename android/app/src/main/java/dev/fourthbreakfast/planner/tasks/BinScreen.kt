@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -42,27 +44,7 @@ fun BinScreen(entries: List<BinEntry>, viewModel: TasksViewModel, onClose: () ->
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            // the same bar as the main screen: title and number on the left, the controls on the right
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = Space.gutter, end = Space.rowPad),
-            ) {
-                TitleWithCount(
-                    title = stringResource(R.string.bin),
-                    count = entries.size,
-                    countLabel = stringResource(R.string.bin_with_count, entries.size),
-                    modifier = Modifier.weight(1f),
-                )
-                if (entries.isNotEmpty()) {
-                    QuietButton(stringResource(R.string.empty_bin)) { pending = PendingDelete(null) }
-                }
-                BackButton(onClose)
-            }
-        },
+        topBar = { BinBar(entries.size, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
     ) { padding ->
         if (entries.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -120,6 +102,29 @@ fun BinScreen(entries: List<BinEntry>, viewModel: TasksViewModel, onClose: () ->
                 QuietButton(stringResource(R.string.cancel)) { pending = null }
             },
         )
+    }
+}
+
+/** The top of a bin. Its word is plain type, not a tab, and it sits low enough that the arrow is where the bin button was. */
+@Composable
+fun BinBar(count: Int, onEmpty: () -> Unit, onClose: () -> Unit) {
+    Column(Modifier.statusBarsPadding()) {
+        Spacer(Modifier.height(Space.touch))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = Space.gutter, end = Space.rowPad),
+        ) {
+            TitleWithCount(
+                title = stringResource(R.string.bin),
+                count = count,
+                countLabel = stringResource(R.string.bin_with_count, count),
+                modifier = Modifier.weight(1f),
+            )
+            if (count > 0) QuietButton(stringResource(R.string.empty_bin), onEmpty)
+            BackButton(onClose)
+        }
     }
 }
 

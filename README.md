@@ -22,20 +22,20 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
   <tr><td>touch a task</td><td>open or close its subtasks</td></tr>
   <tr><td>touch a task while typing</td><td>add the new task inside it</td></tr>
   <tr><td>touch the dot on a task</td><td>change its priority</td></tr>
-  <tr><td>swipe right</td><td>move it to the bin</td></tr>
-  <tr><td>swipe left</td><td>rename it</td></tr>
-  <tr><td>hold and drag</td><td>move it, sideways to change how deep it goes</td></tr>
+  <tr><td>hold, then swipe right</td><td>move it to the bin</td></tr>
+  <tr><td>hold, then swipe left</td><td>rename it</td></tr>
+  <tr><td>hold and drag</td><td>move it: onto the middle of a task puts it inside at the end, onto a line puts it just above the task under the line. in priority order it snaps back among its own colour</td></tr>
   <tr><td>the dot at the top</td><td>switch between your own order (grey) and priority order (red)</td></tr>
   <tr><td>the triangle at the top</td><td>open or close everything</td></tr>
   <tr><td>tasks, agenda and notes along the top</td><td>touch a word to switch to that tab</td></tr>
-  <tr><td>sweep sideways on empty space</td><td>left goes on to the next tab (tasks, agenda, notes), right goes back, and it never loops</td></tr>
+  <tr><td>sweep sideways anywhere</td><td>left goes on to the next tab (tasks, agenda, notes), right goes back, and it never loops</td></tr>
   <tr><td>plus at the bottom right of the notes</td><td>add a note and start writing</td></tr>
   <tr><td>touch a note</td><td>write in it: the row at the top sets pull out, push in, numbered list, bulleted list, checkbox, bold, italic and underline; enter makes a new line and ends an empty list item</td></tr>
   <tr><td>hold a note and drag</td><td>put it in another place in the list</td></tr>
-  <tr><td>swipe a note right</td><td>move it to the notes bin, with undo</td></tr>
+  <tr><td>hold a note, then swipe right</td><td>move it to the notes bin, with undo</td></tr>
   <tr><td>plus at the bottom right of the agenda</td><td>add an event: name, day, time (all day, a start, or a start and end), place and notes</td></tr>
   <tr><td>touch an event</td><td>edit it</td></tr>
-  <tr><td>swipe an event right</td><td>move it to the agenda's own bin, with undo</td></tr>
+  <tr><td>hold an event, then swipe right</td><td>move it to the agenda's own bin, with undo</td></tr>
   <tr><td>hold the tasks tab</td><td>export everything to a file, or import it back</td></tr>
 </table>
 

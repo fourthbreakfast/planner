@@ -5,7 +5,7 @@ import dev.fourthbreakfast.planner.core.MAX_DEPTH
 import dev.fourthbreakfast.planner.core.height
 import dev.fourthbreakfast.planner.core.SortOrder
 import dev.fourthbreakfast.planner.core.Task
-import dev.fourthbreakfast.planner.core.ancestors
+import dev.fourthbreakfast.planner.core.siblings
 import dev.fourthbreakfast.planner.core.sorted
 import dev.fourthbreakfast.planner.core.subtree
 
@@ -56,12 +56,11 @@ fun arrange(tasks: List<Task>, order: SortOrder, collapsedIds: Collection<String
 data class Drop(val destination: Destination, val depth: Int)
 
 /**
- * Where a task dropped on this part of this row lands, or null if it would land inside itself.
- * Below the last of a group of subtasks there is a choice of depth: inside the parent, or out of it
- * right after it, or out of several parents at once. The task keeps its own depth unless the finger
- * has moved sideways, by [shift] levels, to ask for another one.
+ * Where a task dropped on this part of this row lands, or null if it cannot go there. Every place means one thing:
+ * the middle of a row puts the task inside it, at the end, and a line between two rows puts it just above the
+ * lower one, at that row's depth. Below the very last row it becomes the last main task.
  */
-fun resolveDrop(rows: List<ListRow>, tasks: List<Task>, taskId: String, targetKey: String, zone: DropZone, shift: Int = 0): Drop? {
+fun resolveDrop(rows: List<ListRow>, tasks: List<Task>, taskId: String, targetKey: String, zone: DropZone): Drop? {
     if (targetKey == EndRow.key) return Drop(Destination(), 0)
     val moving = subtree(tasks, taskId).mapTo(HashSet()) { it.id }
     // the task being moved is out of the way: it does not count as a neighbour of anything
@@ -69,25 +68,35 @@ fun resolveDrop(rows: List<ListRow>, tasks: List<Task>, taskId: String, targetKe
     val index = visible.indexOfFirst { it.key == targetKey }
     if (index < 0) return null
     val target = visible[index] as? TaskNode ?: return null
-    val task = target.task
-    val next = visible.getOrNull(index + 1) as? TaskNode
-    val ownDepth = rows.filterIsInstance<TaskNode>().firstOrNull { it.task.id == taskId }?.depth ?: 0
     // the deepest level this task, with everything inside it, can land on
     val deepest = MAX_DEPTH - height(tasks, taskId)
     fun fits(depth: Int, drop: Drop) = if (depth <= deepest) drop else null
+    fun above(row: TaskNode) = fits(row.depth, Drop(Destination(row.task.parentId, beforeId = row.task.id), row.depth))
     return when (zone) {
-        DropZone.BEFORE -> fits(target.depth, Drop(Destination(task.parentId, beforeId = task.id), target.depth))
-        DropZone.INTO -> fits(target.depth + 1, Drop(Destination(parentId = task.id), target.depth + 1))
-        DropZone.AFTER -> if (next != null && next.depth > target.depth) {
-            // an open parent's next row is its first child, so that is where this lands
-            fits(target.depth + 1, Drop(Destination(parentId = task.id, beforeId = next.task.id), target.depth + 1))
-        } else {
-            val lowest = next?.depth ?: 0
-            if (lowest > deepest) return null
-            val depth = (ownDepth + shift).coerceIn(lowest, minOf(target.depth, deepest))
-            val anchor = if (depth == target.depth) task else ancestors(tasks, task.parentId)[target.depth - depth - 1]
-            Drop(Destination(anchor.parentId, afterId = anchor.id), depth)
+        DropZone.BEFORE -> above(target)
+        DropZone.INTO -> fits(target.depth + 1, Drop(Destination(parentId = target.task.id), target.depth + 1))
+        DropZone.AFTER -> {
+            val next = visible.getOrNull(index + 1) as? TaskNode
+            if (next != null) above(next) else Drop(Destination(), 0)
         }
     }
 }
 
+/**
+ * In priority mode a task cannot leave its colour, so a drop only decides its place among the tasks of the same
+ * colour: dropped above all the reds, a yellow becomes the first yellow. It lands on the nearest one at or below
+ * where it was dropped, or after the last of them.
+ */
+fun rankedDestination(tasks: List<Task>, taskId: String, to: Destination): Destination {
+    val task = tasks.firstOrNull { it.id == taskId } ?: return to
+    val shown = sorted(siblings(tasks, to.parentId).filter { it.id != taskId }, SortOrder.PRIORITY)
+    val slot = when {
+        to.beforeId != null -> shown.indexOfFirst { it.id == to.beforeId }.takeIf { it >= 0 } ?: shown.size
+        to.afterId != null -> shown.indexOfFirst { it.id == to.afterId } + 1
+        else -> shown.size
+    }
+    fun alike(other: Task) = other.priority == task.priority && other.done == task.done
+    shown.drop(slot).firstOrNull(::alike)?.let { return Destination(to.parentId, beforeId = it.id) }
+    shown.lastOrNull(::alike)?.let { return Destination(to.parentId, afterId = it.id) }
+    return to
+}

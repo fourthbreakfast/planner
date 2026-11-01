@@ -3,7 +3,6 @@ package dev.fourthbreakfast.planner.notes
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,7 +22,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,9 +36,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -55,16 +52,17 @@ import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.linesUnderTitle
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.tasks.AddButton
-import dev.fourthbreakfast.planner.tasks.BackButton
+import dev.fourthbreakfast.planner.tasks.BinBar
 import dev.fourthbreakfast.planner.tasks.BinButton
 import dev.fourthbreakfast.planner.tasks.DiscreetMessage
 import dev.fourthbreakfast.planner.tasks.QuietButton
-import dev.fourthbreakfast.planner.tasks.SwipeBackground
+import dev.fourthbreakfast.planner.tasks.RowSwipe
+import dev.fourthbreakfast.planner.tasks.SwipeRow
 import dev.fourthbreakfast.planner.tasks.Tab
 import dev.fourthbreakfast.planner.tasks.TabBar
 import dev.fourthbreakfast.planner.tasks.TitleWithCount
-import dev.fourthbreakfast.planner.tasks.rememberUnsavedSwipe
-import dev.fourthbreakfast.planner.tasks.switchTabBySwiping
+import dev.fourthbreakfast.planner.tasks.rowKeyAt
+import dev.fourthbreakfast.planner.tasks.sweepAndHold
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.launch
 
@@ -136,7 +134,9 @@ private fun NotesList(
     BackHandler(onBack = onShowTasks)
     val list = rememberLazyListState()
     val endSpace = Space.listEnd()
-    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val swipe = remember(scope) { RowSwipe(scope, canGoLeft = false) }
+    var listBounds by remember { mutableStateOf(Rect.Zero) }
     val colors = MaterialTheme.colorScheme
     // the note held by a long press, where the finger is, and the note it would go in front of (the end key for last)
     var dragKey by remember { mutableStateOf<String?>(null) }
@@ -161,12 +161,31 @@ private fun NotesList(
         if (key != null && before != null) onMove(key, before.takeIf { it != END_KEY })
     }
 
-    val onNote = { at: Offset ->
-        list.layoutInfo.visibleItemsInfo.any { it.key != END_KEY && at.y >= it.offset && at.y < it.offset + it.size }
-    }
-
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .sweepAndHold(
+                enabled = true,
+                onSweepLeft = null,
+                onSweepRight = onShowAgenda,
+                rowAt = { at -> (list.rowKeyAt(at, listBounds) as? String)?.takeIf { it != END_KEY } },
+                swipe = swipe,
+                onSwipedRight = onRemove,
+                onHold = { key, at ->
+                    dragKey = key
+                    dragY = at.y - listBounds.top
+                    grab = dragY - (list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset ?: 0)
+                    updateDrop()
+                },
+                onDrag = { dy ->
+                    dragY += dy
+                    updateDrop()
+                },
+                onRelease = { moved ->
+                    if (!moved) dropKey = null
+                    finishDrag()
+                },
+            ),
         snackbarHost = {
             SnackbarHost(snackbarHost) { data ->
                 DiscreetMessage(data.visuals.message, data.visuals.actionLabel, data::performAction)
@@ -206,8 +225,7 @@ private fun NotesList(
             Box(
                 Modifier
                     .padding(padding)
-                    .fillMaxSize()
-                    .switchTabBySwiping(towardsLeft = false, onRow = { false }, onSwitch = onShowAgenda),
+                    .fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -224,32 +242,7 @@ private fun NotesList(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .switchTabBySwiping(towardsLeft = false, onRow = onNote, onSwitch = onShowAgenda)
-                    .pointerInput(Unit) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { start ->
-                                val row = list.layoutInfo.visibleItemsInfo
-                                    .firstOrNull { start.y >= it.offset && start.y < it.offset + it.size }
-                                val key = row?.key as? String
-                                if (row != null && key != null && key != END_KEY) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    dragKey = key
-                                    dragY = start.y
-                                    grab = start.y - row.offset
-                                    updateDrop()
-                                }
-                            },
-                            onDrag = { change, amount ->
-                                if (dragKey != null) {
-                                    change.consume()
-                                    dragY += amount.y
-                                    updateDrop()
-                                }
-                            },
-                            onDragEnd = { finishDrag() },
-                            onDragCancel = { finishDrag() },
-                        )
-                    },
+                    .onGloballyPositioned { listBounds = it.boundsInRoot() },
             ) {
                 items(notes, key = { it.id }) { note ->
                     val dragging = dragKey == note.id
@@ -267,7 +260,8 @@ private fun NotesList(
                                     shadowElevation = 12f
                                 }
                             },
-                        onOpen = { if (dragKey == null) onOpen(note.id) },
+                        swipe = swipe,
+                        onOpen = { onOpen(note.id) },
                         onRemove = { onRemove(note.id) },
                     )
                 }
@@ -294,20 +288,20 @@ private fun NotesList(
 private fun NoteRow(
     note: Note,
     dropAbove: Boolean,
+    swipe: RowSwipe,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val removeLabel = stringResource(R.string.remove_task)
-    val swipe = rememberUnsavedSwipe()
     val title = noteTitle(note)
     val preview = remember(note.title, note.body) { previewOf(linesUnderTitle(note), PREVIEW_LINES - 1) }
-    SwipeToDismissBox(
-        state = swipe,
-        enableDismissFromEndToStart = false,
-        backgroundContent = { SwipeBackground(swipe.dismissDirection, removeLabel, "") },
-        onDismiss = { onRemove() },
+    SwipeRow(
+        key = note.id,
+        swipe = swipe,
+        removeLabel = removeLabel,
+        renameLabel = "",
         modifier = modifier
             .drawBehind {
                 if (dropAbove) {
@@ -348,26 +342,7 @@ private fun NotesBin(entries: List<Note>, viewModel: NotesViewModel, onClose: ()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = Space.gutter, end = Space.rowPad),
-            ) {
-                TitleWithCount(
-                    title = stringResource(R.string.bin),
-                    count = entries.size,
-                    countLabel = stringResource(R.string.bin_with_count, entries.size),
-                    modifier = Modifier.weight(1f),
-                )
-                if (entries.isNotEmpty()) {
-                    QuietButton(stringResource(R.string.empty_bin)) { pending = PendingDelete(null) }
-                }
-                BackButton(onClose)
-            }
-        },
+        topBar = { BinBar(entries.size, onEmpty = { pending = PendingDelete(null) }, onClose = onClose) },
     ) { padding ->
         if (entries.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
