@@ -18,7 +18,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -189,5 +192,32 @@ fun QuietButton(label: String, enabled: Boolean, onClick: () -> Unit) {
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = if (enabled) 1f else 0.38f),
         )
+    }
+}
+
+/** A check box as a small drawing, the same one for tasks and notes: a rounded square, filled with a tick when checked. */
+@Composable
+fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.size(Space.check)) {
+    val tick = MaterialTheme.colorScheme.background
+    Canvas(modifier) {
+        val corner = CornerRadius(Space.radiusCheck.toPx())
+        if (checked) {
+            drawRoundRect(ink, cornerRadius = corner)
+            val path = Path().apply {
+                moveTo(size.width * 0.24f, size.height * 0.52f)
+                lineTo(size.width * 0.43f, size.height * 0.72f)
+                lineTo(size.width * 0.77f, size.height * 0.30f)
+            }
+            drawPath(path, tick, style = Stroke(Space.strokeThick.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        } else {
+            val line = Space.strokeThin.toPx()
+            drawRoundRect(
+                ink,
+                topLeft = Offset(line / 2, line / 2),
+                size = Size(size.width - line, size.height - line),
+                cornerRadius = corner,
+                style = Stroke(line),
+            )
+        }
     }
 }

@@ -35,6 +35,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// a swipe counts once it has gone this part of the screen's width
+private const val SWIPE_FRACTION = 4
+
 /** The key of the list row under a point of the screen, if there is one. */
 fun LazyListState.rowKeyAt(at: Offset, listBounds: Rect): Any? {
     if (!listBounds.contains(at)) return null
@@ -72,12 +75,12 @@ class RowSwipe(private val scope: CoroutineScope, private val canGoLeft: Boolean
         this.key = null
     }
 
-    /** Past half the width it counts: to the right it leaves the screen, to the left it comes back. */
+    /** Past a quarter of the width it counts: to the right it leaves the screen, to the left it comes back. */
     fun finish(onRight: (String) -> Unit, onLeft: (String) -> Unit) {
         val swiped = key ?: return
         scope.launch {
             val x = offset.value
-            if (x > width / 2) {
+            if (x > width / SWIPE_FRACTION) {
                 offset.animateTo(width)
                 onRight(swiped)
                 // the row stays out of sight until the list has caught up
@@ -85,7 +88,7 @@ class RowSwipe(private val scope: CoroutineScope, private val canGoLeft: Boolean
                 offset.snapTo(0f)
             } else {
                 offset.animateTo(0f)
-                if (x < -width / 2) onLeft(swiped)
+                if (x < -width / SWIPE_FRACTION) onLeft(swiped)
             }
             key = null
         }

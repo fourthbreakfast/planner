@@ -48,7 +48,7 @@ everything a row can do starts with holding it for a moment, so sweeping across 
   <tr><td>hold an event, then swipe right</td><td>move it to the agenda's bin, with undo</td></tr>
   <tr><th colspan="2">notes</th></tr>
   <tr><td>plus at the bottom right</td><td>add a note and start writing</td></tr>
-  <tr><td>touch a note</td><td>write in it; the row at the top sets pull out, push in, numbered list, bulleted list, checkbox, bold, italic and underline, and enter ends an empty list item</td></tr>
+  <tr><td>touch a note</td><td>write in it; the row at the top sets pull out, push in, numbered list, bulleted list, checkbox, bold, italic and underline, enter makes a new line, two make a new paragraph or end a list, and a selection can run across lines</td></tr>
   <tr><td>hold a note, then drag</td><td>put it somewhere else in the list</td></tr>
   <tr><td>hold a note, then swipe right</td><td>move it to the notes bin, with undo</td></tr>
   <tr><th colspan="2">everywhere</th></tr>
