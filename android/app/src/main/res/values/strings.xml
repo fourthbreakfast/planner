@@ -10,6 +10,7 @@
     <string name="settings_title">settings</string>
     <string name="setting_toolbar">notes toolbar</string>
     <string name="toolbar_top">top</string>
+    <string name="note_name">name of the note</string>
     <string name="setting_widget">add the widget to the home screen</string>
     <string name="widget_description">today\'s events and your open tasks</string>
     <string name="widget_open">%1$d open</string>

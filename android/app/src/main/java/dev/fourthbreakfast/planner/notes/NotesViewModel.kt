@@ -34,6 +34,11 @@ class NotesViewModel(private val notes: Notes) : ViewModel() {
         }
     }
 
+    /** Takes away a note nobody wrote in, left behind when the app was closed before the note was. */
+    fun dropEmpty(id: String) {
+        viewModelScope.launch { notes.dropIfEmpty(id) }
+    }
+
     fun setPinned(id: String, pinned: Boolean) {
         viewModelScope.launch { notes.setPinned(id, pinned) }
     }

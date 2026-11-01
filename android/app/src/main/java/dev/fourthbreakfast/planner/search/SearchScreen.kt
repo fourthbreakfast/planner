@@ -1,6 +1,8 @@
 package dev.fourthbreakfast.planner.search
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +79,7 @@ fun SearchScreen(
     val foundEvents = remember(allEvents, query) { allEvents.filter { !it.inBin && matchesAll(eventText(it), words) }.take(MOST) }
     val foundNotes = remember(allNotes, query) { allNotes.filter { !it.inBin && matchesAll(noteText(it), words) }.take(MOST) }
     val focus = remember { FocusRequester() }
+    val searchLabel = stringResource(R.string.search)
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     Scaffold(
@@ -99,6 +102,7 @@ fun SearchScreen(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = Space.touch)
+                        .semantics { if (query.isEmpty()) contentDescription = searchLabel }
                         .focusRequester(focus),
                     decorationBox = { field ->
                         Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.heightIn(min = Space.touch)) { field() }

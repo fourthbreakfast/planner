@@ -10,7 +10,7 @@
   <img src="docs/readme/hero.png" alt="the task list in dark and light, with a task being swiped to the bin" width="100%">
 </p>
 
-planner is a task list, agenda and notebook for android. it is a quick standalone first try, separate from any larger planned apps, that turned out to be useful on its own. tasks can have subtasks up to four levels deep, each one can have a priority, and anything you remove goes to a bin first. the agenda lists your events soonest first, with their day, time, place and notes. notes are plain text you can mark up: lists, checkboxes, bold, italic and underline. everything is stored on your phone, so there's no account and it works offline.
+planner is a task list, agenda and notebook for android, with reminders, search and a home screen widget. it is a quick standalone first try, separate from any larger planned apps, that turned out to be useful on its own. tasks can have subtasks up to four levels deep, each one can have a priority, and anything you remove goes to a bin first. the agenda lists your events soonest first, with their day, time, place and notes. notes are plain text you can mark up: lists, checkboxes, bold, italic and underline. everything is stored on your phone, so there's no account and it works offline.
 
 ### install
 
@@ -36,7 +36,13 @@ download the apk from the [latest release](https://github.com/fourthbreakfast/pl
   <tr><td>plus at the bottom right of the agenda</td><td>add an event: name, day, time (all day, a start, or a start and end), place and notes, and a reminder (none, at the time, 10 minutes or an hour before) once it has a start time</td></tr>
   <tr><td>touch an event</td><td>edit it</td></tr>
   <tr><td>hold an event, then swipe right</td><td>move it to the agenda's own bin, with undo</td></tr>
-  <tr><td>hold any tab</td><td>open the settings: export and import, where the notes toolbar sits, and a list of every gesture</td></tr>
+  <tr><td>hold any tab</td><td>open the settings: export and import, theme, a daily backup to a folder, where the notes toolbar sits, a link to the latest release, the widget, and a list of every gesture</td></tr>
+  <tr><td>the magnifying glass beside the bin</td><td>search the tasks, the agenda and the notes at once; touching a result goes to it</td></tr>
+  <tr><td>pin, in a note</td><td>keep the note above the others</td></tr>
+  <tr><td>hold the app icon</td><td>new task, new event or new note, straight away</td></tr>
+  <tr><td>share text from another app to planner</td><td>it becomes a note</td></tr>
+  <tr><td>a reminder notification</td><td>touch it to open the event, or snooze it for 10 minutes</td></tr>
+  <tr><td>the home screen widget</td><td>today's events and your open tasks; add it from the settings</td></tr>
   <tr><td>undo and redo at the top of a note</td><td>step back and forward through what you wrote and marked (ctrl+z and ctrl+b, i, u work with a keyboard)</td></tr>
 </table>
 

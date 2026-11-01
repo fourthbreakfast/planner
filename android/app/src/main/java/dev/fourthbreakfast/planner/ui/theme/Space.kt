@@ -60,4 +60,7 @@ object Space {
     // the agenda
     /** Width of the time at the left of an event. */
     val timeColumn = 64.dp
+
+    /** The same for a twelve hour clock, where "11:30 pm" is longer. Both grow with the phone's text size. */
+    val timeColumn12 = 88.dp
 }

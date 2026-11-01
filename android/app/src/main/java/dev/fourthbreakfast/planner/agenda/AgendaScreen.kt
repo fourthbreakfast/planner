@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.agenda
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalDensity
 import dev.fourthbreakfast.planner.tasks.SearchButton
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.Launch
@@ -305,7 +306,8 @@ private fun EventRow(
                 .heightIn(min = Space.touch)
                 .padding(start = Space.gutter, end = Space.gutter, top = Space.x3, bottom = Space.x3),
         ) {
-            Column(Modifier.width(Space.timeColumn)) {
+            val textScale = LocalDensity.current.fontScale.coerceIn(1f, 2f)
+            Column(Modifier.width((if (is24Hour) Space.timeColumn else Space.timeColumn12) * textScale).padding(end = Space.x2)) {
                 Text(
                     text = event.minute?.let { timeText(it, is24Hour) } ?: stringResource(R.string.all_day),
                     style = if (event.minute != null) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
