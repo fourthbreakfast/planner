@@ -22,8 +22,8 @@ android {
         applicationId = "dev.fourthbreakfast.planner"
         minSdk = 26
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.5.2"
+        versionCode = 9
+        versionName = "0.6.0"
 
         manifestPlaceholders["appLabel"] = "planner"
 
