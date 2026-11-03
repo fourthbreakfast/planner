@@ -48,6 +48,12 @@ import dev.fourthbreakfast.planner.data.RoomNoteStore
 import dev.fourthbreakfast.planner.data.RoomSyncLedger
 import dev.fourthbreakfast.planner.data.RoomTaskStore
 import dev.fourthbreakfast.planner.notes.NotesViewModel
+import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.shortcut_event
+import dev.fourthbreakfast.planner.resources.shortcut_note
+import dev.fourthbreakfast.planner.resources.shortcut_task
+import dev.fourthbreakfast.planner.resources.tray_open
+import dev.fourthbreakfast.planner.resources.tray_quit
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.ui.BackStack
 import dev.fourthbreakfast.planner.ui.DesktopPrefs
@@ -68,6 +74,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.compose.resources.stringResource
 
 /** Where the app keeps its database and its Syncthing: %APPDATA%\planner on Windows. */
 private fun dataFolder(): File {
@@ -177,12 +184,12 @@ fun main(args: Array<String>) {
             tooltip = "planner",
             onAction = { show() },
             menu = {
-                Item("open planner", onClick = { show() })
-                Item("new task", onClick = { show(Launch.NewTask) })
-                Item("new event", onClick = { show(Launch.NewEvent) })
-                Item("new note", onClick = { show(Launch.NewNote) })
+                Item(stringResource(Res.string.tray_open), onClick = { show() })
+                Item(stringResource(Res.string.shortcut_task), onClick = { show(Launch.NewTask) })
+                Item(stringResource(Res.string.shortcut_event), onClick = { show(Launch.NewEvent) })
+                Item(stringResource(Res.string.shortcut_note), onClick = { show(Launch.NewNote) })
                 Separator()
-                Item("quit", onClick = ::quit)
+                Item(stringResource(Res.string.tray_quit), onClick = ::quit)
             },
         )
         Window(

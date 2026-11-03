@@ -66,6 +66,14 @@
     <string name="update_downloading">downloading…</string>
     <string name="update_failed">could not reach github</string>
     <string name="update_daily">check for updates every day</string>
+    <string name="tray_open">open planner</string>
+    <string name="tray_quit">quit</string>
+    <string name="window_minimize">minimize</string>
+    <string name="window_maximize">maximize</string>
+    <string name="window_restore">restore</string>
+    <string name="window_close">close to the tray</string>
+    <string name="open_task">open what is inside</string>
+    <string name="close_task">close what is inside</string>
     <string name="start_with_windows">start with windows, in the tray</string>
     <string-array name="desktop_guide">
         <item>ctrl+1, ctrl+2, ctrl+3|go to tasks, agenda or notes</item>

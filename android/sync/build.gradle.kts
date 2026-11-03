@@ -22,7 +22,8 @@ dependencies {
     testImplementation(libs.junit)
 }
 
-// the tests that run two real Syncthings need one built for this computer: tools/build-syncthing.sh makes it
+// the tests that run real Syncthings need one built for this computer, named by PLANNER_SYNCTHING; without it they are
+// skipped. ci builds one from third_party/syncthing
 tasks.test {
     for (name in listOf("PLANNER_SYNCTHING", "PLANNER_PEER_ID", "PLANNER_PEER_ADDRESS")) {
         providers.environmentVariable(name).orNull?.let { environment(name, it) }
