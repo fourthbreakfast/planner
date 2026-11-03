@@ -44,12 +44,15 @@ import com.google.zxing.qrcode.QRCodeWriter
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.backup_off
 import dev.fourthbreakfast.planner.resources.sync_anywhere
+import dev.fourthbreakfast.planner.resources.sync_asks
 import dev.fourthbreakfast.planner.resources.sync_blocked
 import dev.fourthbreakfast.planner.resources.sync_connected
 import dev.fourthbreakfast.planner.resources.sync_credit
+import dev.fourthbreakfast.planner.resources.sync_let_in
 import dev.fourthbreakfast.planner.resources.sync_not_found
 import dev.fourthbreakfast.planner.resources.sync_on
 import dev.fourthbreakfast.planner.resources.sync_pair
+import dev.fourthbreakfast.planner.resources.sync_refuse
 import dev.fourthbreakfast.planner.resources.sync_remove
 import dev.fourthbreakfast.planner.resources.sync_scan
 import dev.fourthbreakfast.planner.resources.sync_this_device
@@ -68,8 +71,9 @@ import org.jetbrains.compose.resources.stringResource
 private const val SYNCTHING = "https://syncthing.net"
 
 /**
- * Pairing and the devices this one syncs with. While it is open the app's Syncthing runs and lets in any device that
- * asks, so pairing takes this screen open on both devices: one scans or types the other's code. A device without a
+ * Pairing and the devices this one syncs with. While it is open the app's Syncthing runs and shows any device asking to
+ * sync, to be let in or turned down, so pairing takes this screen open on both devices: one scans or types the other's
+ * code, and the other says yes. A device without a
  * camera to [scan] with only offers typing.
  */
 @Composable
@@ -136,6 +140,21 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                     )
                 }
                 QuietButton(stringResource(if (notFound) Res.string.sync_not_found else Res.string.sync_pair), code.isNotBlank()) { pair(code) }
+            }
+            for (asking in state.asking) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(start = Space.gutter, end = Space.rowPad),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.sync_asks, asking.name.ifBlank { shortId(asking.id) }),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.onBackground,
+                        modifier = Modifier.weight(1f),
+                    )
+                    QuietButton(stringResource(Res.string.sync_let_in)) { controller.letIn(asking.id) }
+                    QuietButton(stringResource(Res.string.sync_refuse)) { controller.refuse(asking.id) }
+                }
             }
             for (peer in state.peers) {
                 Row(

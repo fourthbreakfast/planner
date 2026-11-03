@@ -99,6 +99,27 @@ class DesktopSync(
         }
     }
 
+    // a device that asked is let in only on a yes: never just because the sync screen was open
+    override fun letIn(id: String) {
+        scope.launch {
+            try {
+                syncthing?.pair(id, introducer = false)
+                refresh()
+            } catch (_: IOException) {
+            }
+        }
+    }
+
+    override fun refuse(id: String) {
+        scope.launch {
+            try {
+                syncthing?.refuse(id)
+                refresh()
+            } catch (_: IOException) {
+            }
+        }
+    }
+
     override fun unpair(id: String) {
         scope.launch {
             try {
@@ -139,7 +160,6 @@ class DesktopSync(
             while (scope.isActive) {
                 runCatching {
                     files.takeIn()
-                    if (pairing) syncthing.asking().forEach { syncthing.pair(it, introducer = false) }
                     refresh()
                 }
                 delay(TICK_MILLIS)
@@ -153,7 +173,11 @@ class DesktopSync(
         val syncthing = syncthing ?: return
         val peers = syncthing.peers()
         paired = peers.isNotEmpty()
-        current.value = current.value.copy(peers = peers, nearby = if (pairing) syncthing.nearby() else emptyList())
+        current.value = current.value.copy(
+            peers = peers,
+            nearby = if (pairing) syncthing.nearby() else emptyList(),
+            asking = if (pairing) syncthing.asking() else emptyList(),
+        )
     }
 
     /** Stops Syncthing, letting it close its database. */

@@ -165,4 +165,26 @@ class TwoDevicesTest {
             root.deleteRecursively()
         }
     }
+
+    @Test
+    fun aDeviceThatAsksWaitsForAnAnswer() = runBlocking {
+        assumeTrue(binary?.exists() == true)
+        val root = Files.createTempDirectory("planner-ask").toFile()
+        val pc = Device(binary!!, File(root, "pc"), Ports(22193, 21193, "127.0.0.1"))
+        val phone = Device(binary, File(root, "phone"), Ports(22194, 21194, "127.0.0.1"))
+        try {
+            pc.start("pc")
+            phone.start("phone")
+            pc.syncthing.pair(phone.syncthing.myId, introducer = true, address = phone.syncthing.address)
+            until("the phone sees the pc asking") { phone.syncthing.asking().any { it.id == pc.syncthing.myId && it.name == "pc" } }
+            // nothing is let in by itself
+            assertEquals(emptyList<Peer>(), phone.syncthing.peers())
+            phone.syncthing.refuse(pc.syncthing.myId)
+            assertEquals(emptyList<Peer>(), phone.syncthing.asking())
+        } finally {
+            pc.syncthing.stop()
+            phone.syncthing.stop()
+            root.deleteRecursively()
+        }
+    }
 }
