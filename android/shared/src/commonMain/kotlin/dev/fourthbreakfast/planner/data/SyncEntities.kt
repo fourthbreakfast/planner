@@ -28,6 +28,9 @@ interface SyncDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addGone(items: List<GoneEntity>)
 
+    @Query("DELETE FROM gone WHERE id IN (:ids)")
+    suspend fun forgetGone(ids: List<String>)
+
     @Query("SELECT * FROM agreed")
     suspend fun agreed(): List<AgreedEntity>
 
@@ -41,6 +44,10 @@ class RoomSyncLedger(database: PlannerDatabase) : SyncLedger {
     override suspend fun gone(): List<Gone> = dao.gone().map { Gone(it.id, it.at) }
 
     override suspend fun addGone(items: List<Gone>) = dao.addGone(items.map { GoneEntity(it.id, it.at) })
+
+    override suspend fun forgetGone(ids: List<String>) {
+        if (ids.isNotEmpty()) dao.forgetGone(ids)
+    }
 
     override suspend fun agreed(): Map<String, Long> = dao.agreed().associate { it.id to it.updatedAt }
 

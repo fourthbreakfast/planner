@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cloud backup and moving to a new phone both carry the database and the few settings. -->
+<!--
+    nothing goes to a cloud backup: the notes, tasks and agenda stay on the person's own devices.
+    moving to a new phone by cable or nearby transfer still carries the database and the view settings,
+    but never the sync keys, which belong to this phone alone
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="database" path="." />
-        <include domain="sharedpref" path="view.xml" />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="." />
