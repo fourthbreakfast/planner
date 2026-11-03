@@ -4,43 +4,74 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.use
-import dev.fourthbreakfast.planner.PlannerScreen
+import dev.fourthbreakfast.planner.agenda.today
+import dev.fourthbreakfast.planner.core.LineKind
+import dev.fourthbreakfast.planner.core.NoteLine
+import dev.fourthbreakfast.planner.core.Priority
+import dev.fourthbreakfast.planner.core.formatBody
 import dev.fourthbreakfast.planner.ui.LocalBackStack
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 import java.io.File
 import java.nio.file.Files
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-/** Draws the window without showing it, into PLANNER_RENDER, to look at. Skipped unless that folder is given. */
+/** Draws the dashboard without showing a window, into PLANNER_RENDER, to look at. Skipped unless that folder is given. */
 class RenderTest {
     @Test
-    fun drawTheWindow() {
+    fun drawTheDashboard() {
         val out = System.getenv("PLANNER_RENDER")?.let(::File)
         assumeTrue(out != null)
         out!!.mkdirs()
         val app = DesktopApp(Files.createTempDirectory("planner-render").toFile(), "dev/fourthbreakfast/planner-render-test")
-        app.tasksViewModel.add("plan the trip", null)
-        app.tasksViewModel.add("buy milk", null)
+        val now = today()
+        app.tasksViewModel.add("plan the autumn trip", null)
+        app.tasksViewModel.add("call the dentist", null)
+        app.tasksViewModel.add("buy oat milk", null)
+        runBlocking {
+            app.events.add("lunch with sam", now, 12 * 60 + 30, "the corner cafe", "")
+            app.events.add("train to the coast", now + 1, 8 * 60 + 12, "central station", "", endMinute = 10 * 60 + 40)
+            app.events.add("mum's birthday", now + 3, null, "", "")
+        }
+        var noteId: String? = null
+        app.notesViewModel.add { id ->
+            noteId = id
+            app.notesViewModel.save(
+                id,
+                "packing list",
+                formatBody(listOf(NoteLine(LineKind.CHECK, text = "passport"), NoteLine(LineKind.CHECK, checked = true, text = "charger"))),
+            )
+        }
+        Thread.sleep(1_500)
+        val trip = runBlocking { app.tasks.value.first { it.title == "plan the autumn trip" } }
+        app.tasksViewModel.add("book the train tickets", trip.id)
+        app.tasksViewModel.setPriority(trip, Priority.HIGH)
+        app.dashboard.openTasks = setOf(trip.id)
         Thread.sleep(1_000)
-        ImageComposeScene(460 * 2, 880 * 2, Density(2f)) {
-            CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
-                PlannerTheme(darkTheme = true) {
-                    PlannerScreen(app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
-                        DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+        fun draw(name: String, dark: Boolean) {
+            ImageComposeScene(1280, 820, Density(1f)) {
+                CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
+                    PlannerTheme(darkTheme = dark) {
+                        Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
+                            DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+                        }
                     }
                 }
+            }.use { scene ->
+                repeat(30) {
+                    scene.render(it * 100_000_000L)
+                    Thread.sleep(100)
+                }
+                File(out, "$name.png").writeBytes(scene.render(2_000_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes)
             }
-        }.use { scene ->
-            repeat(10) {
-                scene.render(it * 100_000_000L)
-                Thread.sleep(100)
-            }
-            val image = scene.render(2_000_000_000L)
-            File(out, "tasks.png").writeBytes(image.encodeToData(EncodedImageFormat.PNG)!!.bytes)
         }
+        draw("dashboard-dark", dark = true)
+        draw("dashboard-light", dark = false)
+        app.dashboard.openNote(noteId!!)
+        draw("dashboard-note", dark = true)
     }
 }
 
@@ -79,5 +110,20 @@ class IconTest {
         }
         images.forEach { out.write(it) }
         target!!.writeBytes(out.toByteArray())
+    }
+}
+
+/**
+ * Fills a trial data folder from a backup file, for trying the app by hand with PLANNER_DATA pointing at the folder.
+ * Run with PLANNER_SEED (the folder) and PLANNER_BACKUP (the file); skipped otherwise.
+ */
+class SeedTest {
+    @Test
+    fun fillTheTrialFolder() {
+        val folder = System.getenv("PLANNER_SEED")?.let(::File)
+        val backup = System.getenv("PLANNER_BACKUP")?.let(::File)
+        assumeTrue(folder != null && backup != null)
+        val app = DesktopApp(folder!!, "dev/fourthbreakfast/planner-seed-test")
+        runBlocking { app.tasksViewModel.importBackup(backup!!.readText()) }
     }
 }

@@ -23,6 +23,7 @@ import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
+import org.jetbrains.compose.resources.StringArrayResource
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -61,9 +62,9 @@ fun Setting(label: String, value: String?, onClick: () -> Unit) {
 
 /** Every gesture, one to a line: what to do, then what it does. */
 @Composable
-fun Guide(onClose: () -> Unit) {
+fun Guide(list: StringArrayResource = Res.array.guide, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
-    val entries = stringArrayResource(Res.array.guide)
+    val entries = stringArrayResource(list)
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = { SettingsBar(stringResource(Res.string.guide_title), onClose) },

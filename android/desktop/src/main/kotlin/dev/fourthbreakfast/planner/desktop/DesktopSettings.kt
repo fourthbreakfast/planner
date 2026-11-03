@@ -23,6 +23,8 @@ import dev.fourthbreakfast.planner.ThemeChoice
 import dev.fourthbreakfast.planner.core.BackupException
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.app_name
+import dev.fourthbreakfast.planner.resources.backup_off
+import dev.fourthbreakfast.planner.resources.desktop_guide
 import dev.fourthbreakfast.planner.resources.export_done
 import dev.fourthbreakfast.planner.resources.export_failed
 import dev.fourthbreakfast.planner.resources.export_tasks
@@ -33,7 +35,9 @@ import dev.fourthbreakfast.planner.resources.import_nothing_new
 import dev.fourthbreakfast.planner.resources.import_tasks
 import dev.fourthbreakfast.planner.resources.setting_theme
 import dev.fourthbreakfast.planner.resources.settings_title
+import dev.fourthbreakfast.planner.resources.start_with_windows
 import dev.fourthbreakfast.planner.resources.sync_devices
+import dev.fourthbreakfast.planner.resources.sync_on
 import dev.fourthbreakfast.planner.resources.sync_title
 import dev.fourthbreakfast.planner.resources.theme_dark
 import dev.fourthbreakfast.planner.resources.theme_light
@@ -67,7 +71,7 @@ fun DesktopSettings(viewModel: TasksViewModel, sync: DesktopSync, version: Strin
     var guideOpen by rememberSaveable { mutableStateOf(false) }
     var syncOpen by rememberSaveable { mutableStateOf(false) }
     if (guideOpen) {
-        Guide(onClose = { guideOpen = false })
+        Guide(Res.array.desktop_guide, onClose = { guideOpen = false })
         return
     }
     if (syncOpen) {
@@ -140,6 +144,13 @@ fun DesktopSettings(viewModel: TasksViewModel, sync: DesktopSync, version: Strin
                     },
                 ),
             ) { settings.chooseTheme(ThemeChoice.entries[(settings.theme.ordinal + 1) % ThemeChoice.entries.size]) }
+            if (StartWithWindows.possible) {
+                var startOn by remember { mutableStateOf(StartWithWindows.on) }
+                Setting(stringResource(Res.string.start_with_windows), stringResource(if (startOn) Res.string.sync_on else Res.string.backup_off)) {
+                    StartWithWindows.set(!startOn)
+                    startOn = StartWithWindows.on
+                }
+            }
             Setting(stringResource(Res.string.guide_title), null) { guideOpen = true }
             Text(
                 text = stringResource(Res.string.app_name) + " " + version,

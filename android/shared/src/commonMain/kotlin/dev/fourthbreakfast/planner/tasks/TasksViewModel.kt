@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.core.Destination
+import dev.fourthbreakfast.planner.core.Priority
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.Tasks
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +31,10 @@ class TasksViewModel(private val tasks: Tasks, private val backups: Backups) : V
 
     fun cyclePriority(task: Task) {
         viewModelScope.launch { tasks.cyclePriority(task.id) }
+    }
+
+    fun setPriority(task: Task, priority: Priority) {
+        viewModelScope.launch { tasks.setPriority(task.id, priority) }
     }
 
     fun move(id: String, to: Destination) {
