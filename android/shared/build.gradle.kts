@@ -16,19 +16,23 @@ kotlin {
         minSdk = 26
         androidResources.enable = true
     }
-    jvm("desktop")
+    jvm("desktop") {
+        // the windows app carries a java 21 runtime
+        compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
+    }
 
     sourceSets {
         commonMain.dependencies {
             api(project(":sync"))
-            api(compose.runtime)
-            api(compose.foundation)
-            api(compose.material3)
-            api(compose.ui)
-            api(compose.components.resources)
+            api(libs.jetbrains.compose.runtime)
+            api(libs.jetbrains.compose.foundation)
+            api(libs.jetbrains.compose.material3)
+            api(libs.jetbrains.compose.ui)
+            api(libs.jetbrains.compose.resources)
             api(libs.jetbrains.lifecycle.viewmodel.compose)
             api(libs.jetbrains.lifecycle.runtime.compose)
             api(libs.androidx.room.runtime)
+            implementation(libs.zxing.core)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
