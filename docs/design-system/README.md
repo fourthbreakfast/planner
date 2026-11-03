@@ -20,7 +20,7 @@ planner is a task list that stays out of the way: a plain page, a list, one line
 - Spacing: text starts at `gutter`. Each level of subtask moves right by `indent`, and the priority dot moves with its task. There are four levels at most: main task, subtask, sub-subtask, sub-sub-subtask. Anything tappable is at least `touch` tall.
 - Dots: every priority dot is `dot` across. Never size a dot to show importance; color is the only signal, and the order of the list is the second.
 - Borders and shadows: there are none at rest. Separate things with space. The only shadow is `lift` on the row being dragged.
-- Radius: the check box uses `radius-check`; the undo pill uses `radius-pill`. Nothing else is rounded.
+- Radius: the choosers use `radius-check`; the undo pill uses `radius-pill`. Nothing else is rounded: the check box is sharp.
 - Motion: things move only when something happened. A dragged row follows the finger; rows slide to make room; a small haptic tick marks each change of drop spot. No decorative animation; respect the system's reduced motion setting.
 - Layout: one column, full width. Two tabs run along the top, tasks at the left and agenda at the right, with the screen's own bar under them (counts at the left, controls at the right). The agenda has its own bin, and a quiet plus sits at its bottom right. The the add bar is pinned to the bottom above the keyboard, and the list scrolls between them. An invisible row of `end-row` ends the list.
 

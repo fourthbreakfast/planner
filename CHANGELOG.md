@@ -2,8 +2,10 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
-## 0.6.1
+## 0.7.0
 
+- sync between your devices, built in: pair a device from settings by scanning or typing its code. it uses a private copy of syncthing, stays on your own network unless you turn on sync anywhere, and needs network access, which the app now asks for
+- check boxes are smaller and sharp, and fill with a block once done
 - tasks are always ranked by priority, and the dot that switched to the order they were put in is gone
 - a task with subtasks starts closed each time the app opens
 - a reminder can be dismissed from its notification, beside snooze
