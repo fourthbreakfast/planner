@@ -4,6 +4,7 @@ what changed in each release, newest first. these notes are also the text of eac
 
 ## 0.8.0
 
+- both apps look for a newer release once a day and offer it in the settings; one touch downloads it and starts the installer. the daily look can be turned off
 - planner for windows: tasks, agenda and notes side by side in one window, with keyboard shortcuts, right click menus and dragging. it stays in the tray when the window is closed, so reminders and sync go on, and syncs with the phone through the same built in syncthing. install it with the msi in the release
 - the agenda can show a month: the grid icon at the top switches between the list and the month, days with events have a dot, and touching a day shows its events under the grid. a new event added from the month starts on the chosen day
 

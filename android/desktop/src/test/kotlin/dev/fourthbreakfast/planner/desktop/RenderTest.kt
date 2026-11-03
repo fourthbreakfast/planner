@@ -56,7 +56,7 @@ class RenderTest {
                 CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
                     PlannerTheme(darkTheme = dark) {
                         Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
-                            DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+                            DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = {})
                         }
                     }
                 }

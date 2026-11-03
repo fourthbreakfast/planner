@@ -33,6 +33,7 @@ kotlin {
             api(libs.jetbrains.lifecycle.runtime.compose)
             api(libs.androidx.room.runtime)
             implementation(libs.zxing.core)
+            implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)

@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.desktop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,14 +17,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.settings_title
+import dev.fourthbreakfast.planner.resources.update_to
 import dev.fourthbreakfast.planner.ui.theme.Space
+import dev.fourthbreakfast.planner.updates.Release
+import dev.fourthbreakfast.planner.updates.UpdateState
+import dev.fourthbreakfast.planner.updates.Updates
 import org.jetbrains.compose.resources.stringResource
 
 /** A thin bar along the bottom of the window: how sync is doing at the left, the settings cog at the right. */
 @Composable
-fun StatusBar(sync: DesktopSync, onSettings: () -> Unit) {
+fun StatusBar(sync: DesktopSync, updates: Updates, onUpdate: (Release) -> Unit, onSettings: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val state by sync.state.collectAsState()
+    val update by updates.state.collectAsState()
     Box(Modifier.fillMaxWidth().height(Space.strokeThin).background(colors.outline))
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -37,6 +43,15 @@ fun StatusBar(sync: DesktopSync, onSettings: () -> Unit) {
             }
         }
         Text(text, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
+        (update as? UpdateState.Available)?.let { available ->
+            // a newer version, offered quietly beside the settings
+            Text(
+                stringResource(Res.string.update_to, available.release.version),
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.onBackground,
+                modifier = Modifier.clickable { onUpdate(available.release) }.padding(horizontal = Space.x3),
+            )
+        }
         HeaderButton(stringResource(Res.string.settings_title), onSettings) { cog(it) }
     }
 }

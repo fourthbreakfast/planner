@@ -32,6 +32,8 @@ the [latest release](https://github.com/fourthbreakfast/planner/releases/latest)
 
 **phone.** download the apk and open it on your phone. you need android 8 or newer, and your phone will ask you to allow installing it. updates install over the top and keep your data.
 
+**updates.** both apps look for a newer release once a day and offer it in the settings (and on windows in the bar at the bottom); one touch downloads it and starts the installer. the daily look can be turned off. on the phone, [obtainium](https://github.com/ImranR98/Obtainium) can also keep planner up to date from this repository's releases, and on windows `winget install fourthbreakfast.planner` and `winget upgrade` work once the package is listed.
+
 **windows.** download the msi and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
 
 ### use
@@ -84,6 +86,8 @@ the window shows the tasks, the agenda and the notes side by side. a note, an ev
 ### privacy
 
 everything lives in a database on your device, and nothing is sent anywhere unless you pair another device. sync runs through the app's own copy of syncthing, with its own keys, ports and folder, separate from any syncthing you run yourself. it only looks for your devices on the network you are on: no discovery servers, no relays, no usage or crash reports. "sync anywhere" in the sync settings lets it reach your devices from other networks too, through syncthing's public discovery and relay servers; what travels is end to end encrypted, but those servers see your device's id and address.
+
+the daily update check is the one other thing that goes out: it asks github for the latest release page, and sends nothing about you. it can be turned off in the settings.
 
 planner asks for network access for sync, and for the permissions reminders need: showing notifications, setting exact alarms, and setting them again after a restart. it asks for the camera only when you scan a code to pair.
 

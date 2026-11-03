@@ -55,6 +55,12 @@
     <string name="guide_title">how it works</string>
     <string name="nothing_to_do">nothing to do</string>
     <string name="redo">redo</string>
+    <string name="update_to">update to %1$s</string>
+    <string name="up_to_date">up to date</string>
+    <string name="update_checking">checking…</string>
+    <string name="update_downloading">downloading…</string>
+    <string name="update_failed">could not reach github</string>
+    <string name="update_daily">check for updates every day</string>
     <string name="start_with_windows">start with windows, in the tray</string>
     <string-array name="desktop_guide">
         <item>ctrl+1, ctrl+2, ctrl+3|go to tasks, agenda or notes</item>
