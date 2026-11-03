@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -52,6 +53,8 @@ import dev.fourthbreakfast.planner.ui.LocalBackStack
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.PlannerServices
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
+import dev.fourthbreakfast.planner.updates.Release
+import dev.fourthbreakfast.planner.updates.Updates
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +62,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -107,6 +111,7 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
     // the tasks as they are now, for the keys that act on the selected one
     val tasks = tasksViewModel.all.stateIn(scope, SharingStarted.Eagerly, emptyList())
     val version: String = System.getProperty("jpackage.app-version") ?: "dev"
+    val updates = Updates(prefs, version)
 }
 
 /**
@@ -120,6 +125,7 @@ fun main(args: Array<String>) {
     application {
         val windowState = rememberWindowState(size = DpSize(1280.dp, 820.dp))
         var visible by remember { mutableStateOf(!startHidden) }
+        val scope = rememberCoroutineScope()
         val tray = rememberTrayState()
         val icon = remember { appIconPainter() }
         val reminders =
@@ -127,6 +133,7 @@ fun main(args: Array<String>) {
         LaunchedEffect(Unit) {
             app.sync.begin()
             reminders.begin()
+            app.updates.checkIfDue()
         }
         fun show(launch: Launch? = null) {
             visible = true
@@ -137,6 +144,15 @@ fun main(args: Array<String>) {
             // syncthing closes its database before the app goes
             runBlocking { withTimeoutOrNull(10_000) { app.sync.stop() } }
             exitApplication()
+        }
+
+        // a newer version: its installer starts, and this app goes, so nothing the installer replaces is in use
+        suspend fun install(release: Release) {
+            val url = release.msi ?: return
+            val file = File(System.getProperty("java.io.tmpdir"), "planner-${release.version}.msi")
+            if (!app.updates.download(url, file)) return
+            ProcessBuilder("msiexec", "/i", file.path).start()
+            quit()
         }
         Tray(
             icon = icon,
@@ -189,10 +205,13 @@ fun main(args: Array<String>) {
                                 TitleBar(windowState, onClose = { visible = false })
                                 Box(Modifier.weight(1f)) {
                                     Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
-                                        DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+                                        DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = { install(it) })
                                     }
                                 }
-                                StatusBar(app.sync, onSettings = { app.dashboard.panel = Panel.Settings })
+                                StatusBar(app.sync, app.updates, onUpdate = { scope.launch { install(it) } }, onSettings = {
+                                    app.dashboard.panel =
+                                        Panel.Settings
+                                })
                             }
                             ResizeEdges(window)
                         }

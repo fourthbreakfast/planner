@@ -37,9 +37,9 @@ import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.rememberBackupFiles
 import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.theme.Space
+import dev.fourthbreakfast.planner.updates.UpdateRows
+import dev.fourthbreakfast.planner.updates.installOnPhone
 import dev.fourthbreakfast.planner.widget.PlannerWidget
-
-private const val RELEASES = "https://github.com/fourthbreakfast/planner/releases/latest"
 
 /** What can be set, the backup, and a list of every gesture. Reached by holding any of the three tabs. */
 @Composable
@@ -126,9 +126,8 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
             ) {
                 if (settings.backupFolder != null) settings.chooseBackupFolder(null) else pickFolder.launch(null)
             }
-            Setting(stringResource(R.string.setting_updates), version) {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES)))
-            }
+            val app = context.applicationContext as PlannerApp
+            UpdateRows(app.updates, version) { release -> installOnPhone(context, app.updates, release) }
             val manager = remember { AppWidgetManager.getInstance(context) }
             if (manager.isRequestPinAppWidgetSupported) {
                 Setting(stringResource(R.string.setting_widget), null) {

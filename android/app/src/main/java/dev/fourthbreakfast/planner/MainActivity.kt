@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         (application as PlannerApp).syncController.onInSight()
+        (application as PlannerApp).checkForUpdatesIfDue()
     }
 
     override fun onStop() {
