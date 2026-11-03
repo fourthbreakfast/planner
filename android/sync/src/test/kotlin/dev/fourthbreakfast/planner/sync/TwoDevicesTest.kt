@@ -138,8 +138,8 @@ class TwoDevicesTest {
         try {
             pc.start("pc")
             phone.start("phone")
-            pc.syncthing.pair(phone.syncthing.myId, phone.syncthing.address)
-            phone.syncthing.pair(pc.syncthing.myId, pc.syncthing.address)
+            pc.syncthing.pair(phone.syncthing.myId, introducer = true, address = phone.syncthing.address)
+            phone.syncthing.pair(pc.syncthing.myId, introducer = false, address = pc.syncthing.address)
             until("connected") { pc.syncthing.peers().all { it.connected } && phone.syncthing.peers().all { it.connected } }
             assertEquals(listOf("phone"), pc.syncthing.peers().map { it.name })
 

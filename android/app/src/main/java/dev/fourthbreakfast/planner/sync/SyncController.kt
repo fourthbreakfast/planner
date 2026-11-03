@@ -128,7 +128,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
             syncthing.nearby().firstOrNull { shortId(it) == typed.replace("-", "").take(7) } ?: return false
         }
         return try {
-            syncthing.pair(id)
+            syncthing.pair(id, introducer = true)
             paired = true
             refresh()
             true
@@ -175,7 +175,6 @@ class SyncController(private val context: Context, private val sync: Sync, priva
             }
             // android drops the packets devices find each other with unless an app asks for them
             if (!multicast.isHeld) multicast.acquire()
-            Log.i("planner", "syncthing running as ${shortId(syncthing.myId)}")
             val files = DeviceFiles(syncthing.folder, syncthing.myId, sync).also { this.files = it }
             current.value = SyncState(running = true, myId = syncthing.myId)
             loop = scope.launch { run(files) }
@@ -192,7 +191,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
             while (scope.isActive) {
                 runCatching {
                     files.takeIn()
-                    if (pairing) syncthing.asking().forEach { syncthing.pair(it) }
+                    if (pairing) syncthing.asking().forEach { syncthing.pair(it, introducer = false) }
                     refresh()
                 }
                 delay(TICK_MILLIS)

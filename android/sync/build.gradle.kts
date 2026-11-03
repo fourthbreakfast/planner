@@ -24,5 +24,7 @@ dependencies {
 
 // the tests that run two real Syncthings need one built for this computer: tools/build-syncthing.sh makes it
 tasks.test {
-    providers.environmentVariable("PLANNER_SYNCTHING").orNull?.let { environment("PLANNER_SYNCTHING", it) }
+    for (name in listOf("PLANNER_SYNCTHING", "PLANNER_PEER_ID", "PLANNER_PEER_ADDRESS")) {
+        providers.environmentVariable(name).orNull?.let { environment(name, it) }
+    }
 }

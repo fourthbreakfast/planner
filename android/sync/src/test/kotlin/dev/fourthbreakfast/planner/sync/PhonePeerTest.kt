@@ -25,17 +25,18 @@ class PhonePeerTest {
         val pc = Device(binary!!, root, Ports(22101, 21101, "127.0.0.1"))
         try {
             pc.start("test pc")
-            pc.syncthing.pair(id, address)
+            pc.syncthing.pair(id, introducer = true, address = address)
             withTimeout(120_000) { while (pc.syncthing.peers().none { it.connected }) delay(500) }
             println("connected to ${pc.syncthing.peers().map { it.name }}")
             pc.tasks.insert(listOf(Task(id = "from-the-pc", title = "from the pc", createdAt = System.currentTimeMillis())))
             withTimeout(120_000) {
-                while (pc.tasks.state.value.size < 2) {
+                while (pc.syncthing.folder.listFiles().orEmpty().none { it.name.endsWith(".json") && !it.name.startsWith(pc.syncthing.myId) }) {
                     pc.files.publish()
                     pc.files.takeIn()
                     delay(500)
                 }
             }
+            pc.files.takeIn()
             println("tasks here now: ${pc.tasks.state.value.map { it.title }}")
             // a while longer, so the phone can take the task in and show it
             repeat(40) {
