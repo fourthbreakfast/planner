@@ -25,6 +25,7 @@
     <string name="shortcut_event">new event</string>
     <string name="shortcut_note">new note</string>
     <string name="snooze">snooze 10 min</string>
+    <string name="dismiss">dismiss</string>
     <string name="setting_theme">theme</string>
     <string name="theme_system">system</string>
     <string name="theme_light">light</string>
@@ -131,7 +132,6 @@
     <string name="expand_all">open everything</string>
     <string name="collapse_all">close everything</string>
     <string name="rename">rename</string>
-    <string name="priority_mode">priority mode, off is tree mode</string>
     <string name="priority_none">no priority</string>
     <string name="priority_low">low priority</string>
     <string name="priority_medium">medium priority</string>

@@ -56,7 +56,7 @@ everything a row can do starts with holding it for a moment, so sweeping across 
   <tr><td>hold any tab</td><td>open the settings: export and import, theme, a daily backup to a folder, where the notes toolbar sits, a link to the latest release, the widget, and the list of gestures</td></tr>
   <tr><td>the magnifying glass beside the bin, on the notes tab</td><td>search the notes by title and text</td></tr>
   <tr><td>hold the app icon</td><td>new task, new event or new note, straight away</td></tr>
-  <tr><td>a reminder notification</td><td>touch it to open the event, or snooze it for 10 minutes</td></tr>
+  <tr><td>a reminder notification</td><td>touch it to open the event, snooze it for 10 minutes or dismiss it</td></tr>
 </table>
 
 ### privacy

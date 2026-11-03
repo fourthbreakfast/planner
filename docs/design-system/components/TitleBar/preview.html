@@ -1,4 +1,4 @@
-<!-- @dsCard group="Header" height=260 subtitle="title, seven-segment count, mode dot and bin" -->
+<!-- @dsCard group="Header" height=260 subtitle="title, seven-segment count and bin" -->
 <style>
   body { margin: 0; background: var(--page); color: var(--ink); font: 14px/20px var(--font-sans); }
   .bar { display: flex; align-items: center; padding: 0 var(--row-pad) 0 var(--gutter); }
@@ -7,7 +7,6 @@
   .seg { margin-left: var(--space-3); display: block; }
   .seg.second { margin-left: var(--space-3); opacity: 0.6; }
   .touch { width: var(--touch); height: var(--touch); display: flex; align-items: center; justify-content: center; color: var(--quiet); }
-  .dot { width: var(--mode-dot); height: var(--mode-dot); border-radius: 50%; background: var(--quiet); }
   svg.bin { width: var(--icon); height: var(--icon); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   .gap { height: 28px; }
 </style>
@@ -30,9 +29,9 @@
     const w = ds.length * W + (ds.length - 1) * SP + H * SLANT;
     const body = ds.map((d, i) => 'abcdefg'.split('').map(b =>
       `<polygon points="${bar(b, i * (W + SP))}" fill="var(--quiet)" opacity="${DIGITS[d].includes(b) ? 1 : 0.13}"/>`).join('')).join('');
-    return `<svg class="seg " viewBox="0 0  " width="-e" height="-e" role="img" aria-label="">${body}</svg>`;
+    return `<svg class="seg ${cls}" viewBox="0 0 ${w.toFixed(2)} ${H}" width="${(w * scale).toFixed(2)}" height="${H * scale}" role="img" aria-label="${n}">${body}</svg>`;
   }
   const bin = '<svg class="bin" viewBox="0 0 20 20"><path d="M4.4 5.6 L5.6 18.4 L14.4 18.4 L15.6 5.6"/><path d="M2.4 5.6 L17.6 5.6 M7.6 5.6 L7.6 2 L12.4 2 L12.4 5.6"/></svg>';
-  const barHtml = (title, n, second) => `<div class="bar"><div class="head"><h1>${title}</h1>${segments(n)}${second ? segments(second, 1, 'second') : ''}</div><div class="touch"><span class="dot"></span></div><div class="touch">${bin}</div></div>`;
+  const barHtml = (title, n, second) => `<div class="bar"><div class="head"><h1>${title}</h1>${segments(n)}${second ? segments(second, 1, 'second') : ''}</div><div class="touch">${bin}</div></div>`;
   document.getElementById('root').innerHTML = barHtml('tasks', 4) + '<div class="gap"></div>' + barHtml('tasks', 3, 24);
 </script>

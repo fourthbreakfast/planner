@@ -2,7 +2,7 @@ The three tabs along the very top: `tasks` at the left edge, `agenda` in the mid
 
 Each word's text starts at `gutter` from its screen edge. A touch switches tabs, and a tab dims a little while it is pressed. Sweeps that start at the very edge of the screen are left to the phone's own back gesture. So does sweeping a finger sideways anywhere on the screen: to the left goes on to the next tab, to the right back to the one before. It stops at the first and last tab, so it never loops. A row only swipes or moves after a finger has rested on it for a moment.
 
-Under the tab bar sits the screen's own bar: the counts at the left and the controls at the right (arrow, mode dot and bin on tasks; the bin on the agenda and the notes).
+Under the tab bar sits the screen's own bar: the counts at the left and the controls at the right (arrow and bin on tasks; the bin on the agenda and the notes).
 
 The consumer provides which tab is on and what switching does.
 

@@ -14,7 +14,7 @@ planner is a task list that stays out of the way: a plain page, a list, one line
 
 ## Visual foundations
 
-- Color: `page` is the ground, `ink` the text, `quiet` for anything secondary. `aim` marks the one thing that is targeted or being moved. The three priority colors are marks, never text or fills; `priority-high` doubles as the single accent (the mode dot when priority mode is on, the remove side of a swipe).
+- Color: `page` is the ground, `ink` the text, `quiet` for anything secondary. `aim` marks the one thing that is targeted or being moved. The three priority colors are marks, never text or fills; `priority-high` doubles as the single accent (the remove side of a swipe).
 - Themes: always design light and dark together. The priority colors are identical in both.
 - Type: set screen titles and every small number or note in the mono families (`title`, `note`, `target`). Set everything a person reads or types in `body`. Quiet buttons use `label`.
 - Spacing: text starts at `gutter`. Each level of subtask moves right by `indent`, and the priority dot moves with its task. There are four levels at most: main task, subtask, sub-subtask, sub-sub-subtask. Anything tappable is at least `touch` tall.
@@ -26,19 +26,19 @@ planner is a task list that stays out of the way: a plain page, a list, one line
 
 ## Behaviour that shapes the interface
 
-- Two modes, switched by one dot at the top right: grey (`quiet`) is tree mode, red (`priority-high`) is priority mode. Priority only ranks a task among its siblings, so a subtask never leaves its parent.
+- One order: each level of the list is ranked by priority. Priority only ranks a task among its siblings, so a subtask never leaves its parent.
 - Touching a task opens or closes its subtasks. While the add line is in use, touching a task targets it instead; leaving the add line drops the target.
 - Sweeping sideways across empty space switches tabs: left on tasks opens the agenda, right on the agenda goes back. It never loops, and it ignores any sweep that starts on a row.
-- Swipe a row right to move it to the bin, left to rename it. Long press and drag in tree mode only, with the finger moving sideways to choose how deep the task lands.
+- Swipe a row right to move it to the bin, left to rename it. Long press and drag to move a task, with the finger moving sideways to choose how deep the task lands.
 - The agenda lists events soonest first with the time, name, location and notes all on view. A touch edits an event, a swipe right moves it to the event bin. An event has a name, a day, a time that is all day, a start, or a start and an end, a location and notes. The form is empty lines, the day and time choosers are drawn in the app's own style, and the add button is a quiet plus at the bottom right.
-- There is no collapse arrow on a task; a parent shows `done/total` on the right. One small triangle at the top, left of the mode dot, opens everything (pointing down, shown while anything is closed) or closes everything (pointing up).
+- There is no collapse arrow on a task; a parent shows `done/total` on the right. Every parent starts closed when the app opens. One small triangle at the top, left of the bin, opens everything (pointing down, shown while anything is closed) or closes everything (pointing up).
 - Four levels at most.
 - Holding the tasks tab opens a small menu with export and import, as wide as its two words, on `panel` with a `line` border and no shadow. They use the phone's file picker, and a backup carries the tasks and the agenda. Import only adds what is missing and never changes what is already there.
 
 ## Iconography
 
 - The app icon is the four priority levels as a two by two grid of dots on the dark `page`: `priority-high`, `priority-medium`, `priority-low` and an outline ring.
-- Icons are drawn with `stroke-thin` round-capped lines in `quiet`, `icon` across in a `touch` square: the bin (a can with a lid and handle). There is no icon font; the mode dot is a plain circle.
+- Icons are drawn with `stroke-thin` round-capped lines in `quiet`, `icon` across in a `touch` square: the bin (a can with a lid and handle). There is no icon font.
 - The open count is drawn as seven-segment digits, like a calculator watch, in `quiet`, with the unlit bars faintly visible. Draw them, never set them in a font.
 - Do not add decorative icons. If a control needs a symbol, prefer a word.
 
@@ -56,7 +56,6 @@ Every number sits on a 4px grid (`space-1` to `space-6`) or is a named size (`to
 | Priority dot | `dot` across in a `dot-lane` by `touch`; each level of depth adds `indent` before it |
 | Check box | `check` across in a `touch` square, outlined with `stroke-thin` |
 | Icons | `icon` across in a `touch` square, `stroke-thin` lines |
-| Mode dot | `mode-dot` across in a `touch` square |
 | Undo pill | `gutter` on the left, `row-pad` on the right, `space-1` above the add bar |
 | Add bar | sits at the bottom edge; target line starts at `gutter` |
 | End of the list | an invisible row of `end-row` |

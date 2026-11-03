@@ -1,4 +1,4 @@
-The button that opens or closes every task at once: a small filled triangle in `quiet`, with no shaft, in a `touch` square, placed just left of the mode dot. Pointing down means "open everything"; pointing up means "close everything".
+The button that opens or closes every task at once: a small filled triangle in `quiet`, with no shaft, in a `touch` square, placed just left of the bin. Pointing down means "open everything"; pointing up means "close everything".
 
 If even one task with subtasks is closed, show the triangle pointing down and open them all. Only when everything is open does it point up and close them all. Hide the button when no task has subtasks. Closing everything also drops a target that would end up out of sight.
 

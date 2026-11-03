@@ -19,12 +19,16 @@ private const val SNOOZE_MINUTES = 10
 
 /**
  * Rings when an alarm from [Reminders] goes off: puts the event up as a notification. Touching it opens the event,
- * and its one button rings again in ten minutes.
+ * one button rings again in ten minutes and the other puts it away.
  */
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra(ID) ?: return
         val manager = NotificationManagerCompat.from(context)
+        if (intent.action == DISMISS) {
+            manager.cancel(id.hashCode())
+            return
+        }
         if (intent.action == SNOOZE) {
             manager.cancel(id.hashCode())
             Reminders(context).snooze(intent, System.currentTimeMillis() + SNOOZE_MINUTES * 60_000L)
@@ -56,6 +60,15 @@ class ReminderReceiver : BroadcastReceiver() {
                 .putExtras(intent.extras ?: return),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val dismiss = PendingIntent.getBroadcast(
+            context,
+            id.hashCode(),
+            Intent(context, ReminderReceiver::class.java)
+                .setAction(DISMISS)
+                .setData(Uri.parse("planner://event/$id/dismissed"))
+                .putExtra(ID, id),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_planner)
             .setContentTitle(title)
@@ -64,6 +77,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .setContentIntent(open)
             .addAction(0, context.getString(R.string.snooze), snooze)
+            .addAction(0, context.getString(R.string.dismiss), dismiss)
             .build()
         manager.notify(id.hashCode(), notification)
     }
@@ -74,5 +88,6 @@ class ReminderReceiver : BroadcastReceiver() {
         const val MINUTE = "minute"
         const val PLACE = "place"
         const val SNOOZE = "snooze"
+        const val DISMISS = "dismiss"
     }
 }

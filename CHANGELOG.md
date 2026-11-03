@@ -2,6 +2,13 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 0.6.1
+
+- tasks are always ranked by priority, and the dot that switched to the order they were put in is gone
+- a task with subtasks starts closed each time the app opens
+- a reminder can be dismissed from its notification, beside snooze
+- touching just past the end of a line in a note puts the cursor there, not at the start of the next line
+
 ## 0.6.0
 
 - a note is now one text: select across lines and paragraphs to delete, restyle or turn them into a list
