@@ -41,6 +41,7 @@ kotlin {
         }
         getByName("desktopTest").dependencies {
             implementation(libs.junit)
+            implementation(compose.desktop.currentOs)
         }
     }
 }
@@ -57,4 +58,9 @@ room {
 dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
+}
+
+// the drawing tests write their pictures where PLANNER_RENDER says
+tasks.withType<Test>().configureEach {
+    providers.environmentVariable("PLANNER_RENDER").orNull?.let { environment("PLANNER_RENDER", it) }
 }

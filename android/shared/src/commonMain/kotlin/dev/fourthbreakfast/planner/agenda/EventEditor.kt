@@ -62,11 +62,11 @@ import org.jetbrains.compose.resources.stringResource
  * Saving needs a name. A day left empty means today, a time left empty means the whole day.
  */
 @Composable
-fun EventEditor(initial: Event?, onSave: (EventDraft) -> Unit, onDelete: (() -> Unit)?, onClose: () -> Unit) {
+fun EventEditor(initial: Event?, newDay: Long? = null, onSave: (EventDraft) -> Unit, onDelete: (() -> Unit)?, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     var title by rememberSaveable { mutableStateOf(initial?.title ?: "") }
-    var day by rememberSaveable { mutableLongStateOf(initial?.day ?: today()) }
-    var daySet by rememberSaveable { mutableStateOf(initial != null) }
+    var day by rememberSaveable { mutableLongStateOf(initial?.day ?: newDay ?: today()) }
+    var daySet by rememberSaveable { mutableStateOf(initial != null || newDay != null) }
     var start by rememberSaveable { mutableStateOf(initial?.minute) }
     var end by rememberSaveable { mutableStateOf(initial?.endMinute) }
     var timeSet by rememberSaveable { mutableStateOf(initial != null) }
