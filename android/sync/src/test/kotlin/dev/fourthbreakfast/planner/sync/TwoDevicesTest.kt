@@ -21,7 +21,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /** Keeps things in memory, which is all a sync test needs from a store. */
-private class Memory<T>(private val id: (T) -> String) {
+internal class Memory<T>(private val id: (T) -> String) {
     val state = MutableStateFlow<List<T>>(emptyList())
 
     fun insert(items: List<T>) {
@@ -39,7 +39,7 @@ private class Memory<T>(private val id: (T) -> String) {
     }
 }
 
-private class Device(binary: File, root: File, ports: Ports) {
+internal class Device(binary: File, root: File, ports: Ports) {
     val tasks = Memory<Task> { it.id }
     val events = Memory<Event> { it.id }
     val notes = Memory<Note> { it.id }
@@ -133,8 +133,8 @@ class TwoDevicesTest {
     fun aChangeOnOneReachesTheOther() = runBlocking {
         assumeTrue(binary?.exists() == true)
         val root = Files.createTempDirectory("planner-sync").toFile()
-        val pc = Device(binary!!, File(root, "pc"), Ports(22191, 21191))
-        val phone = Device(binary, File(root, "phone"), Ports(22192, 21192))
+        val pc = Device(binary!!, File(root, "pc"), Ports(22191, 21191, "127.0.0.1"))
+        val phone = Device(binary, File(root, "phone"), Ports(22192, 21192, "127.0.0.1"))
         try {
             pc.start("pc")
             phone.start("phone")

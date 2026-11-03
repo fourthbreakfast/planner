@@ -2,9 +2,10 @@ package dev.fourthbreakfast.planner.sync
 
 /**
  * The ports this app's Syncthing listens and announces on. They differ from Syncthing's own (22000 and 21027), so a
- * Syncthing the person runs for themselves never finds this one, and this one only finds other copies of the app.
+ * Syncthing the person runs for themselves never finds this one, and this one only finds other copies of the app. It
+ * listens on every network unless [host] says otherwise, which tests use to stay on this computer.
  */
-data class Ports(val listen: Int = 22101, val announce: Int = 21101)
+data class Ports(val listen: Int = 22101, val announce: Int = 21101, val host: String = "0.0.0.0")
 
 private const val RELAYS = "dynamic+https://relays.syncthing.net/endpoint"
 
@@ -36,7 +37,7 @@ fun plannerConfig(xml: String, ports: Ports, anywhere: Boolean): String {
             out.replaceFirst("</options>", "    <$tag>$value</$tag>\n    </options>")
         }
     }
-    val listen = listOf("tcp://0.0.0.0:${ports.listen}", "quic://0.0.0.0:${ports.listen}") + if (anywhere) listOf(RELAYS) else emptyList()
+    val listen = listOf("tcp://${ports.host}:${ports.listen}", "quic://${ports.host}:${ports.listen}") + if (anywhere) listOf(RELAYS) else emptyList()
     out = Regex("\\s*<listenAddress>[^<]*</listenAddress>").replace(out, "")
     return out.replaceFirst("<options>", "<options>" + listen.joinToString("") { "\n        <listenAddress>$it</listenAddress>" })
 }

@@ -12,6 +12,24 @@ ksp {
 val releaseKeystore = providers.environmentVariable("PLANNER_KEYSTORE").orNull
 val releasePassword = providers.environmentVariable("PLANNER_KEYSTORE_PASSWORD").orNull
 
+// the app's own Syncthing, built from the pinned source. Android only runs a program it unpacked itself, as a library
+val syncthingSource = rootProject.layout.projectDirectory.dir("../third_party/syncthing")
+val syncthingAndroid = tasks.register<SyncthingBinary>("syncthingAndroid") {
+    source.set(syncthingSource)
+    version.set(
+        providers.exec { commandLine("git", "-C", syncthingSource.asFile.path, "describe", "--tags", "--always") }
+            .standardOutput.asText.map { it.trim() },
+    )
+    goos.set("android")
+    goarch.set("arm64")
+    fileName.set("arm64-v8a/libsyncthing.so")
+    output.set(layout.buildDirectory.dir("syncthing/jniLibs"))
+}
+
+androidComponents {
+    onVariants { variant -> variant.sources.jniLibs?.addGeneratedSourceDirectory(syncthingAndroid, SyncthingBinary::output) }
+}
+
 android {
     namespace = "dev.fourthbreakfast.planner"
     compileSdk {
@@ -64,12 +82,18 @@ android {
     buildFeatures {
         compose = true
     }
+    // unpacked on install, so Syncthing can be started from where Android put it
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
     // the database upgrade tests read the saved schemas
     sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
 }
 
 dependencies {
-    implementation(project(":core"))
+    implementation(project(":sync"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
@@ -81,6 +105,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.zxing.core)
+    implementation(libs.zxing.android.embedded)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
