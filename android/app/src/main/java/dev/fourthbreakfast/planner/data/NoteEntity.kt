@@ -60,7 +60,10 @@ class RoomNoteStore(private val database: PlannerDatabase) : NoteStore {
 
     override suspend fun update(notes: List<Note>) = dao.updateAll(notes.map { it.toEntity() })
 
-    override suspend fun delete(notes: List<Note>) = dao.deleteAll(notes.map { it.toEntity() })
+    override suspend fun delete(notes: List<Note>) = database.withTransaction {
+        dao.deleteAll(notes.map { it.toEntity() })
+        database.forget(notes.map { it.id })
+    }
 
     override suspend fun <T> transaction(block: suspend () -> T): T = database.withTransaction { block() }
 }
