@@ -99,6 +99,10 @@ internal class Device(binary: File, root: File, ports: Ports) {
             gone += items
         }
 
+        override suspend fun forgetGone(ids: List<String>) {
+            gone.removeAll { it.id in ids }
+        }
+
         override suspend fun agreed() = agreed.toMap()
 
         override suspend fun setAgreed(items: Map<String, Long>) {

@@ -73,14 +73,14 @@ class Syncthing(
             "--no-restart",
             "--no-upgrade",
             "--gui-address=http://127.0.0.1:$port",
-            "--gui-apikey=$key",
             "--log-file=${File(home, "syncthing.log").path}",
             "--log-max-size=1000000",
             "--log-max-old-files=1",
         )
         if (isWindows) args += "--no-console"
         process = ProcessBuilder(args)
-            .apply { environment().putAll(ENVIRONMENT) }
+            // the key goes in the environment, where other programs cannot read it as they can a command line
+            .apply { environment().putAll(ENVIRONMENT + ("STGUIAPIKEY" to key)) }
             .redirectErrorStream(true)
             .redirectOutput(ProcessBuilder.Redirect.to(File(home, "output.txt")))
             .start()
@@ -93,6 +93,21 @@ class Syncthing(
         }
         myId = api.get("/rest/system/status").jsonObject.string("myID")
         api.patch("/rest/config/devices/${encoded(myId)}", buildJsonObject { put("name", name) })
+        // its web pages need a password nobody knows, so nothing else on this computer can use them. changing it
+        // restarts the web side, at the same address, so the app waits until it answers again
+        api.patch(
+            "/rest/config/gui",
+            buildJsonObject {
+                put("address", "127.0.0.1:$port")
+                put("user", "planner")
+                put("password", randomKey())
+            },
+        )
+        waited = 0
+        while (!api.alive()) {
+            if (waited++ > 50) throw IOException("syncthing did not answer after its settings changed")
+            delay(200)
+        }
         ensureFolder(api)
         log("running as ${shortId(myId)}")
     }

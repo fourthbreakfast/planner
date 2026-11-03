@@ -196,7 +196,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
     @OptIn(FlowPreview::class)
     private suspend fun run(files: DeviceFiles) {
         val publishing = scope.launch {
-            files.publish()
+            runCatching { files.publish() }
             changes.debounce(1_000).collect { runCatching { files.publish() } }
         }
         try {

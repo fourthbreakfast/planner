@@ -96,7 +96,7 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
     // one clock for every change, which never goes back past a time already seen here or from another device
     private val clock = LogicalClock().also { clock -> scope.launch { clock.saw(newestChange(taskStore, eventStore, noteStore)) } }
     val events = Events(eventStore, clock::now)
-    val tasksViewModel = TasksViewModel(Tasks(taskStore, clock::now), Backups(taskStore, eventStore, noteStore))
+    val tasksViewModel = TasksViewModel(Tasks(taskStore, clock::now), Backups(taskStore, eventStore, noteStore, RoomSyncLedger(database), clock::now))
     val agendaViewModel = AgendaViewModel(events)
     val notesViewModel = NotesViewModel(Notes(noteStore, clock::now), prefs)
     val settings = UiSettings(prefs)

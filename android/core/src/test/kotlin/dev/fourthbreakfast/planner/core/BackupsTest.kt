@@ -71,10 +71,11 @@ class BackupsTest {
         val freshTasks = MemoryTaskStore()
         val freshEvents = MemoryEventStore()
         val freshNotes = MemoryNoteStore()
-        assertEquals(4, Backups(freshTasks, freshEvents, freshNotes).import(file))
-        assertEquals(setOf(parent, child), freshTasks.state.value.toSet())
-        assertEquals(listOf(dentist), freshEvents.state.value)
-        assertEquals(listOf(groceries), freshNotes.state.value)
+        // what comes back counts as changed at the moment it was imported, and is otherwise the same
+        assertEquals(4, Backups(freshTasks, freshEvents, freshNotes, clock = { 7 }).import(file))
+        assertEquals(setOf(parent, child).map { it.copy(updatedAt = 7) }.toSet(), freshTasks.state.value.toSet())
+        assertEquals(listOf(dentist.copy(updatedAt = 7)), freshEvents.state.value)
+        assertEquals(listOf(groceries.copy(updatedAt = 7)), freshNotes.state.value)
     }
 
     @Test

@@ -9,7 +9,6 @@ import dev.fourthbreakfast.planner.sync.shortId
 import dev.fourthbreakfast.planner.ui.Prefs
 import java.io.File
 import java.io.IOException
-import java.net.InetAddress
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -137,7 +136,8 @@ class DesktopSync(
             if (syncthing.running) return
             leftBehind.stop()
             try {
-                syncthing.start(anywhere, InetAddress.getLocalHost().hostName.lowercase())
+                // the name windows gives the computer, read without asking the network
+                syncthing.start(anywhere, (System.getenv("COMPUTERNAME") ?: "windows").lowercase())
             } catch (_: Exception) {
                 // a program of its own that would not start is no reason for the app to stop
                 syncthing.stop()

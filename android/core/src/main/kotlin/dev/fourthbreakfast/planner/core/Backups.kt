@@ -1,22 +1,31 @@
 package dev.fourthbreakfast.planner.core
 
 /** Saves and brings back everything the app keeps: the tasks, the bin, the agenda and the notes. */
-class Backups(private val tasks: TaskStore, private val events: EventStore, private val notes: NoteStore) {
+class Backups(
+    private val tasks: TaskStore,
+    private val events: EventStore,
+    private val notes: NoteStore,
+    private val ledger: SyncLedger? = null,
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
     suspend fun export(): String = encodeBackup(tasks.all(), events.all(), notes.all())
 
     /**
      * Adds what a backup holds and the app does not, and returns how many things that was. It never changes
-     * or removes anything already here, so importing the same file twice is harmless.
+     * or removes anything already here, so importing the same file twice is harmless. What it brings back counts as
+     * changed now, and is no longer marked as deleted for good, so sync spreads it instead of deleting it again.
      */
     suspend fun import(text: String): Int {
         val backup = decodeBackup(text)
-        val addedTasks = importTasks(backup.tasks.distinctBy { it.id })
-        val addedEvents = importEvents(backup.events.distinctBy { it.id })
-        val addedNotes = importNotes(backup.notes.distinctBy { it.id })
-        return addedTasks + addedEvents + addedNotes
+        val now = clock()
+        val addedTasks = importTasks(backup.tasks.distinctBy { it.id }.map { it.copy(updatedAt = now) })
+        val addedEvents = importEvents(backup.events.distinctBy { it.id }.map { it.copy(updatedAt = now) })
+        val addedNotes = importNotes(backup.notes.distinctBy { it.id }.map { it.copy(updatedAt = now) })
+        ledger?.forgetGone(addedTasks + addedEvents + addedNotes)
+        return addedTasks.size + addedEvents.size + addedNotes.size
     }
 
-    private suspend fun importTasks(incoming: List<Task>): Int = tasks.transaction {
+    private suspend fun importTasks(incoming: List<Task>): List<String> = tasks.transaction {
         val existing = tasks.all().mapTo(HashSet()) { it.id }
         val known = existing + incoming.map { it.id }
         val added = incoming
@@ -28,20 +37,20 @@ class Backups(private val tasks: TaskStore, private val events: EventStore, priv
                 list.map { if (it.id in loose) it.copy(parentId = null) else it }
             }
         if (added.isNotEmpty()) tasks.insert(added)
-        added.size
+        added.map { it.id }
     }
 
-    private suspend fun importEvents(incoming: List<Event>): Int = events.transaction {
+    private suspend fun importEvents(incoming: List<Event>): List<String> = events.transaction {
         val existing = events.all().mapTo(HashSet()) { it.id }
         val added = incoming.filterNot { it.id in existing }
         if (added.isNotEmpty()) events.insert(added)
-        added.size
+        added.map { it.id }
     }
 
-    private suspend fun importNotes(incoming: List<Note>): Int = notes.transaction {
+    private suspend fun importNotes(incoming: List<Note>): List<String> = notes.transaction {
         val existing = notes.all().mapTo(HashSet()) { it.id }
         val added = incoming.filterNot { it.id in existing }
         if (added.isNotEmpty()) notes.insert(added)
-        added.size
+        added.map { it.id }
     }
 }

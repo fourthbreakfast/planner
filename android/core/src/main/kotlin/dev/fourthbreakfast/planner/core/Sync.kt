@@ -14,6 +14,9 @@ interface SyncLedger {
 
     suspend fun addGone(items: List<Gone>)
 
+    /** Takes away the marks of things brought back from a backup. */
+    suspend fun forgetGone(ids: List<String>)
+
     /** For each id, the updatedAt that this device and another last agreed on. */
     suspend fun agreed(): Map<String, Long>
 

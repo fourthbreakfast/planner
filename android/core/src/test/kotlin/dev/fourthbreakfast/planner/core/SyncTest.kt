@@ -43,6 +43,10 @@ private class MemoryLedger : SyncLedger {
         gone += items
     }
 
+    override suspend fun forgetGone(ids: List<String>) {
+        gone.removeAll { it.id in ids }
+    }
+
     override suspend fun agreed() = agreed.toMap()
 
     override suspend fun setAgreed(items: Map<String, Long>) {

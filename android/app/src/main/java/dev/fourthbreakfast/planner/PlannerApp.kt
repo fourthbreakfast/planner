@@ -70,7 +70,7 @@ class PlannerApp : Application() {
     val tasks: Tasks by lazy { Tasks(taskStore, clock::now) }
     val events: Events by lazy { Events(eventStore, clock::now) }
     val notes: Notes by lazy { Notes(noteStore, clock::now) }
-    val backups: Backups by lazy { Backups(taskStore, eventStore, noteStore) }
+    val backups: Backups by lazy { Backups(taskStore, eventStore, noteStore, syncLedger, clock::now) }
     val syncController: SyncController by lazy {
         SyncController(
             this,
