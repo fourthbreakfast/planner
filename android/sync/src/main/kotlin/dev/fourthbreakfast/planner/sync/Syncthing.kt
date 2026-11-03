@@ -158,13 +158,21 @@ class Syncthing(
     /** Devices running the app that this one can see on the local network. */
     suspend fun nearby(): List<String> = api().get("/rest/system/discovery").jsonObject.keys.filter { it != myId }
 
-    /** Devices that asked to sync with this one and were not added yet. */
-    suspend fun asking(): List<String> = api().get("/rest/cluster/pending/devices").jsonObject.keys.toList()
+    /** Devices that asked to sync with this one and were not let in yet, with the name each gave itself. */
+    suspend fun asking(): List<Peer> = api().get("/rest/cluster/pending/devices").jsonObject.map { (id, details) ->
+        Peer(id, details.jsonObject.string("name"), connected = false)
+    }
+
+    /** Turns down a device that asked, so it is not shown again until it asks again. */
+    suspend fun refuse(id: String) {
+        api().delete("/rest/cluster/pending/devices?device=${encoded(id)}")
+    }
 
     /**
      * Starts syncing with another device. The device that pairs by code takes the other as its [introducer]: it then
      * learns every device the other one already syncs with, so pairing a new device with any one of them is enough.
-     * Only one side of a pair may introduce, so the side that lets a device in does not. The [address] is found by
+     * Only one side of a pair may introduce, so the side that lets a device in does not. A device taken away on the
+     * introducing side is taken away from the devices it introduced to as well, so a lost phone can be shut out. The [address] is found by
      * itself unless given.
      */
     suspend fun pair(id: String, introducer: Boolean, address: String = "dynamic") {
@@ -177,7 +185,7 @@ class Syncthing(
                     put("deviceID", id)
                     put("addresses", buildJsonArray { add(JsonPrimitive(address)) })
                     put("introducer", introducer)
-                    put("skipIntroductionRemovals", true)
+                    put("skipIntroductionRemovals", false)
                     put("autoAcceptFolders", true)
                 },
             )

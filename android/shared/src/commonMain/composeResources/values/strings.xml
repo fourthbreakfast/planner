@@ -47,6 +47,9 @@
     <string name="sync_connected">connected</string>
     <string name="sync_waiting">waiting</string>
     <string name="sync_remove">remove</string>
+    <string name="sync_asks">%1$s asks to sync</string>
+    <string name="sync_let_in">let in</string>
+    <string name="sync_refuse">no</string>
     <string name="sync_anywhere">sync anywhere</string>
     <string name="sync_on">on</string>
     <string name="sync_unavailable">sync does not run on this phone</string>

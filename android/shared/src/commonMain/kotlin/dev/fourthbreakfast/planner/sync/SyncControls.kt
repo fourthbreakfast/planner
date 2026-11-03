@@ -8,6 +8,8 @@ data class SyncState(
     val myId: String = "",
     val peers: List<Peer> = emptyList(),
     val nearby: List<String> = emptyList(),
+    /** Devices asking to sync, waiting for a yes or a no. */
+    val asking: List<Peer> = emptyList(),
     val failed: Boolean = false,
 )
 
@@ -20,7 +22,7 @@ interface SyncControls {
 
     val anywhere: Boolean
 
-    /** The sync screen is open: sync runs, and any device asking to pair is let in. */
+    /** The sync screen is open: sync runs, and devices asking to pair are shown, to be let in or turned down. */
     fun openPairing()
 
     fun closePairing()
@@ -29,6 +31,10 @@ interface SyncControls {
 
     /** Pairs with a device by its whole id, or by the short code it shows when it is on the same network. */
     suspend fun pairWith(code: String): Boolean
+
+    fun letIn(id: String)
+
+    fun refuse(id: String)
 
     fun unpair(id: String)
 }
