@@ -9,12 +9,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.notes.NotesViewModel
+import dev.fourthbreakfast.planner.settings.SettingsScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
+import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 
 class MainActivity : ComponentActivity() {
@@ -55,8 +58,10 @@ class MainActivity : ComponentActivity() {
                 val bars = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark }
                 enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
             }
-            PlannerTheme(darkTheme = dark) {
-                PlannerScreen(tasksViewModel, agendaViewModel, notesViewModel)
+            CompositionLocalProvider(LocalServices provides (application as PlannerApp).services) {
+                PlannerTheme(darkTheme = dark) {
+                    PlannerScreen(tasksViewModel, agendaViewModel, notesViewModel) { onClose -> SettingsScreen(tasksViewModel, onClose) }
+                }
             }
         }
     }

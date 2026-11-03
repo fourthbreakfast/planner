@@ -18,6 +18,8 @@ import dev.fourthbreakfast.planner.data.RoomSyncLedger
 import dev.fourthbreakfast.planner.data.RoomTaskStore
 import dev.fourthbreakfast.planner.reminders.Reminders
 import dev.fourthbreakfast.planner.sync.SyncController
+import dev.fourthbreakfast.planner.ui.AndroidPrefs
+import dev.fourthbreakfast.planner.ui.PlannerServices
 import dev.fourthbreakfast.planner.widget.PlannerWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,8 +43,12 @@ class PlannerApp : Application() {
     private val syncLedger by lazy { RoomSyncLedger(database) }
     private val reminders by lazy { Reminders(this) }
 
-    val settings: UiSettings by lazy { UiSettings(this) }
+    private val prefs by lazy { AndroidPrefs(this, "view") }
+    val settings: UiSettings by lazy { UiSettings(prefs) }
     val requests = Requests()
+
+    /** What the shared screens need from the app. */
+    val services by lazy { PlannerServices(requests, settings, prefs) }
 
     val tasks: Tasks by lazy { Tasks(taskStore) }
     val events: Events by lazy { Events(eventStore) }
