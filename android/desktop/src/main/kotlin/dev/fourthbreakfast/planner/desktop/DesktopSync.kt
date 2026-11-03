@@ -40,6 +40,7 @@ class DesktopSync(
     private val scope: CoroutineScope,
 ) : SyncControls {
     private val syncthing = binary?.let { Syncthing(it, File(root, "home"), File(root, "share")) }
+    private val leftBehind = LeftBehind(File(root, "home"))
     private val lock = Mutex()
     private var loop: Job? = null
     private var pairing = false
@@ -113,6 +114,7 @@ class DesktopSync(
         if (!available) return
         lock.withLock {
             if (syncthing.running) return
+            leftBehind.stop()
             try {
                 syncthing.start(anywhere, InetAddress.getLocalHost().hostName.lowercase())
             } catch (_: Exception) {
@@ -161,6 +163,26 @@ class DesktopSync(
             loop = null
             syncthing?.stop()
             current.value = current.value.copy(running = false)
+        }
+    }
+}
+
+/**
+ * A Syncthing an earlier run of the app left going, when it was killed rather than quit: Windows does not stop the
+ * children of a killed program. It holds the folder and the port, so it is stopped before a new one starts. Only a
+ * Syncthing started with this app's own home folder is touched.
+ */
+private class LeftBehind(private val home: File) {
+    fun stop() {
+        val query = "Get-CimInstance Win32_Process -Filter \"Name='syncthing.exe'\" | " +
+            "Where-Object { \$_.CommandLine -like '*${home.path.replace("'", "''")}*' } | " +
+            "ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }"
+        runCatching {
+            ProcessBuilder("powershell", "-NoProfile", "-NonInteractive", "-Command", query)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start()
+                .waitFor(15, java.util.concurrent.TimeUnit.SECONDS)
         }
     }
 }

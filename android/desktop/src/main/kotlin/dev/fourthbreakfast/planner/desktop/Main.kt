@@ -119,13 +119,23 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
  * window only hides it, so reminders and sync go on; quitting is in the tray's menu.
  */
 fun main(args: Array<String>) {
+    val instance = SingleInstance(dataFolder())
+    if (!instance.claim()) return
     val app = DesktopApp()
+    // closing down in any ordinary way stops syncthing too, so it does not stay behind with its database open
+    Runtime.getRuntime().addShutdownHook(Thread { runBlocking { withTimeoutOrNull(5_000) { app.sync.stop() } } })
     // started with windows, it waits in the tray
     val startHidden = "--tray" in args
     application {
         val windowState = rememberWindowState(size = DpSize(1280.dp, 820.dp))
         var visible by remember { mutableStateOf(!startHidden) }
         val scope = rememberCoroutineScope()
+        LaunchedEffect(Unit) {
+            instance.listen {
+                visible = true
+                windowState.isMinimized = false
+            }
+        }
         val tray = rememberTrayState()
         val icon = remember { appIconPainter() }
         val reminders =
@@ -177,9 +187,14 @@ fun main(args: Array<String>) {
             undecorated = true,
             onPreviewKeyEvent = { event ->
                 (event.key == Key.Escape && event.type == KeyEventType.KeyDown && app.backStack.back()) ||
-                    handleDashboardKey(event, app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) {
+                    handleDashboardKey(event, plainKeys = false, app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) {
                         app.tasks.value
                     }
+            },
+            onKeyEvent = { event ->
+                handleDashboardKey(event, plainKeys = true, app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) {
+                    app.tasks.value
+                }
             },
         ) {
             window.minimumSize = java.awt.Dimension(900, 560)
