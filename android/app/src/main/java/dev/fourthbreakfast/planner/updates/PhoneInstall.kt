@@ -3,17 +3,14 @@ package dev.fourthbreakfast.planner.updates
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
-import java.io.File
 
 /**
- * Installs a newer release on the phone: the apk is fetched into the app's cache and handed to Android's own
- * installer, which asks the person to allow it. The update keeps everything, as the apk is signed with the same key.
+ * Installs a downloaded and checked update: it is handed to Android's own installer, which asks the person to confirm,
+ * as it always does for an app that does not come from a store. Everything is kept, as the apk is signed with the same
+ * key.
  */
-suspend fun installOnPhone(context: Context, updates: Updates, release: Release) {
-    val url = release.apk ?: return
-    val file = File(context.cacheDir, "updates/planner-${release.version}.apk")
-    if (!updates.download(url, file)) return
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+fun installOnPhone(context: Context, ready: UpdateState.Ready) {
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", ready.file)
     context.startActivity(
         Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, "application/vnd.android.package-archive")

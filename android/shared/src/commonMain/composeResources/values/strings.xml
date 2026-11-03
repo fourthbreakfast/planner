@@ -58,7 +58,8 @@
     <string name="guide_title">how it works</string>
     <string name="nothing_to_do">nothing to do</string>
     <string name="redo">redo</string>
-    <string name="update_to">update to %1$s</string>
+    <string name="update_ready">update ready: %1$s</string>
+    <string name="restart_to_update">restart to update</string>
     <string name="up_to_date">up to date</string>
     <string name="update_checking">checking…</string>
     <string name="update_downloading">downloading…</string>

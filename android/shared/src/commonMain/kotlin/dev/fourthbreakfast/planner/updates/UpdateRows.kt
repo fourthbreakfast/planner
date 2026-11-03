@@ -16,17 +16,17 @@ import dev.fourthbreakfast.planner.resources.update_checking
 import dev.fourthbreakfast.planner.resources.update_daily
 import dev.fourthbreakfast.planner.resources.update_downloading
 import dev.fourthbreakfast.planner.resources.update_failed
-import dev.fourthbreakfast.planner.resources.update_to
+import dev.fourthbreakfast.planner.resources.update_ready
 import dev.fourthbreakfast.planner.settings.Setting
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The two update lines of the settings: one that shows the version and checks, or offers the newer one and installs
- * it through [install], and one that turns the daily check on and off.
+ * The two update lines of the settings: one that shows the version and checks, or offers the downloaded newer one and
+ * installs it through [install], and one that turns the daily check on and off.
  */
 @Composable
-fun UpdateRows(updates: Updates, version: String, install: suspend (Release) -> Unit) {
+fun UpdateRows(updates: Updates, version: String, install: (UpdateState.Ready) -> Unit) {
     val state by updates.state.collectAsState()
     val scope = rememberCoroutineScope()
     var daily by remember { mutableStateOf(updates.daily) }
@@ -34,17 +34,15 @@ fun UpdateRows(updates: Updates, version: String, install: suspend (Release) -> 
         UpdateState.Unknown -> version
         UpdateState.Checking -> stringResource(Res.string.update_checking)
         UpdateState.UpToDate -> stringResource(Res.string.up_to_date) + " · " + version
-        is UpdateState.Available -> stringResource(Res.string.update_to, now.release.version)
-        UpdateState.Downloading -> stringResource(Res.string.update_downloading)
+        is UpdateState.Downloading -> stringResource(Res.string.update_downloading)
+        is UpdateState.Ready -> stringResource(Res.string.update_ready, now.release.version)
         UpdateState.Failed -> stringResource(Res.string.update_failed)
     }
     Setting(stringResource(Res.string.setting_updates), value) {
-        scope.launch {
-            when (val now = state) {
-                is UpdateState.Available -> install(now.release)
-                UpdateState.Checking, UpdateState.Downloading -> Unit
-                else -> updates.check()
-            }
+        when (val now = state) {
+            is UpdateState.Ready -> install(now)
+            UpdateState.Checking, is UpdateState.Downloading -> Unit
+            else -> scope.launch { updates.check() }
         }
     }
     Setting(stringResource(Res.string.update_daily), stringResource(if (daily) Res.string.sync_on else Res.string.backup_off)) {

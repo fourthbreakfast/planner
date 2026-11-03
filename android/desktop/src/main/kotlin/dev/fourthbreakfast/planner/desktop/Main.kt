@@ -53,7 +53,7 @@ import dev.fourthbreakfast.planner.ui.LocalBackStack
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.PlannerServices
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
-import dev.fourthbreakfast.planner.updates.Release
+import dev.fourthbreakfast.planner.updates.UpdateState
 import dev.fourthbreakfast.planner.updates.Updates
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -111,7 +111,7 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
     // the tasks as they are now, for the keys that act on the selected one
     val tasks = tasksViewModel.all.stateIn(scope, SharingStarted.Eagerly, emptyList())
     val version: String = System.getProperty("jpackage.app-version") ?: "dev"
-    val updates = Updates(prefs, version)
+    val updates = Updates(prefs, version, File(folder, "updates"), pick = { it.msi })
 }
 
 /**
@@ -156,12 +156,12 @@ fun main(args: Array<String>) {
             exitApplication()
         }
 
-        // a newer version: its installer starts, and this app goes, so nothing the installer replaces is in use
-        suspend fun install(release: Release) {
-            val url = release.msi ?: return
-            val file = File(System.getProperty("java.io.tmpdir"), "planner-${release.version}.msi")
-            if (!app.updates.download(url, file)) return
-            ProcessBuilder("msiexec", "/i", file.path).start()
+        // restart to update: this app goes first, so nothing the installer replaces is in use; the installer runs on its
+        // own with only its progress showing, then planner starts again
+        fun install(ready: UpdateState.Ready) {
+            val exe = System.getProperty("jpackage.app-path")
+            val then = if (exe != null) " && start \"\" \"$exe\"" else ""
+            ProcessBuilder("cmd", "/c", "msiexec /i \"${ready.file.path}\" /passive /norestart$then").start()
             quit()
         }
         Tray(
@@ -220,10 +220,10 @@ fun main(args: Array<String>) {
                                 TitleBar(windowState, onClose = { visible = false })
                                 Box(Modifier.weight(1f)) {
                                     Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
-                                        DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = { install(it) })
+                                        DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = ::install)
                                     }
                                 }
-                                StatusBar(app.sync, app.updates, onUpdate = { scope.launch { install(it) } }, onSettings = {
+                                StatusBar(app.sync, app.updates, onUpdate = ::install, onSettings = {
                                     app.dashboard.panel =
                                         Panel.Settings
                                 })

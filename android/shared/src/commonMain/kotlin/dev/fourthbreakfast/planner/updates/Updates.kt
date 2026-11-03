@@ -4,12 +4,14 @@ import dev.fourthbreakfast.planner.ui.Prefs
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -19,8 +21,11 @@ private const val PREF_DAILY = "update_daily"
 private const val PREF_LAST = "update_last_check"
 private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
-/** A published version, with where its phone and windows files are. */
-data class Release(val version: String, val apk: String?, val msi: String?)
+/** One file of a release: where it is, and the checksum github gives for it. */
+data class Asset(val url: String, val sha256: String?)
+
+/** A published version, with its phone and windows files. */
+data class Release(val version: String, val apk: Asset?, val msi: Asset?)
 
 /** Whether [candidate] ("0.9.0" or "v0.9.0") is a later version than [current]. */
 fun isNewer(candidate: String, current: String): Boolean {
@@ -39,11 +44,19 @@ fun isNewer(candidate: String, current: String): Boolean {
 fun parseRelease(json: String): Release? {
     val root = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull() ?: return null
     val tag = root["tag_name"]?.jsonPrimitive?.content ?: return null
-    val assets = root["assets"]?.jsonArray.orEmpty().mapNotNull { it.jsonObject["browser_download_url"]?.jsonPrimitive?.content }
-    return Release(tag.removePrefix("v"), assets.firstOrNull { it.endsWith(".apk") }, assets.firstOrNull { it.endsWith(".msi") })
+    val assets = root["assets"]?.jsonArray.orEmpty().map { it.jsonObject }
+
+    fun asset(ending: String): Asset? {
+        val found = assets.firstOrNull { it.text("name").endsWith(ending) } ?: return null
+        val digest = found.text("digest").takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:")
+        return Asset(found.text("browser_download_url"), digest)
+    }
+    return Release(tag.removePrefix("v"), asset(".apk"), asset(".msi"))
 }
 
-/** Where a check for updates stands, for the settings to show. */
+private fun JsonObject.text(name: String): String = this[name]?.jsonPrimitive?.content.orEmpty()
+
+/** Where updating stands, for the settings and the status bar to show. */
 sealed interface UpdateState {
     data object Unknown : UpdateState
 
@@ -51,18 +64,27 @@ sealed interface UpdateState {
 
     data object UpToDate : UpdateState
 
-    data class Available(val release: Release) : UpdateState
+    data class Downloading(val release: Release) : UpdateState
 
-    data object Downloading : UpdateState
+    /** The new version is downloaded, checked and waiting to be installed. */
+    data class Ready(val release: Release, val file: File) : UpdateState
 
     data object Failed : UpdateState
 }
 
 /**
- * Looks at the latest release on GitHub: once a day on its own, unless that is switched off, and whenever asked. It is
- * the only thing the app sends out besides sync, and it sends nothing about the person, only the request for the page.
+ * Keeps the app up to date from its GitHub releases: once a day on its own, unless that is switched off, and whenever
+ * asked. A newer version is downloaded in the background into [folder], the app's own, and checked against the
+ * checksum GitHub publishes; only then is it ready to install. [pick] chooses this device's file from a release. It is
+ * the only thing the app sends out besides sync, and it sends nothing about the person, only requests for the files.
  */
-class Updates(private val prefs: Prefs, private val current: String, private val clock: () -> Long = System::currentTimeMillis) {
+class Updates(
+    private val prefs: Prefs,
+    private val current: String,
+    private val folder: File,
+    private val pick: (Release) -> Asset?,
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
     private val now = MutableStateFlow<UpdateState>(UpdateState.Unknown)
     val state: StateFlow<UpdateState> = now
 
@@ -76,53 +98,56 @@ class Updates(private val prefs: Prefs, private val current: String, private val
     }
 
     suspend fun check() {
+        if (now.value is UpdateState.Downloading || now.value is UpdateState.Ready) return
         now.value = UpdateState.Checking
         val release = try {
-            withContext(Dispatchers.IO) { parseRelease(read(LATEST)) }
+            withContext(Dispatchers.IO) { parseRelease(String(get(LATEST, json = true))) }
         } catch (_: IOException) {
             null
         }
         prefs.putLong(PREF_LAST, clock())
+        val asset = release?.let(pick)
         now.value = when {
             release == null -> UpdateState.Failed
-            isNewer(release.version, current) -> UpdateState.Available(release)
-            else -> UpdateState.UpToDate
+            !isNewer(release.version, current) || asset == null -> UpdateState.UpToDate
+            else -> download(release, asset)
         }
     }
 
-    /** Fetches [url] into [target], for the device to install. Returns false when it could not. */
-    suspend fun download(url: String, target: File): Boolean {
-        val before = now.value
-        now.value = UpdateState.Downloading
-        val done = try {
+    private suspend fun download(release: Release, asset: Asset): UpdateState {
+        now.value = UpdateState.Downloading(release)
+        return try {
             withContext(Dispatchers.IO) {
-                target.parentFile?.mkdirs()
-                val connection = URL(url).openConnection() as HttpURLConnection
-                connection.instanceFollowRedirects = true
-                connection.setRequestProperty("User-Agent", "planner")
-                connection.inputStream.use { input -> target.outputStream().use { input.copyTo(it) } }
-                connection.disconnect()
+                folder.mkdirs()
+                // whatever an earlier version left here goes first
+                folder.listFiles().orEmpty().forEach { it.delete() }
+                val file = File(folder, asset.url.substringAfterLast('/'))
+                val bytes = get(asset.url, json = false)
+                // a file that is not exactly the one published is never installed
+                if (asset.sha256 != null && sha256(bytes) != asset.sha256.lowercase()) throw IOException("checksum differs")
+                file.writeBytes(bytes)
+                UpdateState.Ready(release, file)
             }
-            true
         } catch (_: IOException) {
-            false
+            UpdateState.Failed
         }
-        now.value = if (done) before else UpdateState.Failed
-        return done
     }
 
-    private fun read(url: String): String {
-        val connection = URL(url).openConnection() as HttpURLConnection
+    private fun get(url: String, json: Boolean): ByteArray {
+        val connection = URI(url).toURL().openConnection() as HttpURLConnection
         try {
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 60_000
+            connection.instanceFollowRedirects = true
             // github asks every request to say what it comes from
             connection.setRequestProperty("User-Agent", "planner")
-            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            if (json) connection.setRequestProperty("Accept", "application/vnd.github+json")
             if (connection.responseCode != 200) throw IOException("github said ${connection.responseCode}")
-            return connection.inputStream.use { it.readBytes().decodeToString() }
+            return connection.inputStream.use { it.readBytes() }
         } finally {
             connection.disconnect()
         }
     }
+
+    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 }

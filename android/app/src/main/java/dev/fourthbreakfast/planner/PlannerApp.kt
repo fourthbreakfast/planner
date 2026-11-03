@@ -22,6 +22,7 @@ import dev.fourthbreakfast.planner.ui.AndroidPrefs
 import dev.fourthbreakfast.planner.ui.PlannerServices
 import dev.fourthbreakfast.planner.updates.Updates
 import dev.fourthbreakfast.planner.widget.PlannerWidget
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,7 +53,9 @@ class PlannerApp : Application() {
     val services by lazy { PlannerServices(requests, settings, prefs) }
 
     /** The daily look for a newer release. */
-    val updates by lazy { Updates(prefs, packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()) }
+    val updates by lazy {
+        Updates(prefs, packageManager.getPackageInfo(packageName, 0).versionName.orEmpty(), File(cacheDir, "updates"), pick = { it.apk })
+    }
 
     /** Checks for a newer release when a day has passed since the last look. */
     fun checkForUpdatesIfDue() {
