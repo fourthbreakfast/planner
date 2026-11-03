@@ -73,7 +73,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val PREFS = "view"
-private const val PREF_SORT = "sort"
 private const val PREF_PEEKED = "peeked"
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -95,22 +94,12 @@ internal fun TaskList(
             addFocus.requestFocus()
         }
     }
-    var order by remember {
-        mutableStateOf(
-            SortOrder.entries.firstOrNull { it.name == prefs.getString(PREF_SORT, null) } ?: SortOrder.TREE,
-        )
-    }
-    // two modes: the tree in the order things were put, or ranked by priority among their neighbours
-    val treeMode = order == SortOrder.TREE
-
-    fun setOrder(new: SortOrder) {
-        order = new
-        prefs.edit().putString(PREF_SORT, new.name).apply()
-    }
+    // siblings are always ranked by priority, and a task with subtasks starts closed
+    val order = SortOrder.PRIORITY
 
     var aimedId by rememberSaveable { mutableStateOf<String?>(null) }
     var renamingId by rememberSaveable { mutableStateOf<String?>(null) }
-    var collapsedIds by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+    var openIds by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
     var addText by rememberSaveable { mutableStateOf("") }
     var addFocused by remember { mutableStateOf(false) }
     val snackbarHost = remember { SnackbarHostState() }
@@ -128,8 +117,8 @@ internal fun TaskList(
 
     // one closed task is enough for the button to open everything; otherwise it closes everything
     val parentIds = remember(tasks) { tasks.mapNotNull { it.parentId }.toSet() }
-    val anyCollapsed = parentIds.any { it in collapsedIds }
-    val rows = remember(tasks, order, collapsedIds) { arrange(tasks, order, collapsedIds) }
+    val anyCollapsed = parentIds.any { it !in openIds }
+    val rows = remember(tasks, parentIds, openIds) { arrange(tasks, order, parentIds - openIds.toSet()) }
     val display = remember(rows) { rows + EndRow }
 
     val list = rememberLazyListState()
@@ -237,7 +226,7 @@ internal fun TaskList(
             // in priority mode a task snaps back among its own colour
             val to = if (order == SortOrder.PRIORITY) rankedDestination(currentTasks, key, drop.destination) else drop.destination
             viewModel.move(key, to)
-            drop.destination.parentId?.let { parent -> collapsedIds = ArrayList(collapsedIds - parent) }
+            drop.destination.parentId?.let { parent -> openIds = ArrayList(openIds + parent) }
         }
     }
 
@@ -306,7 +295,7 @@ internal fun TaskList(
                 },
                 onAdd = {
                     viewModel.add(addText, aimedTask?.id)
-                    aimedTask?.let { collapsedIds = ArrayList(collapsedIds - it.id) }
+                    aimedTask?.let { openIds = ArrayList(openIds + it.id) }
                     addText = ""
                 },
                 focus = addFocus,
@@ -321,18 +310,12 @@ internal fun TaskList(
                 anyCollapsed = anyCollapsed,
                 onToggleAll = {
                     if (anyCollapsed) {
-                        collapsedIds = arrayListOf()
+                        openIds = ArrayList(parentIds)
                     } else {
-                        collapsedIds = ArrayList(parentIds)
+                        openIds = arrayListOf()
                         // a target inside a closed task is out of sight, so it goes
                         if (tasks.firstOrNull { it.id == aimedId }?.parentId != null) aimedId = null
                     }
-                },
-                treeMode = treeMode,
-                onPriorityChange = {
-                    setOrder(if (it) SortOrder.PRIORITY else SortOrder.TREE)
-                    // back to the top of the list, with everything left open or closed as it was
-                    list.requestScrollToItem(0)
                 },
                 binCount = binCount,
                 onOpenBin = onOpenBin,
@@ -382,9 +365,7 @@ internal fun TaskList(
                                 if (!row.collapsed && subtree(tasks, task.id).any { it.id == aimedId && it.id != task.id }) {
                                     aimedId = null
                                 }
-                                collapsedIds = ArrayList(
-                                    if (row.collapsed) collapsedIds - task.id else collapsedIds + task.id,
-                                )
+                                openIds = ArrayList(if (row.collapsed) openIds + task.id else openIds - task.id)
                             }
                             TaskRow(
                                 node = row,
@@ -449,8 +430,6 @@ private fun Header(
     showExpandAll: Boolean,
     anyCollapsed: Boolean,
     onToggleAll: () -> Unit,
-    treeMode: Boolean,
-    onPriorityChange: (Boolean) -> Unit,
     binCount: Int,
     onOpenBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
@@ -476,7 +455,6 @@ private fun Header(
                 modifier = Modifier.weight(1f),
             )
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
-            ModeDot(!treeMode, onPriorityChange)
             BinButton(binCount, onOpenBin)
         }
     }

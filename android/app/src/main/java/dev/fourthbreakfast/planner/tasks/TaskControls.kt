@@ -145,24 +145,6 @@ fun PriorityMarker(priority: Priority, onClick: () -> Unit, modifier: Modifier =
     }
 }
 
-/** One dot switches the mode: grey is tree mode, red is priority mode. */
-@Composable
-fun ModeDot(priority: Boolean, onChange: (Boolean) -> Unit) {
-    val label = stringResource(R.string.priority_mode)
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .toggleable(value = priority, role = Role.Switch, onValueChange = onChange)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            drawCircle(if (priority) PriorityHigh else ink, radius = (Space.modeDot / 2).toPx())
-        }
-    }
-}
-
 /** Opens everything or closes everything. A triangle pointing down opens, pointing up closes. */
 @Composable
 fun ExpandAllButton(anyCollapsed: Boolean, onClick: () -> Unit) {

@@ -4,5 +4,5 @@ It has no fill, no ring and no shadow, because nothing else on the screen is fil
 
 The consumer provides what a touch does (open the empty event form). Describe it to screen readers as "add an event".
 
-- Do keep it as quiet as the bin and the mode dot.
+- Do keep it as quiet as the bin.
 - Don't make it bigger than a touch square, and don't fill it with `ink` or a priority colour.

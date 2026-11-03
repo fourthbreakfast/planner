@@ -37,8 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -46,9 +49,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
@@ -162,6 +167,7 @@ private fun NoteText(state: NoteEditState) {
     val density = LocalDensity.current
     val focus = remember { FocusRequester() }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var touched by remember { mutableStateOf<Offset?>(null) }
     val marks = state.marks
     val looks = state.looks
     val quiet = colors.onSurfaceVariant
@@ -177,7 +183,7 @@ private fun NoteText(state: NoteEditState) {
     Box(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.x2)) {
         BasicTextField(
             value = state.value,
-            onValueChange = state::change,
+            onValueChange = { state.change(endOfLineForTouch(it, state.value.text, layout, touched)) },
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
             cursorBrush = SolidColor(colors.onBackground),
             visualTransformation = transformation,
@@ -185,7 +191,14 @@ private fun NoteText(state: NoteEditState) {
             onTextLayout = { layout = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focus),
+                .focusRequester(focus)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull()?.let { touched = it.position }
+                        }
+                    }
+                },
         )
         val placed = layout
         if (placed != null) {
@@ -317,4 +330,16 @@ private fun TitleField(state: NoteEditState) {
                 .semantics { if (state.title.isEmpty()) contentDescription = titleLabel },
         )
     }
+}
+
+/**
+ * A line's break belongs to the end of its line, so touching just past the last word of a line lands after the break,
+ * at the start of the next line. When the touch was on the line above that, the cursor goes back before the break.
+ */
+private fun endOfLineForTouch(v: TextFieldValue, before: String, layout: TextLayoutResult?, touched: Offset?): TextFieldValue {
+    val at = v.selection.start
+    if (layout == null || touched == null || v.text != before || !v.selection.collapsed) return v
+    if (at < 2 || at > v.text.length || v.text[at - 1] != '\n' || at > layout.layoutInput.text.length) return v
+    val touchedLine = layout.getLineForVerticalPosition(touched.y)
+    return if (touchedLine < layout.getLineForOffset(at)) v.copy(selection = TextRange(at - 1)) else v
 }
