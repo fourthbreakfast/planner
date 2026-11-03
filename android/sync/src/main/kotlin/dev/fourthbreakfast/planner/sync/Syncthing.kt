@@ -88,7 +88,7 @@ class Syncthing(
         var waited = 0
         while (!api.alive()) {
             if (!running) throw IOException("syncthing stopped while starting")
-            if (waited++ > 150) throw IOException("syncthing did not start")
+            if (waited++ > 50) throw IOException("syncthing did not answer")
             delay(200)
         }
         myId = api.get("/rest/system/status").jsonObject.string("myID")

@@ -27,18 +27,19 @@ class SyncthingApi(private val port: Int, private val key: String) {
 
     /** Whether it answers at all. */
     suspend fun alive(): Boolean = try {
-        get("/rest/system/ping")
+        call("GET", "/rest/system/ping", null, quick = true)
         true
     } catch (_: IOException) {
         false
     }
 
-    private suspend fun call(method: String, path: String, body: JsonElement?): JsonElement = withContext(Dispatchers.IO) {
+    private suspend fun call(method: String, path: String, body: JsonElement?, quick: Boolean = false): JsonElement = withContext(Dispatchers.IO) {
         val connection = URL("http://127.0.0.1:$port$path").openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method
-            connection.connectTimeout = 2_000
-            connection.readTimeout = 10_000
+            // a ping that hangs means something stands between the app and its Syncthing, such as a firewall
+            connection.connectTimeout = if (quick) 500 else 2_000
+            connection.readTimeout = if (quick) 1_000 else 10_000
             connection.setRequestProperty("X-API-Key", key)
             if (body != null) {
                 connection.doOutput = true
