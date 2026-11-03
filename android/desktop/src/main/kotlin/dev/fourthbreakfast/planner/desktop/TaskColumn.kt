@@ -83,15 +83,13 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewModel: TasksViewModel) {
-    val menu = mapOf(
-        "rename" to stringResource(Res.string.rename),
-        "add_subtask" to stringResource(Res.string.add_subtask),
-        "priority_high" to stringResource(Res.string.priority_high),
-        "priority_medium" to stringResource(Res.string.priority_medium),
-        "priority_low" to stringResource(Res.string.priority_low),
-        "priority_none" to stringResource(Res.string.priority_none),
-        "remove_task" to stringResource(Res.string.remove_task),
-    )
+    val renameLabel = stringResource(Res.string.rename)
+    val addSubtaskLabel = stringResource(Res.string.add_subtask)
+    val priorityHighLabel = stringResource(Res.string.priority_high)
+    val priorityMediumLabel = stringResource(Res.string.priority_medium)
+    val priorityLowLabel = stringResource(Res.string.priority_low)
+    val priorityNoneLabel = stringResource(Res.string.priority_none)
+    val removeTaskLabel = stringResource(Res.string.remove_task)
     val colors = MaterialTheme.colorScheme
     val active = remember(tasks) { tasks.filterNot { it.inBin } }
     val parentIds = remember(active) { active.mapNotNull { it.parentId }.toSet() }
@@ -146,16 +144,16 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                 val mark = drop?.takeIf { it.first == task.id }?.second
                 ContextMenuArea(items = {
                     listOf(
-                        ContextMenuItem(menu["rename"]!!) { state.renamingTask = task.id },
-                        ContextMenuItem(menu["add_subtask"]!!) {
+                        ContextMenuItem(renameLabel) { state.renamingTask = task.id },
+                        ContextMenuItem(addSubtaskLabel) {
                             state.aimedTask = task.id
                             state.focusAdd++
                         },
-                        ContextMenuItem(menu["priority_high"]!!) { viewModel.setPriority(task, Priority.HIGH) },
-                        ContextMenuItem(menu["priority_medium"]!!) { viewModel.setPriority(task, Priority.MEDIUM) },
-                        ContextMenuItem(menu["priority_low"]!!) { viewModel.setPriority(task, Priority.LOW) },
-                        ContextMenuItem(menu["priority_none"]!!) { viewModel.setPriority(task, Priority.NONE) },
-                        ContextMenuItem(menu["remove_task"]!!) { viewModel.moveToBin(task) },
+                        ContextMenuItem(priorityHighLabel) { viewModel.setPriority(task, Priority.HIGH) },
+                        ContextMenuItem(priorityMediumLabel) { viewModel.setPriority(task, Priority.MEDIUM) },
+                        ContextMenuItem(priorityLowLabel) { viewModel.setPriority(task, Priority.LOW) },
+                        ContextMenuItem(priorityNoneLabel) { viewModel.setPriority(task, Priority.NONE) },
+                        ContextMenuItem(removeTaskLabel) { viewModel.moveToBin(task) },
                     )
                 }) {
                     Row(

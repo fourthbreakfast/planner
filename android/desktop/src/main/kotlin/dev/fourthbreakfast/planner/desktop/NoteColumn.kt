@@ -50,11 +50,9 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewModel: NotesViewModel) {
-    val menu = mapOf(
-        "remove_task" to stringResource(Res.string.remove_task),
-        "unpin" to stringResource(Res.string.unpin),
-        "pin" to stringResource(Res.string.pin),
-    )
+    val removeTaskLabel = stringResource(Res.string.remove_task)
+    val unpinLabel = stringResource(Res.string.unpin)
+    val pinLabel = stringResource(Res.string.pin)
     val colors = MaterialTheme.colorScheme
     val boxes = rememberPreviewBoxes(colors.onSurfaceVariant)
     state.visibleNotes = notes.map { it.id }
@@ -75,8 +73,8 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                 val selected = (state.focused == Section.NOTES && state.selectedNote == note.id) || (state.panel as? Panel.NoteOpen)?.id == note.id
                 ContextMenuArea(items = {
                     listOf(
-                        ContextMenuItem((if (note.pinned) menu["unpin"]!! else menu["pin"]!!)) { viewModel.setPinned(note.id, !note.pinned) },
-                        ContextMenuItem(menu["remove_task"]!!) { viewModel.moveToBin(note.id) },
+                        ContextMenuItem(if (note.pinned) unpinLabel else pinLabel) { viewModel.setPinned(note.id, !note.pinned) },
+                        ContextMenuItem(removeTaskLabel) { viewModel.moveToBin(note.id) },
                     )
                 }) {
                     Column(

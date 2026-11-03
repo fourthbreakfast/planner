@@ -1,5 +1,7 @@
 package dev.fourthbreakfast.planner.desktop
 
+import androidx.compose.foundation.DefaultContextMenuRepresentation
+import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -172,17 +174,28 @@ fun main(args: Array<String>) {
             }
             CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
                 PlannerTheme(darkTheme = dark) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        Column(Modifier.fillMaxSize()) {
-                            TitleBar(windowState, onClose = { visible = false })
-                            Box(Modifier.weight(1f)) {
-                                Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
-                                    DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+                    val colors = MaterialTheme.colorScheme
+                    // right click menus in the app's own colours, not the system grey
+                    val menus = remember(colors) {
+                        DefaultContextMenuRepresentation(
+                            backgroundColor = colors.surfaceVariant,
+                            textColor = colors.onBackground,
+                            itemHoverColor = colors.secondaryContainer,
+                        )
+                    }
+                    CompositionLocalProvider(LocalContextMenuRepresentation provides menus) {
+                        Box(Modifier.fillMaxSize().background(colors.background)) {
+                            Column(Modifier.fillMaxSize()) {
+                                TitleBar(windowState, onClose = { visible = false })
+                                Box(Modifier.weight(1f)) {
+                                    Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
+                                        DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+                                    }
                                 }
+                                StatusBar(app.sync, onSettings = { app.dashboard.panel = Panel.Settings })
                             }
-                            StatusBar(app.sync, onSettings = { app.dashboard.panel = Panel.Settings })
+                            ResizeEdges(window)
                         }
-                        ResizeEdges(window)
                     }
                 }
             }

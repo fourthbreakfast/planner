@@ -19,7 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -77,6 +80,9 @@ fun MonthGrid(
     onChoose: (Long) -> Unit,
     onMonth: (YearMonth) -> Unit,
     modifier: Modifier = Modifier,
+    // on a computer an event can be dragged onto a day: where each day sits, and the day it would land on
+    onDayPlaced: ((day: Long, bounds: Rect) -> Unit)? = null,
+    dropDay: Long? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val firstDay = firstDayOfWeek()
@@ -107,7 +113,15 @@ fun MonthGrid(
             Row(Modifier.fillMaxWidth()) {
                 week.forEach { day ->
                     Box(Modifier.weight(1f).height(Space.touch), contentAlignment = Alignment.Center) {
-                        if (day != null) DayCell(day, day == today, day == chosen, day in busyDays) { onChoose(day) }
+                        if (day != null) {
+                            DayCell(
+                                day,
+                                day == today,
+                                day == chosen || day == dropDay,
+                                day in busyDays,
+                                Modifier.onGloballyPositioned { onDayPlaced?.invoke(day, it.boundsInRoot()) },
+                            ) { onChoose(day) }
+                        }
                     }
                 }
             }
@@ -116,13 +130,13 @@ fun MonthGrid(
 }
 
 @Composable
-private fun DayCell(day: Long, isToday: Boolean, isChosen: Boolean, busy: Boolean, onClick: () -> Unit) {
+private fun DayCell(day: Long, isToday: Boolean, isChosen: Boolean, busy: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val date = LocalDate.ofEpochDay(day)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier
+        modifier = modifier
             .size(Space.touch)
             .background(if (isChosen) colors.secondaryContainer else colors.background)
             .clickable(onClick = onClick)
