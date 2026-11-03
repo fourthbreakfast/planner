@@ -43,7 +43,8 @@ class RenderTest {
                 id,
                 "packing list",
                 formatBody(listOf(NoteLine(LineKind.CHECK, text = "passport"), NoteLine(LineKind.CHECK, checked = true, text = "charger"))),
-            )
+                0,
+            ) {}
         }
         Thread.sleep(1_500)
         val trip = runBlocking { app.tasks.value.first { it.title == "plan the autumn trip" } }

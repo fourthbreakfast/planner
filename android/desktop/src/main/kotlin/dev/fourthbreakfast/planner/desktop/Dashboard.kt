@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -205,6 +206,14 @@ fun Dashboard(
             }
         }
 
+        // leaving a note, however the panel changes: an empty one made here goes, and the app starts with none left over
+        var lastNote by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(Unit) { notesViewModel.dropLeftDrafts(null) }
+        LaunchedEffect(state.panel) {
+            val now = (state.panel as? Panel.NoteOpen)?.id
+            lastNote?.takeIf { it != now }?.let(notesViewModel::closed)
+            lastNote = now
+        }
         val panel = state.panel
         // a dim layer over the dashboard, a click on it closes the panel
         AnimatedVisibility(panel != null, enter = fadeIn(), exit = fadeOut()) {
@@ -227,16 +236,11 @@ fun Dashboard(
                     is Panel.NoteOpen -> allNotes.firstOrNull { it.id == panel.id }?.let { note ->
                         androidx.compose.runtime.key(note.id) {
                             NoteEditor(
-                                initialTitle = note.title,
-                                initialBody = note.body,
-                                pinned = note.pinned,
+                                note = note,
                                 onPin = { notesViewModel.setPinned(note.id, !note.pinned) },
                                 toolbarAbove = toolbarAbove,
-                                onSave = { title, body -> notesViewModel.save(note.id, title, body) },
-                                onClose = { title, body ->
-                                    notesViewModel.close(note.id, title, body)
-                                    close()
-                                },
+                                onSave = { title, body, base, onSaved -> notesViewModel.save(note.id, title, body, base, onSaved) },
+                                onClose = close,
                             )
                         }
                     }
