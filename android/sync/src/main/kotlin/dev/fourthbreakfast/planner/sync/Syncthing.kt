@@ -91,13 +91,10 @@ class Syncthing(
             if (waited++ > 150) throw IOException("syncthing did not start")
             delay(200)
         }
-        log("answering")
         myId = api.get("/rest/system/status").jsonObject.string("myID")
-        log("id $myId")
         api.patch("/rest/config/devices/${encoded(myId)}", buildJsonObject { put("name", name) })
-        log("named")
         ensureFolder(api)
-        log("folder ready")
+        log("running as ${shortId(myId)}")
     }
 
     /** Stops it, letting it close its database first. */
@@ -165,10 +162,12 @@ class Syncthing(
     suspend fun asking(): List<String> = api().get("/rest/cluster/pending/devices").jsonObject.keys.toList()
 
     /**
-     * Starts syncing with another device. Each side introduces the devices it knows to the other, so pairing one new
-     * device with any one of the others is enough for it to reach all of them. The [address] is found by itself unless given.
+     * Starts syncing with another device. The device that pairs by code takes the other as its [introducer]: it then
+     * learns every device the other one already syncs with, so pairing a new device with any one of them is enough.
+     * Only one side of a pair may introduce, so the side that lets a device in does not. The [address] is found by
+     * itself unless given.
      */
-    suspend fun pair(id: String, address: String = "dynamic") {
+    suspend fun pair(id: String, introducer: Boolean, address: String = "dynamic") {
         val api = api()
         val known = peers().any { it.id == id }
         if (!known) {
@@ -177,7 +176,7 @@ class Syncthing(
                 buildJsonObject {
                     put("deviceID", id)
                     put("addresses", buildJsonArray { add(JsonPrimitive(address)) })
-                    put("introducer", true)
+                    put("introducer", introducer)
                     put("skipIntroductionRemovals", true)
                     put("autoAcceptFolders", true)
                 },
@@ -207,6 +206,9 @@ class Syncthing(
             (completion["completion"]?.jsonPrimitive?.double ?: 0.0) >= 100.0
         }
     }
+
+    /** What its REST interface says at [path], for tests to look into. */
+    internal suspend fun inspect(path: String): String = api().get(path).toString()
 
     /** Asks it to look at the folder now rather than when it next would. */
     suspend fun rescan() {
