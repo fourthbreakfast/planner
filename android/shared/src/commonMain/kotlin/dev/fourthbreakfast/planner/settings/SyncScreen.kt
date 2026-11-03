@@ -45,7 +45,6 @@ import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.backup_off
 import dev.fourthbreakfast.planner.resources.sync_anywhere
 import dev.fourthbreakfast.planner.resources.sync_asks
-import dev.fourthbreakfast.planner.resources.sync_blocked
 import dev.fourthbreakfast.planner.resources.sync_connected
 import dev.fourthbreakfast.planner.resources.sync_credit
 import dev.fourthbreakfast.planner.resources.sync_let_in
@@ -73,11 +72,11 @@ private const val SYNCTHING = "https://syncthing.net"
 /**
  * Pairing and the devices this one syncs with. While it is open the app's Syncthing runs and shows any device asking to
  * sync, to be let in or turned down, so pairing takes this screen open on both devices: one scans or types the other's
- * code, and the other says yes. A device without a
+ * code, and the other says yes. [failed] says why sync could not start, in the device's own terms. A device without a
  * camera to [scan] with only offers typing.
  */
 @Composable
-fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Unit)?, onClose: () -> Unit) {
+fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Unit)?, failed: String, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val links = LocalUriHandler.current
     DisposableEffect(controller) {
@@ -109,7 +108,7 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                 .verticalScroll(rememberScrollState()),
         ) {
             if (!controller.available || state.failed) {
-                Line(stringResource(if (controller.available) Res.string.sync_blocked else Res.string.sync_unavailable), null)
+                Line(if (controller.available) failed else stringResource(Res.string.sync_unavailable), null)
                 return@Column
             }
             Line(stringResource(Res.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))

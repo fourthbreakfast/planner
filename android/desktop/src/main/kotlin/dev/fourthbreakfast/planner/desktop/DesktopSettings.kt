@@ -37,6 +37,7 @@ import dev.fourthbreakfast.planner.resources.setting_theme
 import dev.fourthbreakfast.planner.resources.settings_title
 import dev.fourthbreakfast.planner.resources.start_with_windows
 import dev.fourthbreakfast.planner.resources.sync_devices
+import dev.fourthbreakfast.planner.resources.sync_failed_desktop
 import dev.fourthbreakfast.planner.resources.sync_on
 import dev.fourthbreakfast.planner.resources.sync_title
 import dev.fourthbreakfast.planner.resources.theme_dark
@@ -86,7 +87,7 @@ fun DesktopSettings(
     }
     if (syncOpen) {
         // a computer has no camera to scan with: it shows its own code for the phone to scan
-        SyncScreen(sync, scan = null, onClose = { syncOpen = false })
+        SyncScreen(sync, scan = null, failed = stringResource(Res.string.sync_failed_desktop), onClose = { syncOpen = false })
         return
     }
     BackHandler(onBack = onClose)
