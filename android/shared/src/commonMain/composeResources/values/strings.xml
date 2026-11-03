@@ -94,6 +94,10 @@
     <string name="time_start_end">start – end</string>
     <string name="hour">hour</string>
     <string name="minute">minute</string>
+    <string name="show_month">show the month</string>
+    <string name="show_list">show the list</string>
+    <string name="previous_month">previous month</string>
+    <string name="next_month">next month</string>
     <string name="all_day">all day</string>
     <string name="event_location">location</string>
     <string name="event_notes">notes</string>
