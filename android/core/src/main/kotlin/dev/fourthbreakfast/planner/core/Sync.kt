@@ -42,7 +42,6 @@ class Sync(
             val known = ledger.gone().associate { it.id to it.at }
             val incomingGone = other.gone.groupBy { it.id }.mapValues { (_, marks) -> marks.maxOf { it.at } }
             val newGone = incomingGone.filter { (id, at) -> (known[id] ?: Long.MIN_VALUE) < at }
-            if (newGone.isNotEmpty()) ledger.addGone(newGone.map { (id, at) -> Gone(id, at) })
             val gone = known + newGone
             val agreed = ledger.agreed()
             val nowAgreed = HashMap<String, Long>()
@@ -85,9 +84,18 @@ class Sync(
                 },
             )
             if (conflicts.isNotEmpty()) notes.insert(conflicts)
+            // the marks keep the time things were deleted on the device that deleted them. deleting them here wrote this
+            // device's time over them, which would make a later change on a third device look older than the delete
+            if (newGone.isNotEmpty()) ledger.addGone(newGone.map { (id, at) -> Gone(id, at) })
+            // two moves made apart can put two tasks inside each other: one is let go to the top
+            val loose = loopBreaks(tasks.all())
+            if (loose.isNotEmpty()) {
+                val now = clock()
+                tasks.update(loose.map { it.copy(parentId = null, updatedAt = now) })
+            }
             val moved = nowAgreed.filter { (id, at) -> agreed[id] != at }
             if (moved.isNotEmpty()) ledger.setAgreed(moved)
-            changed + conflicts.size
+            changed + conflicts.size + loose.size
         }
     }
 

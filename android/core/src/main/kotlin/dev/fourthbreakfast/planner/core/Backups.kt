@@ -22,6 +22,11 @@ class Backups(private val tasks: TaskStore, private val events: EventStore, priv
         val added = incoming
             .filterNot { it.id in existing }
             .map { task -> if (task.parentId in known) task else task.copy(parentId = null) }
+            .let { list ->
+                // a damaged file can hold tasks inside each other: those come in at the top
+                val loose = loopBreaks(tasks.all() + list).mapTo(HashSet()) { it.id }
+                list.map { if (it.id in loose) it.copy(parentId = null) else it }
+            }
         if (added.isNotEmpty()) tasks.insert(added)
         added.size
     }
