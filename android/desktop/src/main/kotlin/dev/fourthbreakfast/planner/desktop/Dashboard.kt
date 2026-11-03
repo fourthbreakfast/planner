@@ -107,9 +107,14 @@ class DashboardState {
     }
 }
 
-/** What the keyboard can do anywhere on the dashboard. Returns whether the key was used. */
+/**
+ * What the keyboard can do on the dashboard. Returns whether the key was used. The control shortcuts are taken before
+ * anything else sees them ([plainKeys] false); the plain keys, arrows, enter, space, delete and f2, only once a text
+ * field had its turn and left them ([plainKeys] true), so typing in a field never moves or bins a task.
+ */
 fun handleDashboardKey(
     event: KeyEvent,
+    plainKeys: Boolean,
     state: DashboardState,
     tasks: TasksViewModel,
     agenda: AgendaViewModel,
@@ -118,6 +123,7 @@ fun handleDashboardKey(
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val ctrl = event.isCtrlPressed
+    if (ctrl == plainKeys) return false
     when {
         ctrl && event.key == Key.One -> state.focused = Section.TASKS
         ctrl && event.key == Key.Two -> state.focused = Section.AGENDA
