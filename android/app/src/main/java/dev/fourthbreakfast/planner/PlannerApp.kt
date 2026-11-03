@@ -9,9 +9,11 @@ import androidx.room.Room
 import dev.fourthbreakfast.planner.backup.AutoBackup
 import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.core.Events
+import dev.fourthbreakfast.planner.core.LogicalClock
 import dev.fourthbreakfast.planner.core.Notes
 import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.core.Tasks
+import dev.fourthbreakfast.planner.core.newestChange
 import dev.fourthbreakfast.planner.data.RoomEventStore
 import dev.fourthbreakfast.planner.data.RoomNoteStore
 import dev.fourthbreakfast.planner.data.RoomSyncLedger
@@ -62,14 +64,17 @@ class PlannerApp : Application() {
         scope.launch { updates.checkIfDue() }
     }
 
-    val tasks: Tasks by lazy { Tasks(taskStore) }
-    val events: Events by lazy { Events(eventStore) }
-    val notes: Notes by lazy { Notes(noteStore) }
+    // one clock for every change, which never goes back past a time already seen here or from another device
+    private val clock = LogicalClock()
+
+    val tasks: Tasks by lazy { Tasks(taskStore, clock::now) }
+    val events: Events by lazy { Events(eventStore, clock::now) }
+    val notes: Notes by lazy { Notes(noteStore, clock::now) }
     val backups: Backups by lazy { Backups(taskStore, eventStore, noteStore) }
     val syncController: SyncController by lazy {
         SyncController(
             this,
-            Sync(taskStore, eventStore, noteStore, syncLedger),
+            Sync(taskStore, eventStore, noteStore, syncLedger, clock::now, clock::saw),
             merge(taskStore.observeAll(), eventStore.observeAll(), noteStore.observeAll()),
             scope,
         )
@@ -79,6 +84,7 @@ class PlannerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         setUpShortcuts()
+        scope.launch { clock.saw(newestChange(taskStore, eventStore, noteStore)) }
         // the alarms follow the agenda: every change to an event sets or takes away its alarm
         scope.launch { events.all.collect { reminders.sync(it) } }
         // and the widget on the home screen follows the events and the tasks

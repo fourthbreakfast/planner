@@ -222,3 +222,47 @@ class SyncTest {
         assertTrue(loopBreaks(phone.tasks.state.value).isEmpty())
     }
 }
+
+class SyncDetailsTest {
+    @Test
+    fun aClockNeverGoesBackPastWhatItSaw() {
+        var wall = 100L
+        val clock = LogicalClock { wall }
+        assertEquals(100, clock.now())
+        clock.saw(5_000)
+        assertEquals(5_001, clock.now())
+        assertEquals(5_002, clock.now())
+        wall = 9_000
+        assertEquals(9_000, clock.now())
+    }
+
+    @Test
+    fun aPlaceIsFoundBetweenNeighbours() {
+        assertEquals(1.0, placeBetween(null, null)!!, 0.0)
+        assertEquals(1.5, placeBetween(1.0, 2.0)!!, 0.0)
+        assertEquals(0.0, placeBetween(null, 1.0)!!, 0.0)
+        assertEquals(3.0, placeBetween(2.0, null)!!, 0.0)
+        assertNull(placeBetween(1.0, 1.0))
+    }
+
+    @Test
+    fun aFileFromANewerVersionIsStillMerged() = runBlocking {
+        val store = MemoryNoteStore()
+        val tasks = object : TaskStore {
+            override fun observeAll() = kotlinx.coroutines.flow.flowOf(emptyList<Task>())
+
+            override suspend fun all() = emptyList<Task>()
+
+            override suspend fun insert(tasks: List<Task>) = Unit
+
+            override suspend fun update(tasks: List<Task>) = Unit
+
+            override suspend fun delete(tasks: List<Task>) = Unit
+
+            override suspend fun <T> transaction(block: suspend () -> T): T = block()
+        }
+        val sync = Sync(tasks, MemoryEventStore(), store, MemoryLedger())
+        val newer = encodeBackup(emptyList(), notes = listOf(Note(id = "n", body = "x", createdAt = 1))).replace("\"version\": 4", "\"version\": 9")
+        assertEquals(1, sync.merge(newer))
+    }
+}
