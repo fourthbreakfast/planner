@@ -47,10 +47,13 @@ class ReminderReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val event = (context.applicationContext as PlannerApp).events.all.first().firstOrNull { it.id == id }
-                val due = event?.takeIf { !it.inBin }?.let(::reminderAt)
+                val all = (context.applicationContext as PlannerApp).events.all.first()
+                val now = System.currentTimeMillis()
+                val due = all.firstOrNull { it.id == id }?.takeIf { !it.inBin }?.let { reminderAt(it, from = now - ON_TIME_MILLIS) }
                 val snoozed = intent.getBooleanExtra(SNOOZED, false)
-                if (due != null && (snoozed || abs(due - System.currentTimeMillis()) < ON_TIME_MILLIS)) show(context, intent, id, manager)
+                if (due != null && (snoozed || abs(due - now) < ON_TIME_MILLIS)) show(context, intent, id, manager)
+                // a repeating event's next time gets its alarm now that this one has rung
+                if (!snoozed) Reminders(context).sync(all, now + ON_TIME_MILLIS)
             } finally {
                 pending.finish()
             }

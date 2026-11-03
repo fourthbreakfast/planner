@@ -37,15 +37,19 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import dev.fourthbreakfast.planner.core.Event
+import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.delete
 import dev.fourthbreakfast.planner.resources.event_day
+import dev.fourthbreakfast.planner.resources.event_ends
 import dev.fourthbreakfast.planner.resources.event_location
 import dev.fourthbreakfast.planner.resources.event_name
 import dev.fourthbreakfast.planner.resources.event_notes
 import dev.fourthbreakfast.planner.resources.event_reminder
+import dev.fourthbreakfast.planner.resources.event_repeats
 import dev.fourthbreakfast.planner.resources.event_time
 import dev.fourthbreakfast.planner.resources.event_title
+import dev.fourthbreakfast.planner.resources.event_until
 import dev.fourthbreakfast.planner.resources.save
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
@@ -59,13 +63,32 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The form for one event: name, day, time, place and notes, each an empty line to write on.
- * Saving needs a name. A day left empty means today, a time left empty means the whole day.
+ * Saving needs a name. A day left empty means today, a time left empty means the whole day. [occurrence] is the day of
+ * the time of a repeating event that was opened: saving or deleting it then asks whether that is for this one time only
+ * or for every time, and [onSave] and [onDelete] are told which.
  */
 @Composable
-fun EventEditor(initial: Event?, newDay: Long? = null, onSave: (EventDraft) -> Unit, onDelete: (() -> Unit)?, onClose: () -> Unit) {
+fun EventEditor(
+    initial: Event?,
+    occurrence: Long? = null,
+    newDay: Long? = null,
+    onSave: (draft: EventDraft, onlyThisTime: Boolean) -> Unit,
+    onDelete: ((onlyThisTime: Boolean) -> Unit)?,
+    onClose: () -> Unit,
+) {
     BackHandler(onBack = onClose)
+    val asksWhich = initial != null && initial.repeat != Repeat.NONE && occurrence != null
+    // a time of a repeating event shows its own day; the series starts on the event's first day
+    val shownDay = if (asksWhich) occurrence!! else initial?.day
     var title by rememberSaveable { mutableStateOf(initial?.title ?: "") }
-    var day by rememberSaveable { mutableLongStateOf(initial?.day ?: newDay ?: today()) }
+    var day by rememberSaveable { mutableLongStateOf(shownDay ?: newDay ?: today()) }
+    var endDay by rememberSaveable { mutableStateOf(initial?.endDay?.let { it - initial.day + (shownDay ?: initial.day) }) }
+    var repeat by rememberSaveable { mutableStateOf(initial?.repeat ?: Repeat.NONE) }
+    var until by rememberSaveable { mutableStateOf(initial?.repeatUntil) }
+    var pickingEnd by rememberSaveable { mutableStateOf(false) }
+    var pickingRepeat by rememberSaveable { mutableStateOf(false) }
+    var pickingUntil by rememberSaveable { mutableStateOf(false) }
+    var asking by rememberSaveable { mutableStateOf<String?>(null) }
     var daySet by rememberSaveable { mutableStateOf(initial != null || newDay != null) }
     var start by rememberSaveable { mutableStateOf(initial?.minute) }
     var end by rememberSaveable { mutableStateOf(initial?.endMinute) }
@@ -81,6 +104,23 @@ fun EventEditor(initial: Event?, newDay: Long? = null, onSave: (EventDraft) -> U
     val today = rememberToday()
     val colors = MaterialTheme.colorScheme
     val nameFocus = remember { FocusRequester() }
+
+    // what is on the form, as an event. For every time of a repeating event, a moved day moves the whole series by as much
+    fun draft(onlyThisTime: Boolean = false): EventDraft {
+        val first = if (asksWhich && !onlyThisTime) initial!!.day + (day - occurrence!!) else day
+        return EventDraft(
+            title,
+            first,
+            start,
+            end,
+            location,
+            notes,
+            reminder.takeIf { timeSet && start != null },
+            endDay?.let { it - day + first },
+            if (onlyThisTime) Repeat.NONE else repeat,
+            until.takeIf { repeat != Repeat.NONE && !onlyThisTime },
+        )
+    }
     LaunchedEffect(Unit) { if (initial == null) nameFocus.requestFocus() }
 
     Scaffold(
@@ -94,7 +134,7 @@ fun EventEditor(initial: Event?, newDay: Long? = null, onSave: (EventDraft) -> U
                     .padding(start = Space.gutter, end = Space.rowPad),
             ) {
                 SegmentTab(stringResource(Res.string.event_title), Modifier.weight(1f))
-                if (onDelete != null) QuietButton(stringResource(Res.string.delete), onDelete)
+                if (onDelete != null) QuietButton(stringResource(Res.string.delete)) { if (asksWhich) asking = "delete" else onDelete(false) }
                 BackButton(onClose)
             }
         },
@@ -110,7 +150,7 @@ fun EventEditor(initial: Event?, newDay: Long? = null, onSave: (EventDraft) -> U
                     .heightIn(min = Space.touch)
                     .background(colors.surfaceVariant, RoundedCornerShape(Space.radiusCheck))
                     .border(Space.strokeThin, colors.outline, RoundedCornerShape(Space.radiusCheck))
-                    .clickable(enabled = ready) { onSave(EventDraft(title, day, start, end, location, notes, reminder.takeIf { timeSet && start != null })) },
+                    .clickable(enabled = ready) { if (asksWhich) asking = "save" else onSave(draft(), false) },
             ) {
                 Text(
                     text = stringResource(Res.string.save),
@@ -130,6 +170,14 @@ fun EventEditor(initial: Event?, newDay: Long? = null, onSave: (EventDraft) -> U
             QuietField(title, { title = it }, Modifier.focusRequester(nameFocus))
             Label(Res.string.event_day)
             Choice(if (daySet) dateText(day, today) else "") { pickingDay = true }
+            Label(Res.string.event_ends)
+            Choice(endDay?.let { dateText(it, today) } ?: "") { pickingEnd = true }
+            Label(Res.string.event_repeats)
+            Choice(if (repeat == Repeat.NONE) "" else repeatText(repeat)) { pickingRepeat = true }
+            if (repeat != Repeat.NONE) {
+                Label(Res.string.event_until)
+                Choice(until?.let { dateText(it, today) } ?: "") { pickingUntil = true }
+            }
             Label(Res.string.event_time)
             Choice(if (timeSet) timeRangeText(start, end, is24Hour) else "") { pickingTime = true }
             // a reminder needs a time to count back from
@@ -154,6 +202,48 @@ fun EventEditor(initial: Event?, newDay: Long? = null, onSave: (EventDraft) -> U
                 pickingDay = false
             },
             onCancel = { pickingDay = false },
+        )
+    }
+    if (pickingEnd) {
+        DayChooser(
+            initialDay = endDay ?: day,
+            today = today,
+            onSet = {
+                // the same day as the start is no end at all
+                endDay = it.takeIf { end -> end > day }
+                pickingEnd = false
+            },
+            onCancel = { pickingEnd = false },
+        )
+    }
+    if (pickingRepeat) {
+        RepeatChooser(
+            current = repeat,
+            onPick = {
+                repeat = it
+                pickingRepeat = false
+            },
+            onCancel = { pickingRepeat = false },
+        )
+    }
+    if (pickingUntil) {
+        DayChooser(
+            initialDay = until ?: day,
+            today = today,
+            onSet = {
+                until = it.takeIf { last -> last >= day }
+                pickingUntil = false
+            },
+            onCancel = { pickingUntil = false },
+        )
+    }
+    asking?.let { what ->
+        WhichTimesChooser(
+            onPick = { onlyThisTime ->
+                asking = null
+                if (what == "save") onSave(draft(onlyThisTime), onlyThisTime) else onDelete?.invoke(onlyThisTime)
+            },
+            onCancel = { asking = null },
         )
     }
     if (pickingReminder) {

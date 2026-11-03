@@ -30,7 +30,7 @@ class DesktopReminders(
                     val now = System.currentTimeMillis()
                     for (event in all) {
                         if (event.inBin) continue
-                        val at = reminderAt(event) ?: continue
+                        val at = reminderAt(event, from = now - LATE_MILLIS) ?: continue
                         val key = "${event.id}@$at"
                         if (key in shown || at !in (now - LATE_MILLIS)..now) continue
                         shown += key

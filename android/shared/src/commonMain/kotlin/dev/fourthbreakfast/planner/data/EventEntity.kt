@@ -1,5 +1,6 @@
 package dev.fourthbreakfast.planner.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Entity
@@ -10,6 +11,7 @@ import androidx.room.Update
 import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.core.EventStore
+import dev.fourthbreakfast.planner.core.Repeat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -26,11 +28,26 @@ data class EventEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long?,
+    val endDay: Long?,
+    @ColumnInfo(defaultValue = "NONE") val repeat: String,
+    val repeatUntil: Long?,
+    // the days left out of a repeating event, written as numbers with commas between
+    @ColumnInfo(defaultValue = "") val skipDays: String,
 )
 
-fun EventEntity.toEvent() = Event(id, title, day, minute, endMinute, reminder, location, notes, createdAt, updatedAt, deletedAt)
+fun EventEntity.toEvent() = Event(
+    id, title, day, minute, endMinute, reminder, location, notes, createdAt, updatedAt, deletedAt, endDay,
+    Repeat.entries.firstOrNull { it.name == repeat } ?: Repeat.NONE,
+    repeatUntil,
+    skipDays.split(',').mapNotNull { it.toLongOrNull() }.toSet(),
+)
 
-fun Event.toEntity() = EventEntity(id, title, day, minute, endMinute, reminder, location, notes, createdAt, updatedAt, deletedAt)
+fun Event.toEntity() = EventEntity(
+    id, title, day, minute, endMinute, reminder, location, notes, createdAt, updatedAt, deletedAt, endDay,
+    repeat.name,
+    repeatUntil,
+    skipDays.sorted().joinToString(","),
+)
 
 @Dao
 interface EventDao {

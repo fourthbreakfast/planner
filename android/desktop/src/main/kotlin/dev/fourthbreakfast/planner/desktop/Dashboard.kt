@@ -39,6 +39,7 @@ import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.agenda.EventDraft
 import dev.fourthbreakfast.planner.agenda.EventEditor
 import dev.fourthbreakfast.planner.agenda.today
+import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.core.binEntries
 import dev.fourthbreakfast.planner.notes.NoteEditor
 import dev.fourthbreakfast.planner.notes.NotesBin
@@ -56,7 +57,8 @@ enum class Section { TASKS, AGENDA, NOTES }
 sealed interface Panel {
     data class NoteOpen(val id: String) : Panel
 
-    data class EventOpen(val id: String?, val day: Long?) : Panel
+    // [occurrence] is the day of the time of a repeating event that was opened
+    data class EventOpen(val id: String?, val day: Long?, val occurrence: Long? = null) : Panel
 
     data object TaskBin : Panel
 
@@ -93,8 +95,9 @@ class DashboardState {
         panel = Panel.NoteOpen(id)
     }
 
-    fun openEvent(id: String) {
-        panel = Panel.EventOpen(id, null)
+    /** Opens an event by its id, or one time of it by a key of the id and its day. */
+    fun openEvent(key: String) {
+        panel = Panel.EventOpen(key.substringBefore('@'), null, key.substringAfter('@', "").toLongOrNull())
     }
 
     fun newEvent(day: Long?) {
@@ -150,7 +153,7 @@ fun handleDashboardKey(
             allTasks().firstOrNull { it.id == state.selectedTask }?.let { tasks.setDone(it, !it.done) }
         event.key == Key.Delete -> when (state.focused) {
             Section.TASKS -> allTasks().firstOrNull { it.id == state.selectedTask }?.let { tasks.moveToBin(it) }
-            Section.AGENDA -> state.selectedEvent?.let { agenda.moveToBin(it) }
+            Section.AGENDA -> state.selectedEvent?.let { agenda.moveToBin(it.substringBefore('@')) }
             Section.NOTES -> state.selectedNote?.let { notes.moveToBin(it) }
         }
         else -> return false
@@ -190,11 +193,13 @@ fun Dashboard(
                     allEvents.count { it.inBin },
                     state,
                     onRemove = { agendaViewModel.moveToBin(it) },
-                    onMove = { event, day ->
-                        agendaViewModel.update(
-                            event.id,
-                            EventDraft(event.title, day, event.minute, event.endMinute, event.location, event.notes, event.reminder),
+                    onMove = { event, from, day ->
+                        // a repeating event moves only the time that was dragged; the others stay
+                        val draft = EventDraft(
+                            event.title, day, event.minute, event.endMinute, event.location, event.notes, event.reminder,
+                            event.endDay?.let { it - from + day }, event.repeat, event.repeatUntil,
                         )
+                        agendaViewModel.save(event.id, from, draft, onlyThisTime = event.repeat != Repeat.NONE)
                         state.chosenDay = day
                     },
                 )
@@ -248,14 +253,15 @@ fun Dashboard(
                         androidx.compose.runtime.key(panel) {
                             EventEditor(
                                 initial = editing,
+                                occurrence = panel.occurrence,
                                 newDay = panel.day,
-                                onSave = { draft ->
-                                    if (editing == null) agendaViewModel.add(draft) else agendaViewModel.update(editing.id, draft)
+                                onSave = { draft, onlyThisTime ->
+                                    if (editing == null) agendaViewModel.add(draft) else agendaViewModel.save(editing.id, panel.occurrence, draft, onlyThisTime)
                                     close()
                                 },
                                 onDelete = editing?.let { event ->
-                                    {
-                                        agendaViewModel.moveToBin(event.id)
+                                    { onlyThisTime ->
+                                        agendaViewModel.delete(event.id, panel.occurrence, onlyThisTime)
                                         close()
                                     }
                                 },

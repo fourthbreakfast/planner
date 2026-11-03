@@ -3,7 +3,7 @@ package dev.fourthbreakfast.planner.core
 /** A file that is not a planner backup, or is damaged. */
 class BackupException(message: String) : Exception(message)
 
-private const val BACKUP_VERSION = 4
+private const val BACKUP_VERSION = 5
 
 /**
  * What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes, and only version 4 has [gone]:
@@ -42,6 +42,10 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
         append(", \"createdAt\": ").append(event.createdAt)
         append(", \"updatedAt\": ").append(event.updatedAt)
         append(", \"deletedAt\": ").append(event.deletedAt ?: "null")
+        append(", \"endDay\": ").append(event.endDay ?: "null")
+        append(", \"repeat\": ").append(quoted(event.repeat.name))
+        append(", \"repeatUntil\": ").append(event.repeatUntil ?: "null")
+        append(", \"skipDays\": [").append(event.skipDays.sorted().joinToString(", ")).append(']')
         append('}')
     }
     append(if (events.isEmpty()) "]" else "\n  ]")
@@ -108,6 +112,11 @@ fun decodeBackup(text: String, acceptNewer: Boolean = false): Backup {
             createdAt = createdAt,
             updatedAt = event["updatedAt"]?.let { number(it).toLong() } ?: createdAt,
             deletedAt = event["deletedAt"]?.let { number(it).toLong() },
+            // versions before 5 have no repeating or longer events
+            endDay = event["endDay"]?.let { number(it).toLong() },
+            repeat = Repeat.entries.firstOrNull { it.name == event["repeat"] } ?: Repeat.NONE,
+            repeatUntil = event["repeatUntil"]?.let { number(it).toLong() },
+            skipDays = (event["skipDays"] as? List<*>).orEmpty().map { number(it).toLong() }.toSet(),
         )
     }
     // versions 1 and 2 were made before notes existed

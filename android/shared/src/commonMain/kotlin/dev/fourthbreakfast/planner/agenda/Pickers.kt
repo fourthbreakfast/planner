@@ -27,16 +27,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.fourthbreakfast.planner.core.REMINDER_CHOICES
+import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.all_day
 import dev.fourthbreakfast.planner.resources.cancel
+import dev.fourthbreakfast.planner.resources.every_time
 import dev.fourthbreakfast.planner.resources.hour
 import dev.fourthbreakfast.planner.resources.minute
+import dev.fourthbreakfast.planner.resources.only_this_time
 import dev.fourthbreakfast.planner.resources.reminder_10
 import dev.fourthbreakfast.planner.resources.reminder_60
 import dev.fourthbreakfast.planner.resources.reminder_at
 import dev.fourthbreakfast.planner.resources.reminder_none
 import dev.fourthbreakfast.planner.resources.reminder_other
+import dev.fourthbreakfast.planner.resources.repeat_daily
+import dev.fourthbreakfast.planner.resources.repeat_monthly
+import dev.fourthbreakfast.planner.resources.repeat_never
+import dev.fourthbreakfast.planner.resources.repeat_weekly
+import dev.fourthbreakfast.planner.resources.repeat_yearly
 import dev.fourthbreakfast.planner.resources.set
 import dev.fourthbreakfast.planner.resources.time_start
 import dev.fourthbreakfast.planner.resources.time_start_end
@@ -325,5 +333,59 @@ private fun ArrowWord(text: String, onClick: () -> Unit) {
         modifier = Modifier.size(Space.touch).clickable(onClick = onClick),
     ) {
         Text(text = text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** How an event repeats, in words: "every week". */
+@Composable
+fun repeatText(repeat: Repeat): String = stringResource(
+    when (repeat) {
+        Repeat.NONE -> Res.string.repeat_never
+        Repeat.DAILY -> Res.string.repeat_daily
+        Repeat.WEEKLY -> Res.string.repeat_weekly
+        Repeat.MONTHLY -> Res.string.repeat_monthly
+        Repeat.YEARLY -> Res.string.repeat_yearly
+    },
+)
+
+/** Never, or every day, week, month or year, one to a line like the reminders. */
+@Composable
+fun RepeatChooser(current: Repeat, onPick: (Repeat) -> Unit, onCancel: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    ChooserPanel(onDismiss = onCancel) {
+        Repeat.entries.forEach { choice ->
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Space.touch)
+                    .clickable { onPick(choice) },
+            ) {
+                Text(
+                    text = repeatText(choice),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (choice == current) colors.onBackground else colors.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** For a repeating event: whether a change or a delete is for this one time or for every time. */
+@Composable
+fun WhichTimesChooser(onPick: (onlyThisTime: Boolean) -> Unit, onCancel: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    ChooserPanel(onDismiss = onCancel) {
+        listOf(true to Res.string.only_this_time, false to Res.string.every_time).forEach { (only, label) ->
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Space.touch)
+                    .clickable { onPick(only) },
+            ) {
+                Text(text = stringResource(label), style = MaterialTheme.typography.bodyLarge, color = colors.onBackground)
+            }
+        }
     }
 }
