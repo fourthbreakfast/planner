@@ -86,3 +86,27 @@ class TaskTreeTest {
         assertEquals(Priority.NONE, Priority.HIGH.next())
     }
 }
+
+class TaskLoopTest {
+    private fun task(id: String, parent: String?, at: Long = 1) = Task(id = id, title = id, createdAt = 1, updatedAt = at, parentId = parent)
+
+    @Test
+    fun aLoopOfParentsEndsTheWalksUp() {
+        val tasks = listOf(task("a", "b"), task("b", "a"))
+        assertEquals(listOf("b", "a"), ancestors(tasks, "b").map { it.id })
+        assertEquals(setOf("a", "b"), subtree(tasks, "a").map { it.id }.toSet())
+        assertEquals(1, height(tasks, "a"))
+    }
+
+    @Test
+    fun theNewestTaskOfALoopIsLetGo() {
+        val tasks = listOf(task("a", "c", at = 5), task("b", "a", at = 9), task("c", "b", at = 7), task("d", null))
+        assertEquals(listOf("b"), loopBreaks(tasks).map { it.id })
+        assertEquals(emptyList<Task>(), loopBreaks(listOf(task("a", null), task("b", "a"))))
+    }
+
+    @Test
+    fun aTaskInsideItselfIsLetGo() {
+        assertEquals(listOf("a"), loopBreaks(listOf(task("a", "a"))).map { it.id })
+    }
+}

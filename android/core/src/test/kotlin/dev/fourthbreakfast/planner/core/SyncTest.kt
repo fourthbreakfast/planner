@@ -51,21 +51,39 @@ private class MemoryLedger : SyncLedger {
 }
 
 /** One device: its stores, what sync remembers, and its sync. */
-private class Device {
+/**
+ * One device. Its stores delete the way the app's do: whatever goes for good leaves a mark with this device's own time,
+ * whether a person deleted it or a merge did.
+ */
+private class Device(var now: Long = 1_000L) {
     val tasks = MemorySyncTasks()
     val events = MemoryEventStore()
     val notes = MemoryNoteStore()
     val ledger = MemoryLedger()
-    var now = 1_000L
-    val sync = Sync(tasks, events, notes, ledger) { now++ }
+
+    private fun mark(ids: List<String>) = runBlocking { ledger.addGone(ids.map { Gone(it, now++) }) }
+
+    private val taskStore = object : TaskStore by tasks {
+        override suspend fun delete(tasks: List<Task>) {
+            this@Device.tasks.delete(tasks)
+            mark(tasks.map { it.id })
+        }
+    }
+
+    private val noteStore = object : NoteStore by notes {
+        override suspend fun delete(notes: List<Note>) {
+            this@Device.notes.delete(notes)
+            mark(notes.map { it.id })
+        }
+    }
+
+    val sync = Sync(taskStore, events, noteStore, ledger) { now++ }
 
     fun note(id: String) = notes.state.value.firstOrNull { it.id == id }
 
-    /** Deletes a note for good, the way the app's stores do: the mark goes with it. */
-    fun deleteNoteForGood(id: String) = runBlocking {
-        notes.delete(listOfNotNull(note(id)))
-        ledger.addGone(listOf(Gone(id, now++)))
-    }
+    fun task(id: String) = tasks.state.value.first { it.id == id }
+
+    fun deleteNoteForGood(id: String) = runBlocking { noteStore.delete(listOfNotNull(note(id))) }
 }
 
 class SyncTest {
@@ -169,5 +187,38 @@ class SyncTest {
         assertEquals(listOf(Gone("x", 42)), backup.gone)
         pc.from(phone)
         assertEquals(listOf(Gone("x", 42)), pc.ledger.gone)
+    }
+
+    @Test
+    fun aDeleteKeepsItsOwnTimeAcrossDevices() = runBlocking {
+        // the laptop's clock is far ahead: taking in the delete must not stamp it with the laptop's time
+        val laptop = Device(now = 1_000_000)
+        phone.notes.insert(listOf(note("n", "hello", 5)))
+        pc.from(phone)
+        laptop.from(phone)
+        phone.deleteNoteForGood("n")
+        laptop.from(phone)
+        assertNull(laptop.note("n"))
+        // the pc changed the note after the phone deleted it, so the change keeps it everywhere
+        pc.notes.update(listOf(note("n", "still needed", 50_000)))
+        pc.from(laptop)
+        assertEquals("still needed", pc.note("n")?.body)
+        laptop.from(pc)
+        assertEquals("still needed", laptop.note("n")?.body)
+    }
+
+    @Test
+    fun twoTasksMovedIntoEachOtherAreUntangled() = runBlocking {
+        phone.tasks.insert(listOf(Task(id = "x", title = "x", createdAt = 1), Task(id = "y", title = "y", createdAt = 1)))
+        pc.from(phone)
+        phone.tasks.update(listOf(phone.task("x").copy(parentId = "y", updatedAt = 10)))
+        pc.tasks.update(listOf(pc.task("y").copy(parentId = "x", updatedAt = 20)))
+        phone.from(pc)
+        pc.from(phone)
+        // the later move made the loop, so that task goes back to the top; both devices agree
+        assertEquals(null, phone.task("y").parentId)
+        assertEquals("y", phone.task("x").parentId)
+        assertEquals(phone.tasks.state.value.map { it.parentId }.sortedBy { it.orEmpty() }, pc.tasks.state.value.map { it.parentId }.sortedBy { it.orEmpty() })
+        assertTrue(loopBreaks(phone.tasks.state.value).isEmpty())
     }
 }
