@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.fourthbreakfast.planner.sync.SyncthingConfigTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:07:51.926Z" hostname="DESKTOP-OACKEP2" time="0.011">
+  <properties/>
+  <testcase name="onTheLocalNetworkNothingGoesOut" classname="dev.fourthbreakfast.planner.sync.SyncthingConfigTest" time="0.007"/>
+  <testcase name="theShortIdIsTheFirstSevenLetters" classname="dev.fourthbreakfast.planner.sync.SyncthingConfigTest" time="0.001"/>
+  <testcase name="applyingTwiceGivesTheSameFile" classname="dev.fourthbreakfast.planner.sync.SyncthingConfigTest" time="0.002"/>
+  <testcase name="anywhereTurnsOnDiscoveryAndRelays" classname="dev.fourthbreakfast.planner.sync.SyncthingConfigTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

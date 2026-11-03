@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "Planner"
 include(":app")
 include(":core")
+include(":sync")
