@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.restart_to_update
 import dev.fourthbreakfast.planner.resources.settings_title
+import dev.fourthbreakfast.planner.ui.cog
 import dev.fourthbreakfast.planner.ui.theme.Space
 import dev.fourthbreakfast.planner.updates.UpdateState
 import dev.fourthbreakfast.planner.updates.Updates

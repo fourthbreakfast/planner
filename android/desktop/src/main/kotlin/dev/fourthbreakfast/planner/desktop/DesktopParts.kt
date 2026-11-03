@@ -93,29 +93,6 @@ fun androidx.compose.ui.graphics.drawscope.DrawScope.magnifier(ink: Color) {
     drawLine(ink, Offset(size.width * 0.64f, size.height * 0.64f), Offset(size.width * 0.84f, size.height * 0.84f), line, StrokeCap.Round)
 }
 
-/** A cog for the settings: eight square teeth around a ring, with a hole in the middle, all in one thin line. */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.cog(ink: Color) {
-    val line = Space.strokeThin.toPx()
-    val c = Offset(size.width / 2, size.height / 2)
-    val outer = size.minDimension * 0.46f
-    val inner = size.minDimension * 0.34f
-    val teeth = 8
-    val path = androidx.compose.ui.graphics.Path()
-    for (i in 0 until teeth * 2) {
-        // each tooth and each gap takes the same turn, the tooth standing out to the outer ring
-        val start = (i / (teeth * 2f)) * 2 * Math.PI - Math.PI / (teeth * 2)
-        val end = start + 2 * Math.PI / (teeth * 2)
-        val r = if (i % 2 == 0) outer else inner
-        val a = Offset(c.x + r * kotlin.math.cos(start).toFloat(), c.y + r * kotlin.math.sin(start).toFloat())
-        val b = Offset(c.x + r * kotlin.math.cos(end).toFloat(), c.y + r * kotlin.math.sin(end).toFloat())
-        if (i == 0) path.moveTo(a.x, a.y) else path.lineTo(a.x, a.y)
-        path.lineTo(b.x, b.y)
-    }
-    path.close()
-    drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(line, join = androidx.compose.ui.graphics.StrokeJoin.Round))
-    drawCircle(ink, radius = size.minDimension * 0.13f, center = c, style = androidx.compose.ui.graphics.drawscope.Stroke(line))
-}
-
 /** A short line of quiet text, for an empty column. */
 @Composable
 fun Quiet(text: String, modifier: Modifier = Modifier) {

@@ -61,6 +61,7 @@ import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.RowSwipe
+import dev.fourthbreakfast.planner.ui.SettingsButton
 import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
@@ -456,6 +457,7 @@ private fun Header(
             )
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
             BinButton(binCount, onOpenBin)
+            SettingsButton(onOpenSettings)
         }
     }
 }

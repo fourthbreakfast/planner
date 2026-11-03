@@ -38,7 +38,7 @@ the [latest release](https://github.com/fourthbreakfast/planner/releases/latest)
 
 ### use
 
-everything a row can do starts with holding it for a moment, so sweeping across the screen never removes anything by accident. the settings (hold any of the three tabs) have a "how it works" list of every gesture.
+everything a row can do starts with holding it for a moment, so sweeping across the screen never removes anything by accident. the settings (the cog at the top right, or hold any of the three tabs) have a "how it works" list of every gesture.
 
 <table>
   <tr><th colspan="2">tasks</th></tr>
@@ -61,7 +61,7 @@ everything a row can do starts with holding it for a moment, so sweeping across 
   <tr><td>hold a note, then swipe right</td><td>move it to the notes bin, with undo</td></tr>
   <tr><th colspan="2">everywhere</th></tr>
   <tr><td>sweep sideways</td><td>go to the next tab: tasks, agenda, notes. it stops at the ends</td></tr>
-  <tr><td>hold any tab</td><td>open the settings: export and import, theme, a daily backup to a folder, where the notes toolbar sits, a link to the latest release, the widget, sync, and the list of gestures</td></tr>
+  <tr><td>the cog at the top right, or hold any tab</td><td>open the settings: export and import, theme, a daily backup to a folder, where the notes toolbar sits, a link to the latest release, the widget, sync, and the list of gestures</td></tr>
   <tr><td>the magnifying glass beside the bin, on the notes tab</td><td>search the notes by title and text</td></tr>
   <tr><td>hold the app icon</td><td>new task, new event or new note, straight away</td></tr>
   <tr><td>a reminder notification</td><td>touch it to open the event, snooze it for 10 minutes or dismiss it</td></tr>

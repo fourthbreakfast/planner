@@ -64,6 +64,7 @@ import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.RowSwipe
 import dev.fourthbreakfast.planner.ui.SearchButton
+import dev.fourthbreakfast.planner.ui.SettingsButton
 import dev.fourthbreakfast.planner.ui.SwipeRow
 import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
@@ -269,6 +270,7 @@ private fun NotesList(
                     )
                     SearchButton(onOpenSearch)
                     BinButton(binCount, onOpenBin)
+                    SettingsButton(onOpenSettings)
                 }
             }
         },
