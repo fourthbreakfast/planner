@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.fourthbreakfast.planner.sync.TwoDevicesTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:07:43.113Z" hostname="DESKTOP-OACKEP2" time="8.808">
+  <properties/>
+  <testcase name="aChangeOnOneReachesTheOther" classname="dev.fourthbreakfast.planner.sync.TwoDevicesTest" time="8.804"/>
+  <system-out><![CDATA[settled: connected
+settled: task arrived
+settled: delete and note arrived
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
