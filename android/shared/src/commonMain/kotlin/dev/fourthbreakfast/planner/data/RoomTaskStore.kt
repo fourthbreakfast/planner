@@ -1,6 +1,5 @@
 package dev.fourthbreakfast.planner.data
 
-import androidx.room.withTransaction
 import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.TaskStore
@@ -18,10 +17,10 @@ class RoomTaskStore(private val database: PlannerDatabase) : TaskStore {
 
     override suspend fun update(tasks: List<Task>) = dao.updateAll(tasks.map { it.toEntity() })
 
-    override suspend fun delete(tasks: List<Task>) = database.withTransaction {
+    override suspend fun delete(tasks: List<Task>) = database.inTransaction {
         dao.deleteAll(tasks.map { it.toEntity() })
         database.forget(tasks.map { it.id })
     }
 
-    override suspend fun <T> transaction(block: suspend () -> T): T = database.withTransaction { block() }
+    override suspend fun <T> transaction(block: suspend () -> T): T = database.inTransaction { block() }
 }

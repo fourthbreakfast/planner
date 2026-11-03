@@ -7,7 +7,6 @@ import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
-import androidx.room.withTransaction
 import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.core.EventStore
@@ -62,10 +61,10 @@ class RoomEventStore(private val database: PlannerDatabase) : EventStore {
 
     override suspend fun update(events: List<Event>) = dao.updateAll(events.map { it.toEntity() })
 
-    override suspend fun delete(events: List<Event>) = database.withTransaction {
+    override suspend fun delete(events: List<Event>) = database.inTransaction {
         dao.deleteAll(events.map { it.toEntity() })
         database.forget(events.map { it.id })
     }
 
-    override suspend fun <T> transaction(block: suspend () -> T): T = database.withTransaction { block() }
+    override suspend fun <T> transaction(block: suspend () -> T): T = database.inTransaction { block() }
 }

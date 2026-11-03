@@ -1,10 +1,12 @@
 package dev.fourthbreakfast.planner
 
 import androidx.room.AutoMigration
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.DeleteColumn
 import androidx.room.DeleteTable
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.AutoMigrationSpec
 import dev.fourthbreakfast.planner.data.AgreedEntity
 import dev.fourthbreakfast.planner.data.EventDao
@@ -20,6 +22,7 @@ object PlannerDatabaseVersion {
     const val LATEST = 12
 }
 
+@ConstructedBy(PlannerDatabaseConstructor::class)
 @Database(
     entities = [TaskEntity::class, EventEntity::class, NoteEntity::class, GoneEntity::class, AgreedEntity::class],
     version = PlannerDatabaseVersion.LATEST,
@@ -56,4 +59,10 @@ abstract class PlannerDatabase : RoomDatabase() {
     @DeleteTable(tableName = "folders")
     @DeleteColumn(tableName = "tasks", columnName = "folderId")
     class DropFolders : AutoMigrationSpec
+}
+
+/** Room fills this in for each device. */
+@Suppress("KotlinNoActualForExpect")
+expect object PlannerDatabaseConstructor : RoomDatabaseConstructor<PlannerDatabase> {
+    override fun initialize(): PlannerDatabase
 }

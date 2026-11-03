@@ -1,12 +1,7 @@
 ﻿plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.ktlint)
-}
-
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 val releaseKeystore = providers.environmentVariable("PLANNER_KEYSTORE").orNull
@@ -89,7 +84,7 @@ android {
         }
     }
     // the database upgrade tests read the saved schemas
-    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
+    sourceSets.getByName("androidTest").assets.directories.add(rootProject.file("shared/schemas").path)
 }
 
 dependencies {
@@ -108,7 +103,6 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.zxing.core)
     implementation(libs.zxing.android.embedded)
-    ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
