@@ -56,6 +56,15 @@ class Tasks(private val store: TaskStore, private val clock: () -> Long = System
         }
     }
 
+    /** Gives a task a priority of its own choosing, as a right click on a computer does. */
+    suspend fun setPriority(id: String, priority: Priority) {
+        val now = clock()
+        store.transaction {
+            val task = active().firstOrNull { it.id == id } ?: return@transaction
+            if (task.priority != priority) store.update(listOf(task.copy(priority = priority, updatedAt = now)))
+        }
+    }
+
     suspend fun cyclePriority(id: String) {
         val now = clock()
         store.transaction {

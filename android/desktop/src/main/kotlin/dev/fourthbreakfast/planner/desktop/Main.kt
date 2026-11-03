@@ -1,22 +1,34 @@
 package dev.fourthbreakfast.planner.desktop
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Notification
+import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberTrayState
 import androidx.compose.ui.window.rememberWindowState
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.PlannerDatabase
-import dev.fourthbreakfast.planner.PlannerScreen
 import dev.fourthbreakfast.planner.Requests
 import dev.fourthbreakfast.planner.ThemeChoice
 import dev.fourthbreakfast.planner.UiSettings
@@ -42,12 +54,16 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Where the app keeps its database and its Syncthing: %APPDATA%\planner on Windows. */
 private fun dataFolder(): File {
+    // PLANNER_DATA points a trial run somewhere else, so it never touches the real data
+    System.getenv("PLANNER_DATA")?.let { return File(it).apply { mkdirs() } }
     val base = System.getenv("APPDATA")?.let(::File) ?: File(System.getProperty("user.home"), ".config")
     return File(base, "planner").apply { mkdirs() }
 }
@@ -84,33 +100,71 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
         prefs,
         scope,
     )
-    val reminders = DesktopReminders(events.all, scope, is24Hour = true, icon = appIcon(32))
+    val dashboard = DashboardState()
+
+    // the tasks as they are now, for the keys that act on the selected one
+    val tasks = tasksViewModel.all.stateIn(scope, SharingStarted.Eagerly, emptyList())
     val version: String = System.getProperty("jpackage.app-version") ?: "dev"
 }
 
-fun main() {
+/**
+ * The Windows app: one window with the dashboard under a title bar of its own, and an icon in the tray. Closing the
+ * window only hides it, so reminders and sync go on; quitting is in the tray's menu.
+ */
+fun main(args: Array<String>) {
     val app = DesktopApp()
+    // started with windows, it waits in the tray
+    val startHidden = "--tray" in args
     application {
-        val windowState = rememberWindowState(size = DpSize(460.dp, 880.dp))
+        val windowState = rememberWindowState(size = DpSize(1280.dp, 820.dp))
+        var visible by remember { mutableStateOf(!startHidden) }
+        val tray = rememberTrayState()
+        val icon = remember { appIconPainter() }
+        val reminders =
+            remember { DesktopReminders(app.events.all, app.scope, is24Hour = true) { title, text -> tray.sendNotification(Notification(title, text)) } }
         LaunchedEffect(Unit) {
             app.sync.begin()
-            app.reminders.begin()
+            reminders.begin()
         }
-        Window(
-            onCloseRequest = {
-                // syncthing closes its database before the app goes
-                runBlocking { withTimeoutOrNull(10_000) { app.sync.stop() } }
-                app.reminders.end()
-                exitApplication()
+        fun show(launch: Launch? = null) {
+            visible = true
+            windowState.isMinimized = false
+            launch?.let { app.services.requests.ask(it) }
+        }
+        fun quit() {
+            // syncthing closes its database before the app goes
+            runBlocking { withTimeoutOrNull(10_000) { app.sync.stop() } }
+            exitApplication()
+        }
+        Tray(
+            icon = icon,
+            state = tray,
+            tooltip = "planner",
+            onAction = { show() },
+            menu = {
+                Item("open planner", onClick = { show() })
+                Item("new task", onClick = { show(Launch.NewTask) })
+                Item("new event", onClick = { show(Launch.NewEvent) })
+                Item("new note", onClick = { show(Launch.NewNote) })
+                Separator()
+                Item("quit", onClick = ::quit)
             },
+        )
+        Window(
+            onCloseRequest = { visible = false },
+            visible = visible,
             state = windowState,
             title = "planner",
-            icon = remember { appIconPainter() },
+            icon = icon,
+            undecorated = true,
             onPreviewKeyEvent = { event ->
-                event.key == Key.Escape && event.type == KeyEventType.KeyDown && app.backStack.back()
+                (event.key == Key.Escape && event.type == KeyEventType.KeyDown && app.backStack.back()) ||
+                    handleDashboardKey(event, app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) {
+                        app.tasks.value
+                    }
             },
         ) {
-            window.minimumSize = java.awt.Dimension(360, 560)
+            window.minimumSize = java.awt.Dimension(900, 560)
             val dark = when (app.settings.theme) {
                 ThemeChoice.LIGHT -> false
                 ThemeChoice.DARK -> true
@@ -118,8 +172,17 @@ fun main() {
             }
             CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
                 PlannerTheme(darkTheme = dark) {
-                    PlannerScreen(app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
-                        DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        Column(Modifier.fillMaxSize()) {
+                            TitleBar(windowState, onClose = { visible = false })
+                            Box(Modifier.weight(1f)) {
+                                Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
+                                    DesktopSettings(app.tasksViewModel, app.sync, app.version, onClose)
+                                }
+                            }
+                            StatusBar(app.sync, onSettings = { app.dashboard.panel = Panel.Settings })
+                        }
+                        ResizeEdges(window)
                     }
                 }
             }

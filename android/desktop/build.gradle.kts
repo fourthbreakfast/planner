@@ -68,6 +68,7 @@ compose.desktop {
 tasks.test {
     providers.environmentVariable("PLANNER_RENDER").orNull?.let { environment("PLANNER_RENDER", it) }
     providers.environmentVariable("PLANNER_ICON").orNull?.let { environment("PLANNER_ICON", it) }
+    for (name in listOf("PLANNER_SEED", "PLANNER_BACKUP")) providers.environmentVariable(name).orNull?.let { environment(name, it) }
 }
 
 tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(syncthingWindows) }

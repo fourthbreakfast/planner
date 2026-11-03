@@ -426,11 +426,12 @@ private fun EventRow(
     }
 }
 
-private const val PREF_MONTH = "agenda_month"
+/** Whether the agenda shows the month, kept in the preferences on every device. */
+const val PREF_MONTH = "agenda_month"
 
 /** Switches the agenda between the list and the month: a little grid while it is a list, lines while it is a month. */
 @Composable
-private fun ViewToggle(asMonth: Boolean, onClick: () -> Unit) {
+fun ViewToggle(asMonth: Boolean, onClick: () -> Unit) {
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
     val label = stringResource(if (asMonth) Res.string.show_list else Res.string.show_month)
     Box(

@@ -55,6 +55,23 @@
     <string name="guide_title">how it works</string>
     <string name="nothing_to_do">nothing to do</string>
     <string name="redo">redo</string>
+    <string name="start_with_windows">start with windows, in the tray</string>
+    <string-array name="desktop_guide">
+        <item>ctrl+1, ctrl+2, ctrl+3|go to tasks, agenda or notes</item>
+        <item>ctrl+n|a new task, event or note, in the part you are in</item>
+        <item>up and down|choose a task, an event or a note</item>
+        <item>enter|open it, or rename a task</item>
+        <item>f2, or a double click|rename a task</item>
+        <item>space|check or uncheck a task</item>
+        <item>delete|move it to the bin</item>
+        <item>ctrl+f|search the notes</item>
+        <item>ctrl+,|the settings</item>
+        <item>escape|close what is open</item>
+        <item>a right click|everything else a row can do</item>
+        <item>drag a task|onto the middle of another puts it inside, onto an edge puts it beside</item>
+        <item>drag a note|put it somewhere else in the list</item>
+        <item>closing the window|keeps planner in the tray, so reminders and sync go on. quit from the tray</item>
+    </string-array>
     <string-array name="guide">
         <item>touch the dot on a task|change its priority</item>
         <item>hold a task, then swipe right|move it to the bin</item>
@@ -154,6 +171,7 @@
     <string name="expand_all">open everything</string>
     <string name="collapse_all">close everything</string>
     <string name="rename">rename</string>
+    <string name="add_subtask">add a task inside</string>
     <string name="priority_none">no priority</string>
     <string name="priority_low">low priority</string>
     <string name="priority_medium">medium priority</string>
