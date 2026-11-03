@@ -5,6 +5,7 @@ import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.style.TextOverflow
 import dev.fourthbreakfast.planner.agenda.DayRow
 import dev.fourthbreakfast.planner.agenda.EarlierRow
@@ -54,7 +60,7 @@ import org.jetbrains.compose.resources.stringResource
 /** The agenda, as a list of days or as a month with the chosen day's events under it. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRemove: (String) -> Unit) {
+fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRemove: (String) -> Unit, onMove: (Event, Long) -> Unit) {
     val today = rememberToday()
     val prefs = LocalServices.current.prefs
     var asMonth by remember { mutableStateOf(prefs.getBoolean(PREF_MONTH, false)) }
@@ -64,6 +70,8 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
     val busyDays = remember(events) { events.mapTo(HashSet()) { it.day } }
     val dayEvents = remember(events, state.chosenDay) { sortedEvents(events.filter { it.day == state.chosenDay }) }
     state.visibleEvents = if (asMonth) dayEvents.map { it.id } else rows.filterIsInstance<EventItem>().map { it.event.id }
+    // an event dragged out of the day under the month lands on whichever day it is let go over
+    val drag = remember { EventDrag() }
 
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("agenda", upcomingCount(events, today), state.focused == Section.AGENDA) {
@@ -91,11 +99,13 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
                             state.focused = Section.AGENDA
                         },
                         onMonth = { month = it.atDay(1).toEpochDay() },
+                        onDayPlaced = { day, bounds -> drag.days[day] = bounds },
+                        dropDay = drag.over,
                     )
                 }
                 item(key = "day") { Heading(dayText(state.chosenDay, today)) }
                 if (dayEvents.isEmpty()) item(key = "none") { Quiet(stringResource(Res.string.nothing_planned)) }
-                items(dayEvents, key = { it.id }) { event -> EventLine(event, event.day < today, is24Hour, state, onRemove) }
+                items(dayEvents, key = { it.id }) { event -> EventLine(event, event.day < today, is24Hour, state, onRemove, drag, onMove) }
             } else {
                 if (rows.isEmpty()) item(key = "none") { Quiet(stringResource(Res.string.nothing_planned)) }
                 items(rows, key = { it.key }) { row ->
@@ -123,15 +133,25 @@ private fun Heading(text: String) {
 /** One event: the time, the name, the place. A click selects it, a double click or enter opens it. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EventLine(event: Event, earlier: Boolean, is24Hour: Boolean, state: DashboardState, onRemove: (String) -> Unit) {
-    val menu = mapOf("open_event" to stringResource(Res.string.open_event), "remove_task" to stringResource(Res.string.remove_task))
+private fun EventLine(
+    event: Event,
+    earlier: Boolean,
+    is24Hour: Boolean,
+    state: DashboardState,
+    onRemove: (String) -> Unit,
+    drag: EventDrag? = null,
+    onMove: (Event, Long) -> Unit = { _, _ -> },
+) {
+    val openLabel = stringResource(Res.string.open_event)
+    val binLabel = stringResource(Res.string.remove_task)
+    var rowCorner by remember { mutableStateOf(Offset.Zero) }
     val colors = MaterialTheme.colorScheme
     val (hover, hovered) = rememberHover()
     val selected = state.focused == Section.AGENDA && state.selectedEvent == event.id
     ContextMenuArea(items = {
         listOf(
-            ContextMenuItem(menu["open_event"]!!) { state.openEvent(event.id) },
-            ContextMenuItem(menu["remove_task"]!!) { onRemove(event.id) },
+            ContextMenuItem(openLabel) { state.openEvent(event.id) },
+            ContextMenuItem(binLabel) { onRemove(event.id) },
         )
     }) {
         Row(
@@ -153,6 +173,29 @@ private fun EventLine(event: Event, earlier: Boolean, is24Hour: Boolean, state: 
                     },
                     onDoubleClick = { state.openEvent(event.id) },
                 )
+                .onGloballyPositioned { rowCorner = it.positionInRoot() }
+                .then(
+                    if (drag == null) {
+                        Modifier
+                    } else {
+                        Modifier.pointerInput(event.id) {
+                            var at = Offset.Zero
+                            detectDragGestures(
+                                onDragStart = { at = rowCorner + it },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    at += amount
+                                    drag.over = drag.dayAt(at)
+                                },
+                                onDragEnd = {
+                                    drag.over?.takeIf { it != event.day }?.let { onMove(event, it) }
+                                    drag.over = null
+                                },
+                                onDragCancel = { drag.over = null },
+                            )
+                        }
+                    },
+                )
                 .padding(start = Space.gutter, end = Space.x1, top = Space.x2, bottom = Space.x2),
         ) {
             val ink = if (earlier) colors.onSurfaceVariant else colors.onBackground
@@ -172,4 +215,12 @@ private fun EventLine(event: Event, earlier: Boolean, is24Hour: Boolean, state: 
             if (hovered) BinButton(0, { onRemove(event.id) })
         }
     }
+}
+
+/** Where the days of the month sit on screen, and which one a dragged event is over. */
+class EventDrag {
+    val days = HashMap<Long, Rect>()
+    var over by mutableStateOf<Long?>(null)
+
+    fun dayAt(point: Offset): Long? = days.entries.firstOrNull { it.value.contains(point) }?.key
 }

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.min
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.agenda.AgendaBin
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
+import dev.fourthbreakfast.planner.agenda.EventDraft
 import dev.fourthbreakfast.planner.agenda.EventEditor
 import dev.fourthbreakfast.planner.agenda.today
 import dev.fourthbreakfast.planner.core.binEntries
@@ -184,7 +185,19 @@ fun Dashboard(
             Divider()
             Box(Modifier.weight(1f).fillMaxHeight()) {
                 val events = allEvents.filterNot { it.inBin }
-                AgendaColumn(events, allEvents.count { it.inBin }, state) { agendaViewModel.moveToBin(it) }
+                AgendaColumn(
+                    events,
+                    allEvents.count { it.inBin },
+                    state,
+                    onRemove = { agendaViewModel.moveToBin(it) },
+                    onMove = { event, day ->
+                        agendaViewModel.update(
+                            event.id,
+                            EventDraft(event.title, day, event.minute, event.endMinute, event.location, event.notes, event.reminder),
+                        )
+                        state.chosenDay = day
+                    },
+                )
             }
             Divider()
             Box(Modifier.weight(1f).fillMaxHeight()) {
