@@ -50,6 +50,7 @@
     <string name="sync_anywhere">sync anywhere</string>
     <string name="sync_on">on</string>
     <string name="sync_unavailable">sync does not run on this phone</string>
+    <string name="sync_blocked">planner needs network access to sync. allow it in the phone's settings</string>
     <string name="sync_credit">sync by syncthing, mpl 2.0</string>
     <string name="guide_title">how it works</string>
     <string name="nothing_to_do">nothing to do</string>

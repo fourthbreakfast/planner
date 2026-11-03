@@ -96,7 +96,7 @@ fun SyncScreen(onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
         ) {
             if (!controller.available || state.failed) {
-                Line(stringResource(R.string.sync_unavailable), null)
+                Line(stringResource(if (controller.available) R.string.sync_blocked else R.string.sync_unavailable), null)
                 return@Column
             }
             Line(stringResource(R.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))
