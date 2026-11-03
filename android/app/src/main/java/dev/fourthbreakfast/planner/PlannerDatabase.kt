@@ -6,19 +6,22 @@ import androidx.room.DeleteColumn
 import androidx.room.DeleteTable
 import androidx.room.RoomDatabase
 import androidx.room.migration.AutoMigrationSpec
+import dev.fourthbreakfast.planner.data.AgreedEntity
 import dev.fourthbreakfast.planner.data.EventDao
 import dev.fourthbreakfast.planner.data.EventEntity
+import dev.fourthbreakfast.planner.data.GoneEntity
 import dev.fourthbreakfast.planner.data.NoteDao
 import dev.fourthbreakfast.planner.data.NoteEntity
+import dev.fourthbreakfast.planner.data.SyncDao
 import dev.fourthbreakfast.planner.data.TaskDao
 import dev.fourthbreakfast.planner.data.TaskEntity
 
 object PlannerDatabaseVersion {
-    const val LATEST = 11
+    const val LATEST = 12
 }
 
 @Database(
-    entities = [TaskEntity::class, EventEntity::class, NoteEntity::class],
+    entities = [TaskEntity::class, EventEntity::class, NoteEntity::class, GoneEntity::class, AgreedEntity::class],
     version = PlannerDatabaseVersion.LATEST,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -36,6 +39,8 @@ object PlannerDatabaseVersion {
         AutoMigration(from = 9, to = 10),
         // pinned notes: one new column
         AutoMigration(from = 10, to = 11),
+        // sync: what was deleted for good, and the versions devices agreed on. two new tables
+        AutoMigration(from = 11, to = 12),
     ],
 )
 abstract class PlannerDatabase : RoomDatabase() {
@@ -44,6 +49,8 @@ abstract class PlannerDatabase : RoomDatabase() {
     abstract fun eventDao(): EventDao
 
     abstract fun noteDao(): NoteDao
+
+    abstract fun syncDao(): SyncDao
 
     /** Folders were tried and removed. Their tasks stay, at the top level. */
     @DeleteTable(tableName = "folders")

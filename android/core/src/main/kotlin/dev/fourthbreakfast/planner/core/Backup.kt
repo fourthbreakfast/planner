@@ -3,13 +3,16 @@ package dev.fourthbreakfast.planner.core
 /** A file that is not a planner backup, or is damaged. */
 class BackupException(message: String) : Exception(message)
 
-private const val BACKUP_VERSION = 3
+private const val BACKUP_VERSION = 4
 
-/** What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes. */
-data class Backup(val tasks: List<Task>, val events: List<Event>, val notes: List<Note> = emptyList())
+/**
+ * What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes, and only version 4 has [gone]:
+ * what was deleted for good, which sync needs and an import ignores.
+ */
+data class Backup(val tasks: List<Task>, val events: List<Event>, val notes: List<Note> = emptyList(), val gone: List<Gone> = emptyList())
 
 /** Every task, the bin included, every event and every note, as a json file a person can read and keep. */
-fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: List<Note> = emptyList()): String = buildString {
+fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: List<Note> = emptyList(), gone: List<Gone> = emptyList()): String = buildString {
     append("{\n  \"app\": \"planner\",\n  \"version\": ").append(BACKUP_VERSION).append(",\n  \"tasks\": [")
     tasks.forEachIndexed { index, task ->
         if (index > 0) append(',')
@@ -55,7 +58,13 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
         append(", \"deletedAt\": ").append(note.deletedAt ?: "null")
         append('}')
     }
-    append(if (notes.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
+    append(if (notes.isEmpty()) "]" else "\n  ]")
+    append(",\n  \"gone\": [")
+    gone.forEachIndexed { index, mark ->
+        if (index > 0) append(',')
+        append("\n    {\"id\": ").append(quoted(mark.id)).append(", \"at\": ").append(mark.at).append('}')
+    }
+    append(if (gone.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
 }
 
 /** What a backup holds, or a [BackupException] when the text is not one. */
@@ -113,7 +122,12 @@ fun decodeBackup(text: String): Backup {
             pinned = note["pinned"] == true,
         )
     }
-    return Backup(taskList, events, notes)
+    // only sync files carry what was deleted for good
+    val gone = (root["gone"] as? List<*> ?: emptyList<Any?>()).map { entry ->
+        val mark = entry as? Map<*, *> ?: throw BackupException("damaged mark")
+        Gone(mark["id"] as? String ?: throw BackupException("a mark has no id"), number(mark["at"]).toLong())
+    }
+    return Backup(taskList, events, notes, gone)
 }
 
 private fun number(value: Any?): Number = value as? Number ?: throw BackupException("damaged number")
