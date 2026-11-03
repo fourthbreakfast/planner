@@ -61,11 +61,11 @@
         <item>hold a task, then swipe left|rename it</item>
         <item>hold a task, then drag|move it: the middle of a task puts it inside, a line puts it above the task under the line</item>
         <item>touch a task while typing|add the next task inside it</item>
-        <item>the dot at the top|switch between your own order and priority order</item>
         <item>sweep sideways anywhere|switch tabs</item>
         <item>hold a note or an event, then swipe right|move it to its bin</item>
         <item>hold a note, then drag|put it somewhere else in the list</item>
         <item>hold any tab|open the settings</item>
+        <item>sync, in the settings|pair another device: open sync on both, then scan or type the code of one on the other</item>
     </string-array>
     <string name="notes_title">notes</string>
     <string name="note_title">note</string>

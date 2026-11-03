@@ -5,7 +5,8 @@ tested 2026-11-01: builds from the command line and runs on a moto g84 5g (andro
 
 STRUCTURE
 core: everything the app knows, as plain kotlin with no android, tested on a computer with gradlew :core:test. tasks, events and notes each have a rules class (Tasks, Events, Notes) that is the only way to change them, a store interface they are kept behind, and tests with an in-memory store. also here: the note text format and its looks (NoteBody), the backup file (Backup, Backups), reminder times (Reminder), what the widget says (WidgetLines) and search (Search)
-app: the android side. PlannerScreen is the root and moves between the tabs; tasks, agenda, notes, search and settings hold one screen each, one folder each; ui holds what they share (the tab bar, buttons, the bin list, the undo pill, the gestures and the calculator lettering); data holds the room tables behind the core stores; reminders sets the alarms and shows the notifications; widget is the home screen widget; backup writes the daily file; ui/theme holds the colours, the type and the spacing scale (Space.kt), which the design system in ../docs/design-system mirrors; Requests carries a shortcut, a share or a notification to the right screen
+sync: plain kotlin with no android, shared with the windows app. Syncthing starts and stops the app's own syncthing and talks to its rest api, SyncthingConfig sets its options (own ports, nothing outside the local network unless sync anywhere), DeviceFiles writes this device's file into the shared folder and merges the others' through core's Sync. tests run two real syncthings on the computer when PLANNER_SYNCTHING names a syncthing binary
+app: the android side. PlannerScreen is the root and moves between the tabs; tasks, agenda, notes, search and settings hold one screen each, one folder each; ui holds what they share (the tab bar, buttons, the bin list, the undo pill, the gestures and the calculator lettering); data holds the room tables behind the core stores; reminders sets the alarms and shows the notifications; sync runs syncthing while the app is in use and every 15 minutes in the background, and holds the pairing screen; widget is the home screen widget; backup writes the daily file; ui/theme holds the colours, the type and the spacing scale (Space.kt), which the design system in ../docs/design-system mirrors; Requests carries a shortcut, a share or a notification to the right screen
 
 DATABASE
 room, schema files in app/schemas, a new version for every change with an auto migration so nothing a person has saved is ever lost. add the new version to the upgrade tests in app/src/androidTest
@@ -17,6 +18,8 @@ gradlew connectedDebugAndroidTest -Pdemo runs the database upgrade tests on a co
 github runs the style check, the tests and a build on every push (../.github/workflows/build.yml), but not the phone tests, so run those before a release that changes the database
 
 BUILD from the command line, no android studio window needed
+clone with --recurse-submodules: syncthing is in ../third_party/syncthing, pinned to one release
+install go; the build (buildSrc/SyncthingBinary.kt) uses the exact go version syncthing's go.mod asks for, which go fetches by itself, and builds it without c, so no ndk is needed
 set JAVA_HOME to the jdk that ships with android studio (C:\Program Files\Android\Android Studio\jbr)
 set ANDROID_HOME to the sdk folder (%LOCALAPPDATA%\Android\Sdk)
 gradlew assembleDebug
@@ -45,6 +48,7 @@ compose bom 2026.09.00
 core-ktx 1.19.1, lifecycle (runtime-ktx, runtime-compose, viewmodel-compose) 2.11.0, activity-compose 1.13.0
 room 2.8.5, ksp 2.3.13, kotlinx-coroutines 1.11.0
 ktlint gradle plugin 14.2.0
+syncthing v2.1.7 (submodule), built with go 1.26.2, kotlinx-serialization-json 1.8.1, work-runtime-ktx 2.12.0, zxing core 3.5.4, zxing-android-embedded 4.3.0
 fonts bundled in app/src/main/res/font: ibm plex sans (regular, bold, italic) and ibm plex mono (regular, medium), licence in ../docs/licenses
 compilesdk 37, targetsdk 37, minsdk 26
 
