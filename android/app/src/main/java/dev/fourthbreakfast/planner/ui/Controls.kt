@@ -18,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -195,29 +194,21 @@ fun QuietButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** A check box as a small drawing, the same one for tasks and notes: a rounded square, filled with a tick when checked. */
+/**
+ * A check box as a small drawing, the same one for tasks and notes: a sharp square outline, and once checked a smaller
+ * solid square inside it, lit like a segment.
+ */
 @Composable
 fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.size(Space.check)) {
-    val tick = MaterialTheme.colorScheme.background
     Canvas(modifier) {
-        val corner = CornerRadius(Space.radiusCheck.toPx())
+        // square and centred, whatever room it is given
+        val side = minOf(size.width, size.height, Space.check.toPx())
+        val corner = Offset((size.width - side) / 2, (size.height - side) / 2)
+        val line = Space.strokeThin.toPx()
+        drawRect(ink, topLeft = corner + Offset(line / 2, line / 2), size = Size(side - line, side - line), style = Stroke(line))
         if (checked) {
-            drawRoundRect(ink, cornerRadius = corner)
-            val path = Path().apply {
-                moveTo(size.width * 0.24f, size.height * 0.52f)
-                lineTo(size.width * 0.43f, size.height * 0.72f)
-                lineTo(size.width * 0.77f, size.height * 0.30f)
-            }
-            drawPath(path, tick, style = Stroke(Space.strokeThick.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        } else {
-            val line = Space.strokeThin.toPx()
-            drawRoundRect(
-                ink,
-                topLeft = Offset(line / 2, line / 2),
-                size = Size(size.width - line, size.height - line),
-                cornerRadius = corner,
-                style = Stroke(line),
-            )
+            val inset = Space.checkInset.toPx()
+            drawRect(ink, topLeft = corner + Offset(inset, inset), size = Size(side - 2 * inset, side - 2 * inset))
         }
     }
 }
