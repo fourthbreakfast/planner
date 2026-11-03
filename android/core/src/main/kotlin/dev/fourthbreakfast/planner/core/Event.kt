@@ -21,9 +21,19 @@ data class Event(
     val updatedAt: Long = createdAt,
     /** Set while the event is in the bin. */
     val deletedAt: Long? = null,
+    /** The last day of an event that goes on for days, or null when it is one day. */
+    val endDay: Long? = null,
+    val repeat: Repeat = Repeat.NONE,
+    /** The last day it may repeat on, or null to repeat for good. */
+    val repeatUntil: Long? = null,
+    /** Days a repeating event leaves out: one time of it that was deleted, or changed into an event of its own. */
+    val skipDays: Set<Long> = emptySet(),
 ) {
     val inBin: Boolean get() = deletedAt != null
 }
+
+/** How an event comes back. */
+enum class Repeat { NONE, DAILY, WEEKLY, MONTHLY, YEARLY }
 
 /** Soonest first. Within a day, the whole-day events come before the timed ones. Ties keep the order they were made in. */
 fun sortedEvents(events: List<Event>): List<Event> = events.sortedWith(compareBy<Event>({ it.day }, { it.minute ?: -1 }, { it.createdAt }))

@@ -134,6 +134,17 @@
     <string name="show_list">show the list</string>
     <string name="previous_month">previous month</string>
     <string name="next_month">next month</string>
+    <string name="event_ends">ends on</string>
+    <string name="event_repeats">repeats</string>
+    <string name="event_until">until</string>
+    <string name="repeat_never">never</string>
+    <string name="repeat_daily">every day</string>
+    <string name="repeat_weekly">every week</string>
+    <string name="repeat_monthly">every month</string>
+    <string name="repeat_yearly">every year</string>
+    <string name="only_this_time">only this time</string>
+    <string name="every_time">every time</string>
+    <string name="until_day">until %1$s</string>
     <string name="all_day">all day</string>
     <string name="event_location">location</string>
     <string name="event_notes">notes</string>
