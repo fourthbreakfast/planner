@@ -101,6 +101,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
 
     override fun chooseAnywhere(on: Boolean) {
         prefs.edit().putBoolean(PREF_ANYWHERE, on).apply()
+        if (paired) schedule(true, replace = true)
         scope.launch {
             if (syncthing.running) {
                 stop()
@@ -233,16 +234,17 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         }
     }
 
-    private fun schedule(on: Boolean) {
+    private fun schedule(on: Boolean, replace: Boolean = false) {
         val work = WorkManager.getInstance(context)
         if (!on) {
             work.cancelUniqueWork(WORK)
             return
         }
         val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            // on the local network only, the run waits for wifi and spends no mobile data; sync anywhere may use either
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(if (anywhere) NetworkType.CONNECTED else NetworkType.UNMETERED).build())
             .build()
-        work.enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.KEEP, request)
+        work.enqueueUniquePeriodicWork(WORK, if (replace) ExistingPeriodicWorkPolicy.UPDATE else ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
     private fun deviceName(): String = Build.MODEL.orEmpty().ifBlank { "phone" }.lowercase()

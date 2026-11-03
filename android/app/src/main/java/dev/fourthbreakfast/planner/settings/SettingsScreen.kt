@@ -57,7 +57,7 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
         SyncScreen(controller, scan = { then ->
             onCode = then
             camera.launch(ScanOptions().setPrompt("").setBeepEnabled(false).setOrientationLocked(true).setDesiredBarcodeFormats(ScanOptions.QR_CODE))
-        }, onClose = { syncOpen = false })
+        }, failed = stringResource(R.string.sync_blocked), onClose = { syncOpen = false })
         return
     }
     BackHandler(onBack = onClose)

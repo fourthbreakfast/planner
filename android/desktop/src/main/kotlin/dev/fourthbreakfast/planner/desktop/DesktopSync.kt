@@ -53,7 +53,11 @@ class DesktopSync(
 
     private var paired: Boolean
         get() = prefs.getBoolean(PREF_PAIRED, false)
-        set(value) = prefs.putBoolean(PREF_PAIRED, value)
+
+        // written only when it changes, not on every look at the devices
+        set(value) {
+            if (value != paired) prefs.putBoolean(PREF_PAIRED, value)
+        }
 
     /** Called once the window is up. */
     fun begin() {

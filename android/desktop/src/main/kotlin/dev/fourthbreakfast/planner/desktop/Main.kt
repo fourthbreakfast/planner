@@ -54,6 +54,7 @@ import dev.fourthbreakfast.planner.ui.DesktopPrefs
 import dev.fourthbreakfast.planner.ui.LocalBackStack
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.PlannerServices
+import dev.fourthbreakfast.planner.ui.is24HourClock
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 import dev.fourthbreakfast.planner.updates.UpdateState
 import dev.fourthbreakfast.planner.updates.Updates
@@ -143,7 +144,9 @@ fun main(args: Array<String>) {
         val tray = rememberTrayState()
         val icon = remember { appIconPainter() }
         val reminders =
-            remember { DesktopReminders(app.events.all, app.scope, is24Hour = true) { title, text -> tray.sendNotification(Notification(title, text)) } }
+            remember {
+                DesktopReminders(app.events.all, app.scope, is24Hour = is24HourClock()) { title, text -> tray.sendNotification(Notification(title, text)) }
+            }
         LaunchedEffect(Unit) {
             app.sync.begin()
             reminders.begin()

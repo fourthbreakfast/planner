@@ -55,6 +55,7 @@ class Reminders(private val context: Context) {
         val intent = Intent(context, ReminderReceiver::class.java)
             .setData(Uri.parse("planner://event/$id/snooze"))
             .putExtras(source.extras ?: return)
+            .putExtra(ReminderReceiver.SNOOZED, true)
         val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         if (alarms.canScheduleExactAlarms()) {
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
