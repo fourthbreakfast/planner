@@ -66,6 +66,13 @@ internal class NoteEditState(initialTitle: String, body: String) {
         value = TextFieldValue(GUARD + joined, TextRange(joined.length + 1))
     }
 
+    /** Shows another version of the note, one sync brought, in place of what is here. */
+    fun replaceWith(newTitle: String, body: String) {
+        title = newTitle
+        load(body)
+        commit()
+    }
+
     /** The lines as they are saved. */
     fun lines(): List<NoteLine> {
         var start = 0

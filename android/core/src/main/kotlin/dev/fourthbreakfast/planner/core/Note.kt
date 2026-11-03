@@ -55,11 +55,21 @@ class Notes(private val store: NoteStore, private val clock: () -> Long = System
         }
     }
 
-    suspend fun update(id: String, title: String, body: String) {
+    /**
+     * Writes what an editor holds, and returns the note's version afterwards. [base] is the version the editor last
+     * saw: when the note changed since then, through sync from another device, those words are not lost but kept as a
+     * copy in the bin, and the editor's words, typed last, become the note.
+     */
+    suspend fun update(id: String, title: String, body: String, base: Long? = null): Long? {
         val now = clock()
-        store.transaction {
-            val note = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
-            if (note.body != body || note.title != title) store.update(listOf(note.copy(title = title, body = body, updatedAt = now)))
+        return store.transaction {
+            val note = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction null
+            if (note.body == body && note.title == title) return@transaction note.updatedAt
+            if (base != null && note.updatedAt > base) {
+                store.insert(listOf(note.copy(id = UUID.randomUUID().toString(), deletedAt = now, updatedAt = now)))
+            }
+            store.update(listOf(note.copy(title = title, body = body, updatedAt = now)))
+            now
         }
     }
 

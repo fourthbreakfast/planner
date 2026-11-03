@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
 
     private val notesViewModel: NotesViewModel by viewModels {
         viewModelFactory {
-            initializer { NotesViewModel((application as PlannerApp).notes) }
+            initializer { NotesViewModel((application as PlannerApp).notes, (application as PlannerApp).services.prefs) }
         }
     }
 
