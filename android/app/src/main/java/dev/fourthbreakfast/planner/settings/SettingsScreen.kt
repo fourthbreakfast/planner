@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import dev.fourthbreakfast.planner.PlannerApp
@@ -51,8 +52,13 @@ private const val RELEASES = "https://github.com/fourthbreakfast/planner/release
 @Composable
 fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
     var guideOpen by rememberSaveable { mutableStateOf(false) }
+    var syncOpen by rememberSaveable { mutableStateOf(false) }
     if (guideOpen) {
         Guide(onClose = { guideOpen = false })
+        return
+    }
+    if (syncOpen) {
+        SyncScreen(onClose = { syncOpen = false })
         return
     }
     BackHandler(onBack = onClose)
@@ -85,6 +91,20 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
         ) {
+            val sync = (context.applicationContext as PlannerApp).syncController
+            if (sync.available) {
+                val peers = sync.state.value.peers.size
+                Setting(
+                    stringResource(R.string.sync_title),
+                    if (peers ==
+                        0
+                    ) {
+                        null
+                    } else {
+                        pluralStringResource(R.plurals.sync_devices, peers, peers)
+                    },
+                ) { syncOpen = true }
+            }
             Setting(stringResource(R.string.export_tasks), null, backup.export)
             Setting(stringResource(R.string.import_tasks), null, backup.import)
             Setting(
@@ -128,7 +148,7 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
 }
 
 @Composable
-private fun SettingsBar(title: String, onClose: () -> Unit) {
+internal fun SettingsBar(title: String, onClose: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -143,7 +163,7 @@ private fun SettingsBar(title: String, onClose: () -> Unit) {
 
 /** One line of the settings: what it is, and the choice it holds now when it is a choice. */
 @Composable
-private fun Setting(label: String, value: String?, onClick: () -> Unit) {
+internal fun Setting(label: String, value: String?, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,

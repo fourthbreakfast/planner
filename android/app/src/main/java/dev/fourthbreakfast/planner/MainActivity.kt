@@ -81,8 +81,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        (application as PlannerApp).syncController.onInSight()
+    }
+
     override fun onStop() {
         super.onStop()
+        (application as PlannerApp).syncController.onOutOfSight()
         (application as PlannerApp).backUpIfDue()
     }
 

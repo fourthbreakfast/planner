@@ -34,6 +34,23 @@
     <string name="backup_off">off</string>
     <string name="setting_updates">check for updates</string>
     <string name="toolbar_keyboard">above keyboard</string>
+    <string name="sync_title">sync</string>
+    <plurals name="sync_devices">
+        <item quantity="one">%d device</item>
+        <item quantity="other">%d devices</item>
+    </plurals>
+    <string name="sync_this_device">this device</string>
+    <string name="sync_scan">scan a code</string>
+    <string name="sync_type_code">type a code</string>
+    <string name="sync_pair">pair</string>
+    <string name="sync_not_found">not found</string>
+    <string name="sync_connected">connected</string>
+    <string name="sync_waiting">waiting</string>
+    <string name="sync_remove">remove</string>
+    <string name="sync_anywhere">sync anywhere</string>
+    <string name="sync_on">on</string>
+    <string name="sync_unavailable">sync does not run on this phone</string>
+    <string name="sync_credit">sync by syncthing, mpl 2.0</string>
     <string name="guide_title">how it works</string>
     <string name="nothing_to_do">nothing to do</string>
     <string name="redo">redo</string>

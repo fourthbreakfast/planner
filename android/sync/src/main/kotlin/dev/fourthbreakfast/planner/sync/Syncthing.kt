@@ -33,7 +33,13 @@ data class Peer(val id: String, val name: String, val connected: Boolean)
  * The app's own Syncthing: started from [binary] with its keys and database in [home], sharing [folder] and nothing
  * else. It only ever listens on the loopback address for its own REST interface, with a fresh key each start.
  */
-class Syncthing(private val binary: File, private val home: File, val folder: File, private val ports: Ports = Ports()) {
+class Syncthing(
+    private val binary: File,
+    private val home: File,
+    val folder: File,
+    private val ports: Ports = Ports(),
+    private val log: (String) -> Unit = {},
+) {
     private var process: Process? = null
     private var api: SyncthingApi? = null
 
@@ -76,7 +82,7 @@ class Syncthing(private val binary: File, private val home: File, val folder: Fi
         process = ProcessBuilder(args)
             .apply { environment().putAll(ENVIRONMENT) }
             .redirectErrorStream(true)
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectOutput(ProcessBuilder.Redirect.to(File(home, "output.txt")))
             .start()
         val api = SyncthingApi(port, key).also { this@Syncthing.api = it }
         var waited = 0
@@ -85,9 +91,13 @@ class Syncthing(private val binary: File, private val home: File, val folder: Fi
             if (waited++ > 150) throw IOException("syncthing did not start")
             delay(200)
         }
+        log("answering")
         myId = api.get("/rest/system/status").jsonObject.string("myID")
+        log("id $myId")
         api.patch("/rest/config/devices/${encoded(myId)}", buildJsonObject { put("name", name) })
+        log("named")
         ensureFolder(api)
+        log("folder ready")
     }
 
     /** Stops it, letting it close its database first. */
@@ -106,7 +116,7 @@ class Syncthing(private val binary: File, private val home: File, val folder: Fi
         val done = ProcessBuilder(listOf(binary.path) + command)
             .apply { environment().putAll(ENVIRONMENT) }
             .redirectErrorStream(true)
-            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectOutput(ProcessBuilder.Redirect.to(File(home, "output.txt")))
             .start()
         if (!done.waitFor(60, TimeUnit.SECONDS) || done.exitValue() != 0) throw IOException("syncthing ${command.first()} failed")
     }

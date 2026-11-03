@@ -10,11 +10,14 @@ import dev.fourthbreakfast.planner.backup.AutoBackup
 import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.core.Events
 import dev.fourthbreakfast.planner.core.Notes
+import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.core.Tasks
 import dev.fourthbreakfast.planner.data.RoomEventStore
 import dev.fourthbreakfast.planner.data.RoomNoteStore
+import dev.fourthbreakfast.planner.data.RoomSyncLedger
 import dev.fourthbreakfast.planner.data.RoomTaskStore
 import dev.fourthbreakfast.planner.reminders.Reminders
+import dev.fourthbreakfast.planner.sync.SyncController
 import dev.fourthbreakfast.planner.widget.PlannerWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +25,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 class PlannerApp : Application() {
@@ -34,6 +38,7 @@ class PlannerApp : Application() {
     private val taskStore by lazy { RoomTaskStore(database) }
     private val eventStore by lazy { RoomEventStore(database) }
     private val noteStore by lazy { RoomNoteStore(database) }
+    private val syncLedger by lazy { RoomSyncLedger(database) }
     private val reminders by lazy { Reminders(this) }
 
     val settings: UiSettings by lazy { UiSettings(this) }
@@ -43,6 +48,14 @@ class PlannerApp : Application() {
     val events: Events by lazy { Events(eventStore) }
     val notes: Notes by lazy { Notes(noteStore) }
     val backups: Backups by lazy { Backups(taskStore, eventStore, noteStore) }
+    val syncController: SyncController by lazy {
+        SyncController(
+            this,
+            Sync(taskStore, eventStore, noteStore, syncLedger),
+            merge(taskStore.observeAll(), eventStore.observeAll(), noteStore.observeAll()),
+            scope,
+        )
+    }
     private val autoBackup by lazy { AutoBackup(this, backups, settings) }
 
     override fun onCreate() {
