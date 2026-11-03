@@ -51,8 +51,8 @@ import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.theme.Space
-import dev.fourthbreakfast.planner.updates.Release
 import dev.fourthbreakfast.planner.updates.UpdateRows
+import dev.fourthbreakfast.planner.updates.UpdateState
 import dev.fourthbreakfast.planner.updates.Updates
 import java.awt.FileDialog
 import java.awt.Frame
@@ -70,7 +70,14 @@ private const val FILE_NAME = "planner-backup.json"
 
 /** The computer's settings: sync, a backup to a file and back, the theme, and the list of gestures. */
 @Composable
-fun DesktopSettings(viewModel: TasksViewModel, sync: DesktopSync, updates: Updates, version: String, onClose: () -> Unit, install: suspend (Release) -> Unit) {
+fun DesktopSettings(
+    viewModel: TasksViewModel,
+    sync: DesktopSync,
+    updates: Updates,
+    version: String,
+    onClose: () -> Unit,
+    install: (UpdateState.Ready) -> Unit,
+) {
     var guideOpen by rememberSaveable { mutableStateOf(false) }
     var syncOpen by rememberSaveable { mutableStateOf(false) }
     if (guideOpen) {

@@ -16,17 +16,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.restart_to_update
 import dev.fourthbreakfast.planner.resources.settings_title
-import dev.fourthbreakfast.planner.resources.update_to
 import dev.fourthbreakfast.planner.ui.theme.Space
-import dev.fourthbreakfast.planner.updates.Release
 import dev.fourthbreakfast.planner.updates.UpdateState
 import dev.fourthbreakfast.planner.updates.Updates
 import org.jetbrains.compose.resources.stringResource
 
 /** A thin bar along the bottom of the window: how sync is doing at the left, the settings cog at the right. */
 @Composable
-fun StatusBar(sync: DesktopSync, updates: Updates, onUpdate: (Release) -> Unit, onSettings: () -> Unit) {
+fun StatusBar(sync: DesktopSync, updates: Updates, onUpdate: (UpdateState.Ready) -> Unit, onSettings: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val state by sync.state.collectAsState()
     val update by updates.state.collectAsState()
@@ -43,13 +42,13 @@ fun StatusBar(sync: DesktopSync, updates: Updates, onUpdate: (Release) -> Unit, 
             }
         }
         Text(text, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
-        (update as? UpdateState.Available)?.let { available ->
+        (update as? UpdateState.Ready)?.let { ready ->
             // a newer version, offered quietly beside the settings
             Text(
-                stringResource(Res.string.update_to, available.release.version),
+                stringResource(Res.string.restart_to_update),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onBackground,
-                modifier = Modifier.clickable { onUpdate(available.release) }.padding(horizontal = Space.x3),
+                modifier = Modifier.clickable { onUpdate(ready) }.padding(horizontal = Space.x3),
             )
         }
         HeaderButton(stringResource(Res.string.settings_title), onSettings) { cog(it) }

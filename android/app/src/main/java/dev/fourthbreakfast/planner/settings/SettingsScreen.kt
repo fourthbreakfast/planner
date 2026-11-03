@@ -127,7 +127,7 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
                 if (settings.backupFolder != null) settings.chooseBackupFolder(null) else pickFolder.launch(null)
             }
             val app = context.applicationContext as PlannerApp
-            UpdateRows(app.updates, version) { release -> installOnPhone(context, app.updates, release) }
+            UpdateRows(app.updates, version) { ready -> installOnPhone(context, ready) }
             val manager = remember { AppWidgetManager.getInstance(context) }
             if (manager.isRequestPinAppWidgetSupported) {
                 Setting(stringResource(R.string.setting_widget), null) {
