@@ -38,9 +38,11 @@ import dev.fourthbreakfast.planner.UiSettings
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.core.Events
+import dev.fourthbreakfast.planner.core.LogicalClock
 import dev.fourthbreakfast.planner.core.Notes
 import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.core.Tasks
+import dev.fourthbreakfast.planner.core.newestChange
 import dev.fourthbreakfast.planner.data.RoomEventStore
 import dev.fourthbreakfast.planner.data.RoomNoteStore
 import dev.fourthbreakfast.planner.data.RoomSyncLedger
@@ -91,17 +93,19 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
     private val noteStore = RoomNoteStore(database)
     private val prefs = DesktopPrefs(prefsNode)
 
-    val events = Events(eventStore)
-    val tasksViewModel = TasksViewModel(Tasks(taskStore), Backups(taskStore, eventStore, noteStore))
+    // one clock for every change, which never goes back past a time already seen here or from another device
+    private val clock = LogicalClock().also { clock -> scope.launch { clock.saw(newestChange(taskStore, eventStore, noteStore)) } }
+    val events = Events(eventStore, clock::now)
+    val tasksViewModel = TasksViewModel(Tasks(taskStore, clock::now), Backups(taskStore, eventStore, noteStore))
     val agendaViewModel = AgendaViewModel(events)
-    val notesViewModel = NotesViewModel(Notes(noteStore), prefs)
+    val notesViewModel = NotesViewModel(Notes(noteStore, clock::now), prefs)
     val settings = UiSettings(prefs)
     val services = PlannerServices(Requests(), settings, prefs)
     val backStack = BackStack()
     val sync = DesktopSync(
         bundledSyncthing(),
         File(folder, "syncthing"),
-        Sync(taskStore, eventStore, noteStore, RoomSyncLedger(database)),
+        Sync(taskStore, eventStore, noteStore, RoomSyncLedger(database), clock::now, clock::saw),
         merge(taskStore.observeAll(), eventStore.observeAll(), noteStore.observeAll()),
         prefs,
         scope,

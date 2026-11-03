@@ -67,12 +67,15 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
     append(if (gone.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
 }
 
-/** What a backup holds, or a [BackupException] when the text is not one. */
-fun decodeBackup(text: String): Backup {
+/**
+ * What a backup holds, or a [BackupException] when the text is not one. A file from a newer version is refused unless
+ * [acceptNewer]: sync reads it all the same, so that a newer app on one device does not stop the others syncing.
+ */
+fun decodeBackup(text: String, acceptNewer: Boolean = false): Backup {
     val root = JsonReader(text).read() as? Map<*, *> ?: throw BackupException("not a planner backup")
     if (root["app"] != "planner") throw BackupException("not a planner backup")
     val version = number(root["version"]).toInt()
-    if (version > BACKUP_VERSION) throw BackupException("made by a newer version of planner")
+    if (version > BACKUP_VERSION && !acceptNewer) throw BackupException("made by a newer version of planner")
     val tasks = root["tasks"] as? List<*> ?: throw BackupException("no tasks in this backup")
     val taskList = tasks.map { entry ->
         val task = entry as? Map<*, *> ?: throw BackupException("damaged task")

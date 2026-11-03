@@ -32,12 +32,17 @@ class Sync(
     private val notes: NoteStore,
     private val ledger: SyncLedger,
     private val clock: () -> Long = System::currentTimeMillis,
+    // every time in another device's file is told to the clock, so this device's next change lands after it
+    private val saw: (Long) -> Unit = {},
 ) {
     suspend fun snapshot(): String = tasks.transaction { encodeBackup(tasks.all(), events.all(), notes.all(), ledger.gone()) }
 
     /** Takes in another device's snapshot and returns how many things changed here. */
     suspend fun merge(text: String): Int {
-        val other = decodeBackup(text)
+        // a file from a newer version of the app is still read: what this version does not know of is left alone
+        val other = decodeBackup(text, acceptNewer = true)
+        (other.tasks.map { it.updatedAt } + other.events.map { it.updatedAt } + other.notes.map { it.updatedAt } + other.gone.map { it.at })
+            .maxOrNull()?.let(saw)
         return tasks.transaction {
             val known = ledger.gone().associate { it.id to it.at }
             val incomingGone = other.gone.groupBy { it.id }.mapValues { (_, marks) -> marks.maxOf { it.at } }
@@ -99,6 +104,16 @@ class Sync(
         }
     }
 
+    /**
+     * Whether [theirs] should replace [mine]: the later change wins. Two different versions changed at the very same
+     * moment would otherwise each stay on its own device, so the tie goes the same way everywhere, by the text of each.
+     */
+    private fun <T> isNewer(theirs: T, mine: T, updatedAt: (T) -> Long): Boolean {
+        val a = updatedAt(theirs)
+        val b = updatedAt(mine)
+        return a > b || (a == b && theirs != mine && theirs.toString() > mine.toString())
+    }
+
     private class Writer<T>(val insert: suspend (List<T>) -> Unit, val update: suspend (List<T>) -> Unit, val delete: suspend (List<T>) -> Unit)
 
     private suspend fun <T> mergeKind(
@@ -127,7 +142,7 @@ class Sync(
             if (!wanted) continue
             when {
                 here == null -> added += theirs
-                updatedAt(theirs) > updatedAt(here) -> {
+                isNewer(theirs, here, updatedAt) -> {
                     beforeReplacing(here, theirs)
                     replaced += theirs
                 }

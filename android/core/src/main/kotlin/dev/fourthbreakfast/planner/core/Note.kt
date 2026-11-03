@@ -82,6 +82,12 @@ class Notes(private val store: NoteStore, private val clock: () -> Long = System
             val note = active.firstOrNull { it.id == id } ?: return@transaction
             val others = active.filter { it.id != id }
             val index = if (beforeId == null) others.size else others.indexOfFirst { it.id == beforeId }.takeIf { it >= 0 } ?: others.size
+            val place = placeBetween(others.getOrNull(index - 1)?.position, others.getOrNull(index)?.position)
+            if (place != null) {
+                store.update(listOf(note.copy(position = place, updatedAt = now)))
+                return@transaction
+            }
+            // no room left between the two: the notes are numbered again
             val ordered = others.toMutableList().apply { add(index, note) }
             store.update(
                 ordered.mapIndexedNotNull { i, item ->
