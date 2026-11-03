@@ -16,3 +16,7 @@ ktlint_function_naming_ignore_when_annotated_with = Composable
 # the code keeps its trailing commas
 ij_kotlin_allow_trailing_comma = true
 ij_kotlin_allow_trailing_comma_on_call_site = true
+
+# code that gradle plugins generate, such as the compose resource accessors, is not ours to style
+[**/generated/**]
+ktlint_standard = disabled

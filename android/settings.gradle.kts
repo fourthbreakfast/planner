@@ -26,3 +26,5 @@ rootProject.name = "Planner"
 include(":app")
 include(":core")
 include(":sync")
+include(":shared")
+include(":desktop")
