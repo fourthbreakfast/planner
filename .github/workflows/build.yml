@@ -30,9 +30,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: style
         run: ./gradlew ktlintCheck --console=plain
+      - name: a syncthing for the sync tests
+        run: |
+          cd ../third_party/syncthing
+          go run build.go assets
+          CGO_ENABLED=0 go build -tags noupgrade -ldflags=-checklinkname=0 -o "$RUNNER_TEMP/syncthing" ./cmd/syncthing
+          echo "PLANNER_SYNCTHING=$RUNNER_TEMP/syncthing" >> "$GITHUB_ENV"
       - name: tests
-        run: ./gradlew :core:test :sync:test :shared:desktopTest testDebugUnitTest --console=plain
+        run: ./gradlew :core:test :sync:test :shared:desktopTest :desktop:test testDebugUnitTest --console=plain
       - name: app
-        run: ./gradlew assembleDebug --console=plain
+        run: ./gradlew assembleDebug assembleRelease --console=plain
       - name: windows app
         run: ./gradlew :desktop:compileKotlin --console=plain

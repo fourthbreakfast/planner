@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +23,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,10 +46,8 @@ import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.search.SearchScreen
 import dev.fourthbreakfast.planner.tasks.BinScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
-import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.theme.Space
-import kotlinx.coroutines.launch
 
 /** The three parts of the dashboard, which one the keyboard is in. */
 enum class Section { TASKS, AGENDA, NOTES }
@@ -181,8 +176,6 @@ fun Dashboard(
     val allNotes by notesViewModel.all.collectAsState(initial = emptyList())
     val toolbarAbove = LocalServices.current.settings.toolbarAbove
     val requests = LocalServices.current.requests
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
         Row(Modifier.fillMaxSize()) {
@@ -284,9 +277,6 @@ fun Dashboard(
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter)) { data ->
-            DiscreetMessage(data.visuals.message, data.visuals.actionLabel, data::performAction)
-        }
         // a share or a tray action asks for something: the dashboard acts on it
         androidx.compose.runtime.LaunchedEffect(requests.pending) {
             when (val request = requests.pending) {
@@ -298,7 +288,6 @@ fun Dashboard(
                 else -> Unit
             }
             if (requests.pending != null) requests.clear()
-            scope.launch { }
         }
     }
 }

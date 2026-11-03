@@ -53,9 +53,11 @@ import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_inside_hint
 import dev.fourthbreakfast.planner.resources.add_subtask
 import dev.fourthbreakfast.planner.resources.add_task_hint
+import dev.fourthbreakfast.planner.resources.close_task
 import dev.fourthbreakfast.planner.resources.collapse_all
 import dev.fourthbreakfast.planner.resources.expand_all
 import dev.fourthbreakfast.planner.resources.nothing_to_do
+import dev.fourthbreakfast.planner.resources.open_task
 import dev.fourthbreakfast.planner.resources.priority_high
 import dev.fourthbreakfast.planner.resources.priority_low
 import dev.fourthbreakfast.planner.resources.priority_medium
@@ -84,6 +86,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewModel: TasksViewModel) {
     val renameLabel = stringResource(Res.string.rename)
+    val openLabel = stringResource(Res.string.open_task)
+    val closeLabel = stringResource(Res.string.close_task)
     val addSubtaskLabel = stringResource(Res.string.add_subtask)
     val priorityHighLabel = stringResource(Res.string.priority_high)
     val priorityMediumLabel = stringResource(Res.string.priority_medium)
@@ -220,7 +224,10 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                         // the triangle opens and closes a task with something inside
                         Box(Modifier.size(Space.x5), contentAlignment = Alignment.Center) {
                             if (node.childCount > 0) {
-                                HeaderButton("", { state.openTasks = if (node.collapsed) state.openTasks + task.id else state.openTasks - task.id }) { ink ->
+                                HeaderButton(if (node.collapsed) openLabel else closeLabel, {
+                                    state.openTasks =
+                                        if (node.collapsed) state.openTasks + task.id else state.openTasks - task.id
+                                }) { ink ->
                                     val open = !node.collapsed
                                     drawPath(
                                         androidx.compose.ui.graphics.Path().apply {

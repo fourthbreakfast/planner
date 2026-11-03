@@ -36,11 +36,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
+import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.window_close
+import dev.fourthbreakfast.planner.resources.window_maximize
+import dev.fourthbreakfast.planner.resources.window_minimize
+import dev.fourthbreakfast.planner.resources.window_restore
 import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.theme.Space
 import java.awt.Cursor
 import java.awt.Frame
 import java.awt.Window
+import org.jetbrains.compose.resources.stringResource
 
 private val closeRed = Color(0xFFC42B1C)
 
@@ -69,11 +75,11 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit) {
                 SegmentText("planner", colors.onSurfaceVariant, Modifier.padding(start = Space.x3), scale = 0.8f)
             }
         }
-        WindowButton("minimize", hoverColor = colors.secondaryContainer, onClick = { state.isMinimized = true }) { ink ->
+        WindowButton(stringResource(Res.string.window_minimize), hoverColor = colors.secondaryContainer, onClick = { state.isMinimized = true }) { ink ->
             drawLine(ink, Offset(size.width * 0.28f, size.height * 0.5f), Offset(size.width * 0.72f, size.height * 0.5f), Space.strokeThin.toPx())
         }
         WindowButton(
-            if (state.placement == WindowPlacement.Maximized) "restore" else "maximize",
+            stringResource(if (state.placement == WindowPlacement.Maximized) Res.string.window_restore else Res.string.window_maximize),
             hoverColor = colors.secondaryContainer,
             onClick = { state.toggleMaximized() },
         ) { ink ->
@@ -86,7 +92,7 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit) {
                 drawRect(ink, Offset(size.width * 0.28f, size.height * 0.28f), Size(size.width * 0.44f, size.height * 0.44f), style = line)
             }
         }
-        WindowButton("close", hoverColor = closeRed, hoverInk = Color.White, onClick = onClose) { ink ->
+        WindowButton(stringResource(Res.string.window_close), hoverColor = closeRed, hoverInk = Color.White, onClick = onClose) { ink ->
             val line = Space.strokeThin.toPx()
             drawLine(ink, Offset(size.width * 0.3f, size.height * 0.3f), Offset(size.width * 0.7f, size.height * 0.7f), line)
             drawLine(ink, Offset(size.width * 0.7f, size.height * 0.3f), Offset(size.width * 0.3f, size.height * 0.7f), line)
