@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 
 private const val CHANNEL = "reminders"
 private const val SNOOZE_MINUTES = 10
-private const val ON_TIME_MILLIS = 5 * 60_000L
+private const val ON_TIME_MILLIS = 30 * 60_000L
 
 /**
  * Rings when an alarm from [Reminders] goes off: puts the event up as a notification. Touching it opens the event,
