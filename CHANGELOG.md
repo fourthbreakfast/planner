@@ -2,6 +2,10 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 0.8.0
+
+- the agenda can show a month: the grid icon at the top switches between the list and the month, days with events have a dot, and touching a day shows its events under the grid. a new event added from the month starts on the chosen day
+
 ## 0.7.0
 
 - sync between your devices, built in: pair a device from settings by scanning or typing its code. it uses a private copy of syncthing, stays on your own network unless you turn on sync anywhere, and needs network access, which the app now asks for

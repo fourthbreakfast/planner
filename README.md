@@ -18,7 +18,7 @@ it started as a quick standalone trial and turned out to be useful on its own, s
 
 **tasks.** subtasks up to four levels deep, a priority on every task (none, low, medium, high), a bin for anything you remove, and every level ranked by priority. checking a task covers everything inside it, and tasks with subtasks start closed.
 
-**agenda.** your events soonest first, grouped by day, with the time, the place and the notes in view. an event can be all day, have a start, or have a start and an end, and it can remind you: at the time, 10 minutes before or an hour before.
+**agenda.** your events soonest first, grouped by day, with the time, the place and the notes in view. an event can be all day, have a start, or have a start and an end, and it can remind you: at the time, 10 minutes before or an hour before. the agenda can also show a month, with a dot on every day that has something on it.
 
 **notes.** a title, then plain text you can mark up: bulleted and numbered lists, checkboxes, indent, bold, italic and underline, with undo and redo. notes are kept in the order you put them, can be pinned, and have a bin of their own.
 
@@ -46,6 +46,7 @@ everything a row can do starts with holding it for a moment, so sweeping across 
   <tr><th colspan="2">agenda</th></tr>
   <tr><td>plus at the bottom right</td><td>add an event</td></tr>
   <tr><td>touch an event</td><td>edit it</td></tr>
+  <tr><td>the grid icon at the top</td><td>switch between the list and the month; in the month, touch a day to see its events, and the arrows change the month</td></tr>
   <tr><td>hold an event, then swipe right</td><td>move it to the agenda's bin, with undo</td></tr>
   <tr><th colspan="2">notes</th></tr>
   <tr><td>plus at the bottom right</td><td>add a note and start writing</td></tr>
