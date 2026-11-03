@@ -8,7 +8,6 @@ import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
-import androidx.room.withTransaction
 import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.NoteStore
@@ -60,10 +59,10 @@ class RoomNoteStore(private val database: PlannerDatabase) : NoteStore {
 
     override suspend fun update(notes: List<Note>) = dao.updateAll(notes.map { it.toEntity() })
 
-    override suspend fun delete(notes: List<Note>) = database.withTransaction {
+    override suspend fun delete(notes: List<Note>) = database.inTransaction {
         dao.deleteAll(notes.map { it.toEntity() })
         database.forget(notes.map { it.id })
     }
 
-    override suspend fun <T> transaction(block: suspend () -> T): T = database.withTransaction { block() }
+    override suspend fun <T> transaction(block: suspend () -> T): T = database.inTransaction { block() }
 }
