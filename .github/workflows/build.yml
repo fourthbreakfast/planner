@@ -31,6 +31,8 @@ jobs:
       - name: style
         run: ./gradlew ktlintCheck --console=plain
       - name: tests
-        run: ./gradlew :core:test :sync:test testDebugUnitTest --console=plain
+        run: ./gradlew :core:test :sync:test :shared:desktopTest testDebugUnitTest --console=plain
       - name: app
         run: ./gradlew assembleDebug --console=plain
+      - name: windows app
+        run: ./gradlew :desktop:compileKotlin --console=plain

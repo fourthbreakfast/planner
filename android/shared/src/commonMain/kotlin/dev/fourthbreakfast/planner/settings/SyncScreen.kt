@@ -1,9 +1,5 @@
 package dev.fourthbreakfast.planner.settings
 
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,8 +33,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -46,26 +41,41 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
-import dev.fourthbreakfast.planner.PlannerApp
-import dev.fourthbreakfast.planner.R
+import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.backup_off
+import dev.fourthbreakfast.planner.resources.sync_anywhere
+import dev.fourthbreakfast.planner.resources.sync_blocked
+import dev.fourthbreakfast.planner.resources.sync_connected
+import dev.fourthbreakfast.planner.resources.sync_credit
+import dev.fourthbreakfast.planner.resources.sync_not_found
+import dev.fourthbreakfast.planner.resources.sync_on
+import dev.fourthbreakfast.planner.resources.sync_pair
+import dev.fourthbreakfast.planner.resources.sync_remove
+import dev.fourthbreakfast.planner.resources.sync_scan
+import dev.fourthbreakfast.planner.resources.sync_this_device
+import dev.fourthbreakfast.planner.resources.sync_title
+import dev.fourthbreakfast.planner.resources.sync_type_code
+import dev.fourthbreakfast.planner.resources.sync_unavailable
+import dev.fourthbreakfast.planner.resources.sync_waiting
+import dev.fourthbreakfast.planner.sync.SyncControls
 import dev.fourthbreakfast.planner.sync.shortId
+import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.QuietButton
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 
 private const val SYNCTHING = "https://syncthing.net"
 
 /**
  * Pairing and the devices this one syncs with. While it is open the app's Syncthing runs and lets in any device that
- * asks, so pairing takes this screen open on both devices: one scans or types the other's code.
+ * asks, so pairing takes this screen open on both devices: one scans or types the other's code. A device without a
+ * camera to [scan] with only offers typing.
  */
 @Composable
-fun SyncScreen(onClose: () -> Unit) {
+fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Unit)?, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
-    val context = LocalContext.current
-    val controller = (context.applicationContext as PlannerApp).syncController
+    val links = LocalUriHandler.current
     DisposableEffect(controller) {
         controller.openPairing()
         onDispose { controller.closePairing() }
@@ -83,11 +93,10 @@ fun SyncScreen(onClose: () -> Unit) {
             if (!notFound) code = ""
         }
     }
-    val scan = rememberLauncherForActivityResult(ScanContract()) { result -> result.contents?.let(::pair) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = { SettingsBar(stringResource(R.string.sync_title), onClose) },
+        topBar = { SettingsBar(stringResource(Res.string.sync_title), onClose) },
     ) { padding ->
         Column(
             Modifier
@@ -96,23 +105,21 @@ fun SyncScreen(onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
         ) {
             if (!controller.available || state.failed) {
-                Line(stringResource(if (controller.available) R.string.sync_blocked else R.string.sync_unavailable), null)
+                Line(stringResource(if (controller.available) Res.string.sync_blocked else Res.string.sync_unavailable), null)
                 return@Column
             }
-            Line(stringResource(R.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))
+            Line(stringResource(Res.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))
             if (state.myId.isNotEmpty()) {
                 QrCode(state.myId, Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
             }
-            Setting(stringResource(R.string.sync_scan), null) {
-                scan.launch(ScanOptions().setPrompt("").setBeepEnabled(false).setOrientationLocked(true).setDesiredBarcodeFormats(ScanOptions.QR_CODE))
-            }
+            if (scan != null) Setting(stringResource(Res.string.sync_scan), null) { scan(::pair) }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(start = Space.gutter, end = Space.rowPad),
             ) {
                 Box(Modifier.weight(1f)) {
                     if (code.isEmpty()) {
-                        Text(stringResource(R.string.sync_type_code), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
+                        Text(stringResource(Res.string.sync_type_code), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
                     }
                     BasicTextField(
                         value = code,
@@ -128,7 +135,7 @@ fun SyncScreen(onClose: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                QuietButton(stringResource(if (notFound) R.string.sync_not_found else R.string.sync_pair), code.isNotBlank()) { pair(code) }
+                QuietButton(stringResource(if (notFound) Res.string.sync_not_found else Res.string.sync_pair), code.isNotBlank()) { pair(code) }
             }
             for (peer in state.peers) {
                 Row(
@@ -142,26 +149,26 @@ fun SyncScreen(onClose: () -> Unit) {
                         modifier = Modifier.weight(1f),
                     )
                     Text(
-                        text = stringResource(if (peer.connected) R.string.sync_connected else R.string.sync_waiting),
+                        text = stringResource(if (peer.connected) Res.string.sync_connected else Res.string.sync_waiting),
                         style = MaterialTheme.typography.labelMedium,
                         color = colors.onSurfaceVariant,
                     )
-                    QuietButton(stringResource(R.string.sync_remove)) { controller.unpair(peer.id) }
+                    QuietButton(stringResource(Res.string.sync_remove)) { controller.unpair(peer.id) }
                 }
             }
             Setting(
-                stringResource(R.string.sync_anywhere),
-                stringResource(if (anywhere) R.string.sync_on else R.string.backup_off),
+                stringResource(Res.string.sync_anywhere),
+                stringResource(if (anywhere) Res.string.sync_on else Res.string.backup_off),
             ) {
                 anywhere = !anywhere
                 controller.chooseAnywhere(anywhere)
             }
             Text(
-                text = stringResource(R.string.sync_credit),
+                text = stringResource(Res.string.sync_credit),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant,
                 modifier = Modifier
-                    .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SYNCTHING))) }
+                    .clickable { links.openUri(SYNCTHING) }
                     .padding(start = Space.gutter, end = Space.gutter, top = Space.x6, bottom = Space.x2),
             )
         }

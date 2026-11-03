@@ -37,21 +37,12 @@ private const val WORK = "sync"
 private const val TICK_MILLIS = 2_000L
 private const val LINGER_MILLIS = 60_000L
 
-/** What the sync screen shows. */
-data class SyncState(
-    val running: Boolean = false,
-    val myId: String = "",
-    val peers: List<Peer> = emptyList(),
-    val nearby: List<String> = emptyList(),
-    val failed: Boolean = false,
-)
-
 /**
  * Runs the app's Syncthing while the app is in use and someone is paired, or while the sync screen is open, and keeps
  * this device's file and the others' in step with the database. It stops a minute after the app goes out of sight.
  * Between uses, [SyncWorker] gives it a short run about every fifteen minutes.
  */
-class SyncController(private val context: Context, private val sync: Sync, private val changes: Flow<Any>, private val scope: CoroutineScope) {
+class SyncController(private val context: Context, private val sync: Sync, private val changes: Flow<Any>, private val scope: CoroutineScope) : SyncControls {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val binary = File(context.applicationInfo.nativeLibraryDir, "libsyncthing.so")
     private val root = File(context.filesDir, "syncthing")
@@ -67,12 +58,12 @@ class SyncController(private val context: Context, private val sync: Sync, priva
     private var pairing = false
 
     private val current = MutableStateFlow(SyncState())
-    val state: StateFlow<SyncState> = current
+    override val state: StateFlow<SyncState> = current
 
     /** False on a phone the bundled Syncthing was not built for. */
-    val available: Boolean get() = binary.exists()
+    override val available: Boolean get() = binary.exists()
 
-    val anywhere: Boolean get() = prefs.getBoolean(PREF_ANYWHERE, false)
+    override val anywhere: Boolean get() = prefs.getBoolean(PREF_ANYWHERE, false)
 
     private var paired: Boolean
         get() = prefs.getBoolean(PREF_PAIRED, false)
@@ -98,17 +89,17 @@ class SyncController(private val context: Context, private val sync: Sync, priva
     }
 
     /** The sync screen is open: it runs, and any device asking to pair is let in. */
-    fun openPairing() {
+    override fun openPairing() {
         pairing = true
         scope.launch { ensureRunning() }
     }
 
-    fun closePairing() {
+    override fun closePairing() {
         pairing = false
         if (!paired) scope.launch { stop() }
     }
 
-    fun chooseAnywhere(on: Boolean) {
+    override fun chooseAnywhere(on: Boolean) {
         prefs.edit().putBoolean(PREF_ANYWHERE, on).apply()
         scope.launch {
             if (syncthing.running) {
@@ -119,7 +110,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
     }
 
     /** Pairs with a device by its whole id, or by the short code it shows when it is on the same network. */
-    suspend fun pairWith(code: String): Boolean {
+    override suspend fun pairWith(code: String): Boolean {
         ensureRunning()
         val typed = code.trim().uppercase()
         val id = if (typed.replace("-", "").length >= 52) {
@@ -137,7 +128,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         }
     }
 
-    fun unpair(id: String) {
+    override fun unpair(id: String) {
         scope.launch {
             try {
                 syncthing.unpair(id)

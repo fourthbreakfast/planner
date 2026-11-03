@@ -1,4 +1,4 @@
-# Builds a signed apk and publishes it as a GitHub release.
+# Builds the signed phone apk and the windows installer, and publishes both as one GitHub release.
 #   .\tools\release.ps1 0.1.0
 # The first run creates the signing key at %USERPROFILE%\.planner\release.jks. Back up that file and its
 # password: without them, updates can no longer be installed over the app. Neither ever goes in the repo.
@@ -29,11 +29,15 @@ if (-not (Test-Path $keystore)) {
 $env:PLANNER_KEYSTORE = $keystore
 
 Push-Location "$root\android"
-try { .\gradlew.bat :core:test testDebugUnitTest assembleRelease --no-configuration-cache --console=plain; if ($LASTEXITCODE) { throw 'the build failed' } }
+try { .\gradlew.bat :core:test :sync:test :shared:desktopTest testDebugUnitTest assembleRelease :desktop:packageMsi --no-configuration-cache --console=plain; if ($LASTEXITCODE) { throw 'the build failed' } }
 finally { Pop-Location }
 
 $apk = "$root\android\app\build\outputs\apk\release\planner-$Version.apk"
 Move-Item -Force "$root\android\app\build\outputs\apk\release\app-release.apk" $apk
+
+# the windows installer is named by the version in android\gradle.properties, which has to be the one released
+$msi = "$root\android\desktop\build\compose\binaries\main\msi\planner-$Version.msi"
+if (-not (Test-Path $msi)) { throw "no $msi, is plannerVersion in android\gradle.properties $Version?" }
 
 # the release notes are this version's part of CHANGELOG.md; without one, github writes its own
 $notes = @('--generate-notes')
@@ -48,6 +52,7 @@ if ($changelog -match "(?ms)^## $([regex]::Escape($Version))[^\r\n]*\r?\n(.*?)(?
 
 # gh is signed in on nixos
 $linuxApk = (wsl -d NixOS -- wslpath -a ($apk -replace '\\', '/'))
-wsl -d NixOS -- gh release create "v$Version" $linuxApk --repo fourthbreakfast/planner --title "planner $Version" @notes
+$linuxMsi = (wsl -d NixOS -- wslpath -a ($msi -replace '\\', '/'))
+wsl -d NixOS -- gh release create "v$Version" $linuxApk $linuxMsi --repo fourthbreakfast/planner --title "planner $Version" @notes
 if ($LASTEXITCODE) { throw 'publishing failed' }
 Write-Host "published v$Version"
