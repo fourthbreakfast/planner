@@ -4,7 +4,6 @@ import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.ui.Prefs
 import java.io.File
 import java.io.IOException
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -46,6 +45,8 @@ abstract class SyncRunner(
     private var files: DeviceFiles? = null
     private var loop: Job? = null
     private val current = MutableStateFlow(SyncState())
+
+    private var lastFailure: String? = null
 
     /** Whether the sync screen is open. */
     protected var pairing = false
@@ -94,7 +95,7 @@ abstract class SyncRunner(
         prefs.putString(keys.name, clean)
         scope.launch {
             val syncthing = syncthing ?: return@launch
-            quietly { if (syncthing.running) syncthing.rename(syncthing.myId, clean) }
+            quietly("rename") { if (syncthing.running) syncthing.rename(syncthing.myId, clean) }
         }
     }
 
@@ -123,7 +124,16 @@ abstract class SyncRunner(
     override suspend fun pairWith(code: String): Boolean {
         val syncthing = syncthing ?: return false
         ensureRunning()
-        val parsed = parsePairCode(code)
+        return try {
+            pair(syncthing, parsePairCode(code))
+        } catch (e: IOException) {
+            // syncthing would not start, or stopped answering: the code is not found, and can be tried again
+            log("pairing: $e")
+            false
+        }
+    }
+
+    private suspend fun pair(syncthing: Syncthing, parsed: PairCode): Boolean {
         val found = if (parsed.id.replace("-", "").length >= 52) {
             parsed.id to parsed.addresses
         } else {
@@ -133,21 +143,17 @@ abstract class SyncRunner(
                 ?: findOnLan(short, syncthing.listenPort, log)?.let { (id, address) -> id to listOf(address) }
                 ?: return false
         }
-        return try {
-            syncthing.pair(found.first, introducer = true, addresses = found.second)
-            paired = true
-            refresh()
-            true
-        } catch (_: IOException) {
-            false
-        }
+        syncthing.pair(found.first, introducer = true, addresses = found.second)
+        paired = true
+        refresh()
+        return true
     }
 
     override suspend fun syncNow() {
         ensureRunning()
         val syncthing = syncthing ?: return
         val files = files ?: return
-        quietly {
+        quietly("sync now") {
             files.publish()
             syncthing.rescan()
             files.takeIn()
@@ -167,10 +173,9 @@ abstract class SyncRunner(
     private fun act(change: suspend (Syncthing) -> Unit) {
         scope.launch {
             val syncthing = syncthing ?: return@launch
-            try {
+            quietly("change of devices") {
                 change(syncthing)
                 refresh()
-            } catch (_: IOException) {
             }
         }
     }
@@ -184,7 +189,7 @@ abstract class SyncRunner(
             beforeStart()
             try {
                 syncthing.start(anywhere, deviceName)
-            } catch (e: Exception) {
+            } catch (e: IOException) {
                 // a program of its own that would not start is no reason for the app to stop
                 log("could not start: $e")
                 syncthing.stop()
@@ -202,11 +207,11 @@ abstract class SyncRunner(
     @OptIn(FlowPreview::class)
     private suspend fun run(syncthing: Syncthing, files: DeviceFiles) = coroutineScope {
         launch {
-            quietly { files.publish() }
-            changes.debounce(1_000).collect { quietly { files.publish() } }
+            quietly("publish") { files.publish() }
+            changes.debounce(1_000).collect { quietly("publish") { files.publish() } }
         }
         while (isActive) {
-            quietly {
+            quietly("turn") {
                 files.takeIn()
                 files.carryNames(syncthing, deviceName)
                 refresh()
@@ -241,17 +246,20 @@ abstract class SyncRunner(
 
     /** Whether everything has been sent to and taken from every connected device, for a short run to end on. */
     protected suspend fun settled(): Boolean = state.value.peers.any { it.connected } && syncthing?.settled() == true
-}
 
-/**
- * Runs [block], letting a failure pass: Syncthing busy or gone, a file half written. It is tried again on the next turn,
- * so nothing is lost by it, but a cancel still ends what was cancelled.
- */
-private suspend fun quietly(block: suspend () -> Unit) {
-    try {
-        block()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
+    /**
+     * Runs [block], one part of sync named [what], letting a failure to reach Syncthing or the shared folder pass: Syncthing
+     * busy, gone or answering oddly, a file half written. Sync tries again on its next turn, so nothing is lost by it, and
+     * the failure is logged once until a different one comes. Anything else is a fault in the app, and is not caught here.
+     */
+    private suspend fun quietly(what: String, block: suspend () -> Unit) {
+        try {
+            block()
+            lastFailure = null
+        } catch (e: IOException) {
+            val failure = "$what: $e"
+            if (failure != lastFailure) log(failure)
+            lastFailure = failure
+        }
     }
 }

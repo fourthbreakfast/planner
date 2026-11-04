@@ -77,6 +77,7 @@ private fun bundledSyncthing(): File? = System.getProperty("compose.application.
 
 /** Everything the window needs, made once. Tests give it a folder and preferences of their own. */
 internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: String = "dev/fourthbreakfast/planner") {
+    // background work, with no catch-all handler on purpose, as on the phone (see PlannerApp)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val database = Room.databaseBuilder<PlannerDatabase>(File(folder, "planner.db").path)
         .setDriver(BundledSQLiteDriver())
@@ -165,7 +166,12 @@ fun main(args: Array<String>) {
         fun install(ready: UpdateState.Ready) {
             val exe = System.getProperty("jpackage.app-path")
             val then = if (exe != null) " && start \"\" \"$exe\"" else ""
-            ProcessBuilder("cmd", "/c", "msiexec /i \"${ready.file.path}\" /passive /norestart$then").start()
+            try {
+                ProcessBuilder("cmd", "/c", "msiexec /i \"${ready.file.path}\" /passive /norestart$then").start()
+            } catch (_: java.io.IOException) {
+                // the installer could not be started: the app stays, and the update is still offered
+                return
+            }
             quit()
         }
         DisposableEffect(Unit) {

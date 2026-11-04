@@ -27,6 +27,9 @@ class PlannerApp : Application() {
         Room.databaseBuilder(this, PlannerDatabase::class.java, "planner.db").build()
     }
 
+    // the background work of the app. it has no catch-all handler on purpose: each piece catches the failures it expects
+    // where they happen (sync: syncthing and the shared folder, updates: the network, the daily backup: the folder), so
+    // whatever still escapes is a fault in the app and shows as one instead of being swallowed
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /** The tasks, the agenda, the notes, the backup and sync, over the database. */
