@@ -48,9 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.core.occurrences
-import dev.fourthbreakfast.planner.core.span
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_event
 import dev.fourthbreakfast.planner.resources.all_day
@@ -62,7 +60,6 @@ import dev.fourthbreakfast.planner.resources.show_list
 import dev.fourthbreakfast.planner.resources.show_month
 import dev.fourthbreakfast.planner.resources.task_removed
 import dev.fourthbreakfast.planner.resources.undo
-import dev.fourthbreakfast.planner.resources.until_day
 import dev.fourthbreakfast.planner.resources.upcoming_events
 import dev.fourthbreakfast.planner.ui.AddButton
 import dev.fourthbreakfast.planner.ui.BackHandler
@@ -118,6 +115,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 requests.clear()
                 binOpen = false
                 editingId = null
+                editingDay = null
                 newDay = null
                 editorMode = 1
             }
@@ -125,6 +123,8 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 requests.clear()
                 binOpen = false
                 editingId = request.id
+                // a reminder opens the event as a whole, not one time of it from an earlier visit
+                editingDay = null
                 editorMode = 2
             }
             else -> Unit
@@ -169,6 +169,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 onNew = { day ->
                     newDay = day
                     editingId = null
+                    editingDay = null
                     editorMode = 1
                 },
                 onOpen = { id, day ->
@@ -305,6 +306,7 @@ private fun AgendaList(
                 items(dayEvents, key = { it.key }) { time ->
                     EventRow(
                         event = time.event,
+                        start = time.start,
                         key = time.key,
                         today = today,
                         earlier = time.end < today,
@@ -344,6 +346,7 @@ private fun AgendaList(
                         is EarlierRow -> DayHeading(stringResource(Res.string.earlier), earlier = true, big = true)
                         is EventItem -> EventRow(
                             event = row.event,
+                            start = row.day,
                             key = row.key,
                             today = today,
                             earlier = row.earlier,
@@ -376,6 +379,7 @@ private fun DayHeading(text: String, earlier: Boolean, big: Boolean = false) {
 @Composable
 private fun EventRow(
     event: Event,
+    start: Long,
     key: String,
     today: Long,
     earlier: Boolean,
@@ -436,16 +440,7 @@ private fun EventRow(
                     Text(text = event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
                 // how long it goes on, and how it comes back
-                if (event.span > 0) {
-                    Text(
-                        text = stringResource(Res.string.until_day, dateText(event.day + event.span, today)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                if (event.repeat != Repeat.NONE) {
-                    Text(text = repeatText(event.repeat), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
-                }
+                EventSpanAndRepeat(event, start, today)
                 if (event.notes.isNotEmpty()) {
                     Text(text = event.notes, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }

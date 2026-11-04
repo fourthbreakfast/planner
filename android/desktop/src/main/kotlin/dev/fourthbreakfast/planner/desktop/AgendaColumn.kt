@@ -33,21 +33,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.fourthbreakfast.planner.agenda.DayRow
 import dev.fourthbreakfast.planner.agenda.EarlierRow
 import dev.fourthbreakfast.planner.agenda.EventItem
+import dev.fourthbreakfast.planner.agenda.EventSpanAndRepeat
 import dev.fourthbreakfast.planner.agenda.MonthGrid
 import dev.fourthbreakfast.planner.agenda.PREF_MONTH
 import dev.fourthbreakfast.planner.agenda.agendaRows
 import dev.fourthbreakfast.planner.agenda.busyDays
-import dev.fourthbreakfast.planner.agenda.dateText
 import dev.fourthbreakfast.planner.agenda.dayText
 import dev.fourthbreakfast.planner.agenda.monthOf
 import dev.fourthbreakfast.planner.agenda.rememberToday
-import dev.fourthbreakfast.planner.agenda.repeatText
 import dev.fourthbreakfast.planner.agenda.timeText
 import dev.fourthbreakfast.planner.agenda.upcomingCount
 import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.core.occurrences
-import dev.fourthbreakfast.planner.core.span
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_event
 import dev.fourthbreakfast.planner.resources.all_day
@@ -58,10 +55,10 @@ import dev.fourthbreakfast.planner.resources.open_event
 import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.show_list
 import dev.fourthbreakfast.planner.resources.show_month
-import dev.fourthbreakfast.planner.resources.until_day
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.theme.Space
+import java.time.YearMonth
 import org.jetbrains.compose.resources.stringResource
 
 /** The agenda, as a list of days or as a month with the chosen day's events under it. */
@@ -80,6 +77,7 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
     state.visibleEvents = if (asMonth) dayEvents.map { it.key } else rows.filterIsInstance<EventItem>().map { it.key }
     // an event dragged out of the day under the month lands on whichever day it is let go over
     val drag = remember { EventDrag() }
+    drag.month = monthOf(month)
 
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("agenda", upcomingCount(events, today), state.focused == Section.AGENDA) {
@@ -224,24 +222,23 @@ private fun EventLine(
             Column(Modifier.weight(1f)) {
                 Text(event.title, style = MaterialTheme.typography.bodyLarge, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (event.location.isNotEmpty()) Text(event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
-                if (event.span > 0) {
-                    Text(
-                        stringResource(Res.string.until_day, dateText(event.day + event.span, today)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                if (event.repeat != Repeat.NONE) Text(repeatText(event.repeat), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                EventSpanAndRepeat(event, day, today)
             }
             if (hovered) HeaderButton(stringResource(Res.string.bin), { onRemove(event.id) }) { binIcon(it) }
         }
     }
 }
 
-/** Where the days of the month sit on screen, and which one a dragged event is over. */
+/**
+ * Where the days of the month sit on screen, and which one a dragged event is over. A day of a month shown earlier keeps
+ * the place it had, where a day of this month may sit now, so only the days of the month on show count.
+ */
 class EventDrag {
     val days = HashMap<Long, Rect>()
     var over by mutableStateOf<Long?>(null)
 
-    fun dayAt(point: Offset): Long? = days.entries.firstOrNull { it.value.contains(point) }?.key
+    /** The month on show. */
+    var month: YearMonth = YearMonth.now()
+
+    fun dayAt(point: Offset): Long? = days.entries.firstOrNull { (day, place) -> monthOf(day) == month && place.contains(point) }?.key
 }
