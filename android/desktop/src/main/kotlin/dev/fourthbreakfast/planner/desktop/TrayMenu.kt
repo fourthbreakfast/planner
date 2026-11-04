@@ -81,10 +81,10 @@ class AppTray(private val onOpen: () -> Unit, private val onMenu: (Point) -> Uni
     }
 }
 
-private val menuWidth = 156.dp
-private val menuPad = 2.dp
-private val lineHeight = 7.dp
-private val rowHeight = 24.dp
+private val menuWidth = 188.dp
+private val menuPad = 4.dp
+private val lineHeight = 9.dp
+private val rowHeight = 28.dp
 
 /** The tray's menu, opened beside where the icon was clicked and closed by choosing, Escape, or going elsewhere. */
 @Composable
@@ -160,9 +160,9 @@ private fun TrayRow(label: String, onClick: () -> Unit) {
         Text(
             label,
             // the size of Windows' own menus
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp),
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 12.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
         )
     }
 }
