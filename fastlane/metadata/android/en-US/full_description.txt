@@ -1,0 +1,13 @@
+planner is a task list, an agenda and a notebook in one small app that keeps everything on your own devices. there is no account and no server, and it never phones home.
+
+<b>tasks.</b> subtasks up to four levels deep, a priority on every task, and a bin for anything you remove. checking a task covers everything inside it.
+
+<b>agenda.</b> your events soonest first, or as a month with a dot on every day that has something on it. events can be all day or timed, last several days, repeat by day, week, month or year, and remind you. events from other calendars can be imported from an .ics file.
+
+<b>notes.</b> a title, then plain text you can mark up: lists, checkboxes, bold, italic and underline, with undo and redo. pin the ones you want first.
+
+<b>around them.</b> search, a widget with today's events and your open tasks, shortcuts on the app icon, text shared from other apps becomes a note, and a backup you can save to a file or have written to a folder every day.
+
+<b>sync.</b> pair your devices by scanning or typing a code and they keep each other up to date, using a private copy of syncthing built in. it stays on your own network unless you turn on sync anywhere. there is also a windows app that syncs with the phone the same way.
+
+free software under the AGPL-3.0. the source and the windows app are at github.com/fourthbreakfast/planner.
