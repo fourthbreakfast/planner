@@ -45,7 +45,6 @@ import dev.fourthbreakfast.planner.resources.window_close
 import dev.fourthbreakfast.planner.resources.window_maximize
 import dev.fourthbreakfast.planner.resources.window_minimize
 import dev.fourthbreakfast.planner.resources.window_restore
-import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.theme.Space
 import java.awt.Cursor
 import java.awt.Frame
@@ -79,7 +78,6 @@ fun WindowScope.TitleBar(state: WindowState, frame: NativeFrame, onClose: () -> 
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = Space.gutter)) {
                 Image(icon, contentDescription = null, modifier = Modifier.size(Space.x5))
-                SegmentText("planner", colors.onSurfaceVariant, Modifier.padding(start = Space.x3), scale = 0.8f)
             }
         }
         extras()
