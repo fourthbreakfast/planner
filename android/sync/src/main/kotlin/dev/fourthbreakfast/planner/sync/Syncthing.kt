@@ -10,17 +10,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.double
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
 /** The one folder the app shares. */
@@ -92,7 +90,7 @@ class Syncthing(
             if (waited++ > 50) throw IOException("syncthing did not answer")
             delay(200)
         }
-        myId = api.get("/rest/system/status").jsonObject.string("myID")
+        myId = api.get("/rest/system/status").obj().string("myID")
         api.patch("/rest/config/devices/${encoded(myId)}", buildJsonObject { put("name", name) })
         // its web pages need a password nobody knows, so nothing else on this computer can use them. changing it
         // restarts the web side, at the same address, so the app waits until it answers again
@@ -165,12 +163,12 @@ class Syncthing(
     /** Every other device this one syncs with, and whether it is connected now. */
     suspend fun peers(): List<Peer> {
         val api = api()
-        val connections = api.get("/rest/system/connections").jsonObject["connections"]?.jsonObject ?: JsonObject(emptyMap())
-        return api.get("/rest/config/devices").jsonArray.map { it.jsonObject }
+        val connections = api.get("/rest/system/connections").obj()["connections"]?.obj() ?: JsonObject(emptyMap())
+        return api.get("/rest/config/devices").list().map { it.obj() }
             .filter { it.string("deviceID") != myId }
             .map { device ->
                 val id = device.string("deviceID")
-                val connected = connections[id]?.jsonObject?.get("connected")?.jsonPrimitive?.boolean == true
+                val connected = (connections[id] as? JsonObject)?.primitive("connected")?.booleanOrNull == true
                 Peer(id, device.string("name"), connected)
             }
     }
@@ -179,11 +177,11 @@ class Syncthing(
     fun addresses(): List<String> = lanAddresses(ports.listen)
 
     /** Devices running the app that this one can see on the local network. */
-    suspend fun nearby(): List<String> = api().get("/rest/system/discovery").jsonObject.keys.filter { it != myId }
+    suspend fun nearby(): List<String> = api().get("/rest/system/discovery").obj().keys.filter { it != myId }
 
     /** Devices that asked to sync with this one and were not let in yet, with the name each gave itself. */
-    suspend fun asking(): List<Peer> = api().get("/rest/cluster/pending/devices").jsonObject.map { (id, details) ->
-        Peer(id, details.jsonObject.string("name"), connected = false)
+    suspend fun asking(): List<Peer> = api().get("/rest/cluster/pending/devices").obj().map { (id, details) ->
+        Peer(id, details.obj().string("name"), connected = false)
     }
 
     /** Turns down a device that asked, so it is not shown again until it asks again. */
@@ -213,8 +211,8 @@ class Syncthing(
                 },
             )
         }
-        val shared = api.get("/rest/config/folders/$FOLDER").jsonObject["devices"]?.jsonArray.orEmpty()
-        if (shared.none { it.jsonObject.string("deviceID") == id }) {
+        val shared = api.get("/rest/config/folders/$FOLDER").obj()["devices"]?.list().orEmpty()
+        if (shared.none { it.obj().string("deviceID") == id }) {
             api.patch(
                 "/rest/config/folders/$FOLDER",
                 buildJsonObject { put("devices", JsonArray(shared + buildJsonObject { put("deviceID", id) })) },
@@ -235,11 +233,11 @@ class Syncthing(
     /** Whether everything has been sent to and taken from every connected device. */
     suspend fun settled(): Boolean {
         val api = api()
-        val status = api.get("/rest/db/status?folder=$FOLDER").jsonObject
-        if (status.string("state") != "idle" || (status["needTotalItems"]?.jsonPrimitive?.long ?: 0) > 0) return false
+        val status = api.get("/rest/db/status?folder=$FOLDER").obj()
+        if (status.string("state") != "idle" || (status.primitive("needTotalItems")?.longOrNull ?: 0) > 0) return false
         return peers().filter { it.connected }.all { peer ->
-            val completion = api.get("/rest/db/completion?folder=$FOLDER&device=${encoded(peer.id)}").jsonObject
-            (completion["completion"]?.jsonPrimitive?.double ?: 0.0) >= 100.0
+            val completion = api.get("/rest/db/completion?folder=$FOLDER&device=${encoded(peer.id)}").obj()
+            (completion.primitive("completion")?.doubleOrNull ?: 0.0) >= 100.0
         }
     }
 
@@ -263,7 +261,15 @@ class Syncthing(
     }
 }
 
-private fun JsonObject.string(name: String): String = this[name]?.jsonPrimitive?.contentOrNull.orEmpty()
+// what syncthing answers is read without trusting its shape: an answer of another shape than expected is a failure to
+// talk to it, like a dropped connection, and not a fault in the app
+private fun JsonElement.obj(): JsonObject = this as? JsonObject ?: throw IOException("syncthing answered something unexpected")
+
+private fun JsonElement.list(): JsonArray = this as? JsonArray ?: throw IOException("syncthing answered something unexpected")
+
+private fun JsonObject.primitive(name: String): JsonPrimitive? = this[name] as? JsonPrimitive
+
+private fun JsonObject.string(name: String): String = primitive(name)?.contentOrNull.orEmpty()
 
 /** The short form of a device id Syncthing shows people: its first seven characters. */
 fun shortId(id: String): String = id.replace("-", "").take(7).uppercase()

@@ -15,13 +15,16 @@ import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.ui.AndroidPrefs
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val WORK = "sync"
@@ -71,14 +74,26 @@ class SyncController(private val context: Context, sync: Sync, changes: Flow<Any
     /** A short run for background work: trade with whoever is around, wait until everything is through, stop. */
     suspend fun runOnce() {
         if (!paired || !available) return
-        ensureRunning()
-        withTimeoutOrNull(120_000) {
-            while (isActive) {
-                delay(TICK_MILLIS)
-                if (settled()) break
+        try {
+            ensureRunning()
+            withTimeoutOrNull(120_000) {
+                while (isActive) {
+                    delay(TICK_MILLIS)
+                    if (settledOrUnsure()) break
+                }
             }
+        } finally {
+            // however the run ends, a syncthing nobody is looking at does not stay behind
+            if (!inSight && !pairing) withContext(NonCancellable) { stop() }
         }
-        if (!inSight && !pairing) stop()
+    }
+
+    /** Whether the run can end: everything is through, or syncthing stopped answering, which waiting will not mend. */
+    private suspend fun settledOrUnsure(): Boolean = try {
+        settled()
+    } catch (e: IOException) {
+        Log.w("planner", "sync run: $e")
+        true
     }
 
     override fun onPairedChanged(paired: Boolean) = schedule(paired)
