@@ -92,4 +92,21 @@ class MigrationTest {
             assertEquals("|p0n milk", it.single("SELECT title || '|' || body FROM notes"))
         }
     }
+
+    @Test
+    fun anEventFromBeforeRepeatingStaysASingleDay() {
+        helper.createDatabase(NAME, 12).use {
+            it.execSQL(
+                "INSERT INTO events (id, title, day, minute, endMinute, reminder, location, notes, createdAt, updatedAt, deletedAt) " +
+                    "VALUES ('e', 'dentist', 20000, 570, 600, 10, 'clinic', 'card', 1, 2, NULL)",
+            )
+        }
+        upgrade().use {
+            assertEquals("dentist|20000|570|10", it.single("SELECT title || '|' || day || '|' || minute || '|' || reminder FROM events"))
+            assertEquals("", it.single("SELECT ifnull(endDay, '') FROM events"))
+            assertEquals("NONE", it.single("SELECT repeat FROM events"))
+            assertEquals("", it.single("SELECT ifnull(repeatUntil, '') FROM events"))
+            assertEquals("", it.single("SELECT skipDays FROM events"))
+        }
+    }
 }
