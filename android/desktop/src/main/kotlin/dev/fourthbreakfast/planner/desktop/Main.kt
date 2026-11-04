@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,11 +23,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Notification
-import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import androidx.compose.ui.window.rememberTrayState
 import androidx.compose.ui.window.rememberWindowState
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
@@ -148,11 +146,25 @@ fun main(args: Array<String>) {
                 windowState.isMinimized = false
             }
         }
-        val tray = rememberTrayState()
+        var menuAt by remember { mutableStateOf<java.awt.Point?>(null) }
         val icon = remember { appIconPainter() }
+        val dark = when (app.settings.theme) {
+            ThemeChoice.LIGHT -> false
+            ThemeChoice.DARK -> true
+            ThemeChoice.SYSTEM -> isSystemInDarkTheme()
+        }
+        val tray = remember {
+            AppTray(
+                onOpen = {
+                    visible = true
+                    windowState.isMinimized = false
+                },
+                onMenu = { menuAt = it },
+            )
+        }
         val reminders =
             remember {
-                DesktopReminders(app.events.all, app.scope, is24Hour = is24HourClock()) { title, text -> tray.sendNotification(Notification(title, text)) }
+                DesktopReminders(app.events.all, app.scope, is24Hour = is24HourClock()) { title, text -> tray.say(title, text) }
             }
         LaunchedEffect(Unit) {
             app.sync.begin()
@@ -178,19 +190,22 @@ fun main(args: Array<String>) {
             ProcessBuilder("cmd", "/c", "msiexec /i \"${ready.file.path}\" /passive /norestart$then").start()
             quit()
         }
-        Tray(
-            icon = icon,
-            state = tray,
-            tooltip = "planner",
-            onAction = { show() },
-            menu = {
-                Item(stringResource(Res.string.tray_open), onClick = { show() })
-                Item(stringResource(Res.string.shortcut_task), onClick = { show(Launch.NewTask) })
-                Item(stringResource(Res.string.shortcut_event), onClick = { show(Launch.NewEvent) })
-                Item(stringResource(Res.string.shortcut_note), onClick = { show(Launch.NewNote) })
-                Separator()
-                Item(stringResource(Res.string.tray_quit), onClick = ::quit)
-            },
+        DisposableEffect(Unit) {
+            tray.install("planner")
+            onDispose { tray.remove() }
+        }
+        TrayMenu(
+            at = menuAt,
+            entries = listOf(
+                TrayEntry.Item(stringResource(Res.string.tray_open)) { show() },
+                TrayEntry.Item(stringResource(Res.string.shortcut_task)) { show(Launch.NewTask) },
+                TrayEntry.Item(stringResource(Res.string.shortcut_event)) { show(Launch.NewEvent) },
+                TrayEntry.Item(stringResource(Res.string.shortcut_note)) { show(Launch.NewNote) },
+                TrayEntry.Line,
+                TrayEntry.Item(stringResource(Res.string.tray_quit), ::quit),
+            ),
+            dark = dark,
+            onDismiss = { menuAt = null },
         )
         Window(
             onCloseRequest = { visible = false },
@@ -214,11 +229,6 @@ fun main(args: Array<String>) {
             window.minimumSize = java.awt.Dimension(900, 560)
             val frame = remember { NativeFrame() }
             LaunchedEffect(Unit) { frame.install(window, Desk.edge.value.toInt()) }
-            val dark = when (app.settings.theme) {
-                ThemeChoice.LIGHT -> false
-                ThemeChoice.DARK -> true
-                ThemeChoice.SYSTEM -> isSystemInDarkTheme()
-            }
             CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
                 PlannerTheme(darkTheme = dark) {
                     val colors = MaterialTheme.colorScheme
