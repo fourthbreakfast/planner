@@ -24,6 +24,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
@@ -80,10 +81,10 @@ class AppTray(private val onOpen: () -> Unit, private val onMenu: (Point) -> Uni
     }
 }
 
-private val menuWidth = 176.dp
-private val menuPad = 3.dp
+private val menuWidth = 156.dp
+private val menuPad = 2.dp
 private val lineHeight = 7.dp
-private val rowHeight = 30.dp
+private val rowHeight = 24.dp
 
 /** The tray's menu, opened beside where the icon was clicked and closed by choosing, Escape, or going elsewhere. */
 @Composable
@@ -158,9 +159,10 @@ private fun TrayRow(label: String, onClick: () -> Unit) {
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.bodyLarge,
+            // the size of Windows' own menus
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp),
             color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = Desk.inset),
+            modifier = Modifier.padding(horizontal = 12.dp),
         )
     }
 }
