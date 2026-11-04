@@ -233,14 +233,18 @@ fun main(args: Array<String>) {
                             Column(Modifier.fillMaxSize()) {
                                 TitleBar(windowState, onClose = { visible = false })
                                 Box(Modifier.weight(1f)) {
-                                    Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
+                                    Dashboard(
+                                        app.dashboard,
+                                        app.tasksViewModel,
+                                        app.agendaViewModel,
+                                        app.notesViewModel,
+                                        foot = {
+                                            StatusLine(app.sync, app.updates, onUpdate = ::install, onSettings = { app.dashboard.panel = Panel.Settings })
+                                        },
+                                    ) { onClose ->
                                         DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = ::install)
                                     }
                                 }
-                                StatusBar(app.sync, app.updates, onUpdate = ::install, onSettings = {
-                                    app.dashboard.panel =
-                                        Panel.Settings
-                                })
                             }
                             ResizeEdges(window)
                         }
