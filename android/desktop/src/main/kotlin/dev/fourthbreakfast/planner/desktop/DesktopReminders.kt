@@ -24,16 +24,10 @@ class DesktopReminders(
 ) {
     fun begin() {
         scope.launch {
-            val shown = HashSet<String>()
+            val due = DueReminders()
             events.collectLatest { all ->
                 while (true) {
-                    val now = System.currentTimeMillis()
-                    for (event in all) {
-                        if (event.inBin) continue
-                        val at = reminderAt(event, from = now - LATE_MILLIS) ?: continue
-                        val key = "${event.id}@$at"
-                        if (key in shown || at !in (now - LATE_MILLIS)..now) continue
-                        shown += key
+                    for (event in due.at(all, System.currentTimeMillis())) {
                         val time = event.minute?.let { timeText(it, is24Hour) }.orEmpty()
                         notify(event.title, listOf(time, event.location).filter { it.isNotBlank() }.joinToString(", "))
                     }
@@ -42,4 +36,26 @@ class DesktopReminders(
             }
         }
     }
+}
+
+/**
+ * Which reminders are due, each shown once: a reminder whose time has come within the last [late] milliseconds and was
+ * not shown yet. It remembers what it showed only while that could still come due, so it does not grow as the app runs.
+ */
+class DueReminders(private val late: Long = LATE_MILLIS) {
+    // each shown reminder, by event and time, with that time
+    private val shown = HashMap<String, Long>()
+
+    /** The events out of [events] whose reminder is due at [now], and marks them shown. */
+    fun at(events: List<Event>, now: Long): List<Event> {
+        shown.values.removeAll { it < now - late }
+        return events.filter { event ->
+            if (event.inBin) return@filter false
+            val at = reminderAt(event, from = now - late) ?: return@filter false
+            at in (now - late)..now && shown.putIfAbsent("${event.id}@$at", at) == null
+        }
+    }
+
+    /** How many shown reminders it remembers, for the tests. */
+    internal val remembered: Int get() = shown.size
 }
