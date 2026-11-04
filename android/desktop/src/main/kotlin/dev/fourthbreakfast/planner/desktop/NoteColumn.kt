@@ -36,13 +36,13 @@ import dev.fourthbreakfast.planner.notes.previewOf
 import dev.fourthbreakfast.planner.notes.rememberPreviewBoxes
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_note
+import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.nothing_written
 import dev.fourthbreakfast.planner.resources.pin
 import dev.fourthbreakfast.planner.resources.pinned
 import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.search
 import dev.fourthbreakfast.planner.resources.unpin
-import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
@@ -63,7 +63,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("notes", notes.size, state.focused == Section.NOTES) {
             HeaderButton(stringResource(Res.string.search), { state.panel = Panel.Search }) { magnifier(it) }
-            BinButton(binCount, { state.panel = Panel.NoteBin })
+            DeskBin(binCount, { state.panel = Panel.NoteBin })
         }
         if (notes.isEmpty()) Quiet(stringResource(Res.string.nothing_written))
         LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -117,7 +117,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                                     onDragCancel = { target = null },
                                 )
                             }
-                            .padding(start = Space.gutter, end = Space.gutter, top = Space.x3, bottom = Space.x3),
+                            .padding(start = Space.gutter, end = Desk.inset, top = Space.x3, bottom = Space.x3),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -135,7 +135,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                                     color = colors.onSurfaceVariant,
                                 )
                             }
-                            if (hovered) BinButton(0, { viewModel.moveToBin(note.id) })
+                            if (hovered) HeaderButton(stringResource(Res.string.bin), { viewModel.moveToBin(note.id) }) { binIcon(it) }
                         }
                         val lines = remember(note) { linesUnderTitle(note) }
                         if (lines.isNotEmpty()) {

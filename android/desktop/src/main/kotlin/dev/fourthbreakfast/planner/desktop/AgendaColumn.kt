@@ -51,6 +51,7 @@ import dev.fourthbreakfast.planner.core.span
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_event
 import dev.fourthbreakfast.planner.resources.all_day
+import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.earlier
 import dev.fourthbreakfast.planner.resources.nothing_planned
 import dev.fourthbreakfast.planner.resources.open_event
@@ -58,7 +59,6 @@ import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.show_list
 import dev.fourthbreakfast.planner.resources.show_month
 import dev.fourthbreakfast.planner.resources.until_day
-import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.theme.Space
@@ -91,7 +91,7 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
                     month = today
                 }
             }) { if (asMonth) listLines(it) else calendar(it) }
-            BinButton(binCount, { state.panel = Panel.AgendaBin })
+            DeskBin(binCount, { state.panel = Panel.AgendaBin })
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
             if (asMonth) {
@@ -209,7 +209,7 @@ private fun EventLine(
                         }
                     },
                 )
-                .padding(start = Space.gutter, end = Space.x1, top = Space.x2, bottom = Space.x2),
+                .padding(start = Space.gutter, end = Desk.inset, top = Space.x2, bottom = Space.x2),
         ) {
             val ink = if (earlier) colors.onSurfaceVariant else colors.onBackground
             Column(Modifier.width(if (is24Hour) Space.timeColumn else Space.timeColumn12)) {
@@ -233,7 +233,7 @@ private fun EventLine(
                 }
                 if (event.repeat != Repeat.NONE) Text(repeatText(event.repeat), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             }
-            if (hovered) BinButton(0, { onRemove(event.id) })
+            if (hovered) HeaderButton(stringResource(Res.string.bin), { onRemove(event.id) }) { binIcon(it) }
         }
     }
 }

@@ -1,5 +1,6 @@
 package dev.fourthbreakfast.planner.desktop
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -9,6 +10,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,6 +57,7 @@ import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_inside_hint
 import dev.fourthbreakfast.planner.resources.add_subtask
 import dev.fourthbreakfast.planner.resources.add_task_hint
+import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.close_task
 import dev.fourthbreakfast.planner.resources.collapse_all
 import dev.fourthbreakfast.planner.resources.expand_all
@@ -75,7 +78,6 @@ import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.arrange
 import dev.fourthbreakfast.planner.tasks.rankedDestination
 import dev.fourthbreakfast.planner.tasks.resolveDrop
-import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
@@ -139,10 +141,10 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                     )
                 }
             }
-            BinButton(binCount, { state.panel = Panel.TaskBin })
+            DeskBin(binCount, { state.panel = Panel.TaskBin })
         }
         if (rows.isEmpty()) Quiet(stringResource(Res.string.nothing_to_do))
-        LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth()) {
+        LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(top = Space.x2)) {
             items(rows, key = { it.task.id }) { node ->
                 val task = node.task
                 val (hover, hovered) = rememberHover()
@@ -221,7 +223,7 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                                     },
                                 )
                             }
-                            .padding(start = Space.x2 + Space.indent * node.depth, end = Space.x1),
+                            .padding(start = Space.x2 + Space.indent * node.depth, end = Desk.inset),
                     ) {
                         // the triangle opens and closes a task with something inside
                         Box(Modifier.size(Space.x5), contentAlignment = Alignment.Center) {
@@ -277,8 +279,10 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                                 modifier = Modifier.padding(horizontal = Space.x1),
                             )
                         }
-                        if (hovered) BinButton(0, { viewModel.moveToBin(task) })
-                        TaskCheck(task.done, colors.onBackground) { viewModel.setDone(task, it) }
+                        if (hovered) HeaderButton(stringResource(Res.string.bin), { viewModel.moveToBin(task) }) { binIcon(it) }
+                        Box(Modifier.size(Desk.button), contentAlignment = Alignment.Center) {
+                            TaskCheck(task.done, colors.onBackground) { viewModel.setDone(task, it) }
+                        }
                     }
                 }
             }
@@ -295,25 +299,27 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
     val focus = remember { FocusRequester() }
     val aimed = tasks.firstOrNull { it.id == state.aimedTask }
     LaunchedEffect(state.focusAdd) { if (state.focusAdd > 0) focus.requestFocus() }
-    Column(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.x2)) {
+    Column(Modifier.fillMaxWidth().padding(end = Desk.inset)) {
         if (aimed != null) {
             Text(
                 stringResource(Res.string.add_inside_hint, aimed.title),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant,
-                modifier = Modifier.combinedClickableCompat { state.aimedTask = null },
+                modifier = Modifier.padding(start = Space.x2 + Space.x5 + Space.x6 + Space.x2, top = Space.x2).combinedClickableCompat {
+                    state.aimedTask = null
+                },
             )
         }
         var typing by remember { mutableStateOf(false) }
-        Row(Modifier.fillMaxWidth().height(Desk.row), verticalAlignment = Alignment.CenterVertically) {
-            // the + is an invitation, the › says the line is in use, as on the phone
-            Text(
-                if (typing || text.isNotEmpty()) "›" else "+",
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.width(Space.x6 + Space.x1),
-            )
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+        Row(Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.x2 + Space.x5), verticalAlignment = Alignment.CenterVertically) {
+            // the + is an invitation, the › says the line is in use, as on the phone. it sits where the priority dots
+            // are, and the words start where the task names do
+            Box(Modifier.size(Space.x6), contentAlignment = Alignment.Center) {
+                val ink = colors.onSurfaceVariant
+                val inUse = typing || text.isNotEmpty()
+                Canvas(Modifier.size(Space.x3)) { if (inUse) chevron(ink) else plus(ink) }
+            }
+            Box(Modifier.weight(1f).padding(start = Space.x2), contentAlignment = Alignment.CenterStart) {
                 if (text.isEmpty()) Text(stringResource(Res.string.add_task_hint), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
                 BasicTextField(
                     value = text,

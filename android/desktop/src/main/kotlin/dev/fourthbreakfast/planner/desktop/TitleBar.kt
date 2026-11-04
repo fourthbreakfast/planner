@@ -72,7 +72,7 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit, extras: @Compo
                     detectTapGestures(onDoubleTap = { state.toggleMaximized() })
                 },
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = Space.x3)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = Space.gutter)) {
                 Image(icon, contentDescription = null, modifier = Modifier.size(Space.x5))
                 SegmentText("planner", colors.onSurfaceVariant, Modifier.padding(start = Space.x3), scale = 0.8f)
             }
@@ -108,7 +108,7 @@ private fun WindowState.toggleMaximized() {
 }
 
 @Composable
-private fun WindowButton(
+internal fun WindowButton(
     label: String,
     hoverColor: Color,
     hoverInk: Color? = null,
