@@ -8,18 +8,8 @@ val releaseKeystore = providers.environmentVariable("PLANNER_KEYSTORE").orNull
 val releasePassword = providers.environmentVariable("PLANNER_KEYSTORE_PASSWORD").orNull
 
 // the app's own Syncthing, built from the pinned source. Android only runs a program it unpacked itself, as a library
-val syncthingSource = rootProject.layout.projectDirectory.dir("../third_party/syncthing")
-val syncthingAndroid = tasks.register<SyncthingBinary>("syncthingAndroid") {
-    source.set(syncthingSource)
-    version.set(
-        providers.exec { commandLine("git", "-C", syncthingSource.asFile.path, "describe", "--tags", "--always") }
-            .standardOutput.asText.map { it.trim() },
-    )
-    goos.set("android")
-    goarch.set("arm64")
-    fileName.set("arm64-v8a/libsyncthing.so")
-    output.set(layout.buildDirectory.dir("syncthing/jniLibs"))
-}
+val syncthingAndroid =
+    syncthingBinary("syncthingAndroid", goos = "android", goarch = "arm64", fileName = "arm64-v8a/libsyncthing.so", outputDir = "syncthing/jniLibs")
 
 androidComponents {
     onVariants { variant -> variant.sources.jniLibs?.addGeneratedSourceDirectory(syncthingAndroid, SyncthingBinary::output) }

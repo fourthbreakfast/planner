@@ -38,6 +38,7 @@ import dev.fourthbreakfast.planner.resources.priority_low
 import dev.fourthbreakfast.planner.resources.priority_medium
 import dev.fourthbreakfast.planner.resources.priority_none
 import dev.fourthbreakfast.planner.ui.CheckBoxMark
+import dev.fourthbreakfast.planner.ui.DrawnIconButton
 import dev.fourthbreakfast.planner.ui.theme.PriorityHigh
 import dev.fourthbreakfast.planner.ui.theme.PriorityLow
 import dev.fourthbreakfast.planner.ui.theme.PriorityMedium
@@ -155,27 +156,17 @@ fun PriorityMarker(priority: Priority, onClick: () -> Unit, modifier: Modifier =
 /** Opens everything or closes everything. A triangle pointing down opens, pointing up closes. */
 @Composable
 fun ExpandAllButton(anyCollapsed: Boolean, onClick: () -> Unit) {
-    val label = stringResource(if (anyCollapsed) Res.string.expand_all else Res.string.collapse_all)
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val w = size.width
-            val h = size.height
-            val tip = if (anyCollapsed) 0.66f else 0.34f
-            val base = if (anyCollapsed) 0.36f else 0.64f
-            val triangle = Path().apply {
-                moveTo(w * 0.24f, h * base)
-                lineTo(w * 0.76f, h * base)
-                lineTo(w * 0.5f, h * tip)
-                close()
-            }
-            drawPath(triangle, ink)
+    DrawnIconButton(stringResource(if (anyCollapsed) Res.string.expand_all else Res.string.collapse_all), onClick) { ink ->
+        val w = size.width
+        val h = size.height
+        val tip = if (anyCollapsed) 0.66f else 0.34f
+        val base = if (anyCollapsed) 0.36f else 0.64f
+        val triangle = Path().apply {
+            moveTo(w * 0.24f, h * base)
+            lineTo(w * 0.76f, h * base)
+            lineTo(w * 0.5f, h * tip)
+            close()
         }
+        drawPath(triangle, ink)
     }
 }

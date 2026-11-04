@@ -2,7 +2,6 @@ package dev.fourthbreakfast.planner.agenda
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -43,7 +42,6 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +68,7 @@ import dev.fourthbreakfast.planner.ui.AddButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.DiscreetMessage
+import dev.fourthbreakfast.planner.ui.DrawnIconButton
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.RowSwipe
 import dev.fourthbreakfast.planner.ui.SettingsButton
@@ -461,29 +460,19 @@ const val PREF_MONTH = "agenda_month"
 /** Switches the agenda between the list and the month: a little grid while it is a list, lines while it is a month. */
 @Composable
 fun ViewToggle(asMonth: Boolean, onClick: () -> Unit) {
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    val label = stringResource(if (asMonth) Res.string.show_list else Res.string.show_month)
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val w = size.width
-            val h = size.height
-            val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round)
-            if (asMonth) {
-                // three lines, a list
-                for (y in listOf(0.28f, 0.5f, 0.72f)) drawLine(ink, Offset(w * 0.18f, h * y), Offset(w * 0.82f, h * y), line.width, StrokeCap.Round)
-            } else {
-                // a page with a bar on top and a grid of days
-                drawRect(ink, Offset(w * 0.14f, h * 0.18f), Size(w * 0.72f, h * 0.68f), style = line)
-                drawLine(ink, Offset(w * 0.14f, h * 0.36f), Offset(w * 0.86f, h * 0.36f), line.width)
-                for (x in listOf(0.38f, 0.62f)) {
-                    for (y in listOf(0.52f, 0.70f)) drawCircle(ink, radius = line.width, center = Offset(w * x, h * y))
-                }
+    DrawnIconButton(stringResource(if (asMonth) Res.string.show_list else Res.string.show_month), onClick) { ink ->
+        val w = size.width
+        val h = size.height
+        val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round)
+        if (asMonth) {
+            // three lines, a list
+            for (y in listOf(0.28f, 0.5f, 0.72f)) drawLine(ink, Offset(w * 0.18f, h * y), Offset(w * 0.82f, h * y), line.width, StrokeCap.Round)
+        } else {
+            // a page with a bar on top and a grid of days
+            drawRect(ink, Offset(w * 0.14f, h * 0.18f), Size(w * 0.72f, h * 0.68f), style = line)
+            drawLine(ink, Offset(w * 0.14f, h * 0.36f), Offset(w * 0.86f, h * 0.36f), line.width)
+            for (x in listOf(0.38f, 0.62f)) {
+                for (y in listOf(0.52f, 0.70f)) drawCircle(ink, radius = line.width, center = Offset(w * x, h * y))
             }
         }
     }

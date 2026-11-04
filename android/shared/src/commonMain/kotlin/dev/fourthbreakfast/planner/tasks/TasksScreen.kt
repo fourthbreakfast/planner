@@ -95,8 +95,6 @@ internal fun TaskList(
             addFocus.requestFocus()
         }
     }
-    // siblings are always ranked by priority, and a task with subtasks starts closed
-    val order = SortOrder.PRIORITY
 
     var aimedId by rememberSaveable { mutableStateOf<String?>(null) }
     var renamingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -119,7 +117,8 @@ internal fun TaskList(
     // one closed task is enough for the button to open everything; otherwise it closes everything
     val parentIds = remember(tasks) { tasks.mapNotNull { it.parentId }.toSet() }
     val anyCollapsed = parentIds.any { it !in openIds }
-    val rows = remember(tasks, parentIds, openIds) { arrange(tasks, order, parentIds - openIds.toSet()) }
+    // siblings are always ranked by priority, and a task with subtasks starts closed
+    val rows = remember(tasks, parentIds, openIds) { arrange(tasks, SortOrder.PRIORITY, parentIds - openIds.toSet()) }
     val display = remember(rows) { rows + EndRow }
 
     val list = rememberLazyListState()
@@ -186,7 +185,8 @@ internal fun TaskList(
         dropKey = key.takeIf { drop != null }
         val newMark = when {
             drop == null -> null
-            order == SortOrder.PRIORITY && (key == EndRow.key || dropZone != DropZone.INTO) ->
+            // siblings are always ranked by priority, so a line between rows shows where the task will really land
+            key == EndRow.key || dropZone != DropZone.INTO ->
                 rankedMark(currentRows, currentTasks, moved, drop.destination, drop.depth)
             else -> DropMark(key, if (key == EndRow.key) DropZone.BEFORE else dropZone, drop.depth)
         }
@@ -224,9 +224,8 @@ internal fun TaskList(
         if (key == null || target == null) return
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         resolveDrop(currentRows, currentTasks, key, target, dropZone)?.let { drop ->
-            // in priority mode a task snaps back among its own colour
-            val to = if (order == SortOrder.PRIORITY) rankedDestination(currentTasks, key, drop.destination) else drop.destination
-            viewModel.move(key, to)
+            // siblings are ranked by priority, so a task snaps back among its own colour
+            viewModel.move(key, rankedDestination(currentTasks, key, drop.destination))
             drop.destination.parentId?.let { parent -> openIds = ArrayList(openIds + parent) }
         }
     }

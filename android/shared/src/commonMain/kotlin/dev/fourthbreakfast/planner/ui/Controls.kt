@@ -37,26 +37,18 @@ import dev.fourthbreakfast.planner.resources.bin_with_count
 import dev.fourthbreakfast.planner.resources.search
 import dev.fourthbreakfast.planner.resources.settings_title
 import dev.fourthbreakfast.planner.ui.theme.Space
+import kotlin.math.cos
+import kotlin.math.sin
 import org.jetbrains.compose.resources.stringResource
 
 /** A magnifying glass, in the row of controls beside the bin. */
 @Composable
 fun SearchButton(onClick: () -> Unit) {
-    val label = stringResource(Res.string.search)
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val stroke = Space.strokeThin.toPx()
-            val w = size.width
-            drawCircle(ink, radius = w * 0.34f, center = Offset(w * 0.42f, w * 0.42f), style = Stroke(stroke, cap = StrokeCap.Round))
-            drawLine(ink, Offset(w * 0.68f, w * 0.68f), Offset(w * 0.92f, w * 0.92f), strokeWidth = stroke, cap = StrokeCap.Round)
-        }
+    DrawnIconButton(stringResource(Res.string.search), onClick) { ink ->
+        val stroke = Space.strokeThin.toPx()
+        val w = size.width
+        drawCircle(ink, radius = w * 0.34f, center = Offset(w * 0.42f, w * 0.42f), style = Stroke(stroke, cap = StrokeCap.Round))
+        drawLine(ink, Offset(w * 0.68f, w * 0.68f), Offset(w * 0.92f, w * 0.92f), strokeWidth = stroke, cap = StrokeCap.Round)
     }
 }
 
@@ -141,47 +133,28 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
 /** A plus, to add something: drawn like the other icons, quiet, in a touch square at the bottom right. */
 @Composable
 fun AddButton(label: String, onClick: () -> Unit) {
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val width = Space.strokeThin.toPx()
-            drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), width, StrokeCap.Round)
-            drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), width, StrokeCap.Round)
-        }
+    DrawnIconButton(label, onClick) { ink ->
+        val width = Space.strokeThin.toPx()
+        drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), width, StrokeCap.Round)
+        drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), width, StrokeCap.Round)
     }
 }
 
 /** An arrow pointing back, in the spot where the bin button is on the main screen. */
 @Composable
 fun BackButton(onClick: () -> Unit) {
-    val label = stringResource(Res.string.back)
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            val w = size.width
-            val h = size.height
-            val arrow = Path().apply {
-                moveTo(w * 0.92f, h * 0.5f)
-                lineTo(w * 0.10f, h * 0.5f)
-                moveTo(w * 0.42f, h * 0.18f)
-                lineTo(w * 0.10f, h * 0.5f)
-                lineTo(w * 0.42f, h * 0.82f)
-            }
-            drawPath(arrow, ink, style = line)
+    DrawnIconButton(stringResource(Res.string.back), onClick) { ink ->
+        val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val w = size.width
+        val h = size.height
+        val arrow = Path().apply {
+            moveTo(w * 0.92f, h * 0.5f)
+            lineTo(w * 0.10f, h * 0.5f)
+            moveTo(w * 0.42f, h * 0.18f)
+            lineTo(w * 0.10f, h * 0.5f)
+            lineTo(w * 0.42f, h * 0.82f)
         }
+        drawPath(arrow, ink, style = line)
     }
 }
 
@@ -225,8 +198,8 @@ fun DrawScope.cog(ink: Color) {
     val c = Offset(size.width / 2, size.height / 2)
     val outer = size.minDimension * 0.46f
     val inner = size.minDimension * 0.33f
-    fun at(r: Float, turn: Double) = Offset(c.x + r * kotlin.math.cos(turn).toFloat(), c.y + r * kotlin.math.sin(turn).toFloat())
-    val path = androidx.compose.ui.graphics.Path()
+    fun at(r: Float, turn: Double) = Offset(c.x + r * cos(turn).toFloat(), c.y + r * sin(turn).toFloat())
+    val path = Path()
     for (i in 0 until 6) {
         val middle = i * Math.PI / 3 - Math.PI / 2
         // a tooth narrows a little as it stands out, so it reads as a cog and not a star
@@ -234,22 +207,27 @@ fun DrawScope.cog(ink: Color) {
         points.forEachIndexed { n, p -> if (i == 0 && n == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
     }
     path.close()
-    drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(line, join = androidx.compose.ui.graphics.StrokeJoin.Round))
-    drawCircle(ink, radius = size.minDimension * 0.13f, center = c, style = androidx.compose.ui.graphics.drawscope.Stroke(line))
+    drawPath(path, ink, style = Stroke(line, join = StrokeJoin.Round))
+    drawCircle(ink, radius = size.minDimension * 0.13f, center = c, style = Stroke(line))
 }
 
 /** The settings, as a cog at the right of a screen's bar. Holding a tab opens them too. */
 @Composable
 fun SettingsButton(onClick: () -> Unit) {
+    DrawnIconButton(stringResource(Res.string.settings_title), onClick) { ink -> cog(ink) }
+}
+
+/** A small drawn icon in a touch square, quiet, read out as [label]. The drawing gets the ink to draw in. */
+@Composable
+fun DrawnIconButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, draw: DrawScope.(ink: Color) -> Unit) {
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    val label = stringResource(Res.string.settings_title)
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
+        modifier = modifier
             .size(Space.touch)
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
     ) {
-        Canvas(Modifier.size(Space.icon)) { cog(ink) }
+        Canvas(Modifier.size(Space.icon)) { draw(ink) }
     }
 }
