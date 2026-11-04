@@ -24,11 +24,13 @@ import dev.fourthbreakfast.planner.core.BackupException
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.app_name
 import dev.fourthbreakfast.planner.resources.backup_off
+import dev.fourthbreakfast.planner.resources.calendar_done
 import dev.fourthbreakfast.planner.resources.desktop_guide
 import dev.fourthbreakfast.planner.resources.export_done
 import dev.fourthbreakfast.planner.resources.export_failed
 import dev.fourthbreakfast.planner.resources.export_tasks
 import dev.fourthbreakfast.planner.resources.guide_title
+import dev.fourthbreakfast.planner.resources.import_calendar
 import dev.fourthbreakfast.planner.resources.import_done
 import dev.fourthbreakfast.planner.resources.import_failed
 import dev.fourthbreakfast.planner.resources.import_nothing_new
@@ -125,6 +127,21 @@ fun DesktopSettings(
         }
     }
 
+    fun importCalendar() {
+        val file = chooseFile(FileDialog.LOAD) ?: return
+        scope.launch {
+            val message = try {
+                val added = viewModel.importCalendar(withContext(Dispatchers.IO) { file.readText() })
+                if (added == 0) getString(Res.string.import_nothing_new) else getPluralString(Res.plurals.calendar_done, added, added)
+            } catch (_: BackupException) {
+                getString(Res.string.import_failed)
+            } catch (_: IOException) {
+                getString(Res.string.import_failed)
+            }
+            snackbarHost.showSnackbar(message)
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = {
@@ -145,6 +162,7 @@ fun DesktopSettings(
             }
             Setting(stringResource(Res.string.export_tasks), null, ::export)
             Setting(stringResource(Res.string.import_tasks), null, ::import)
+            Setting(stringResource(Res.string.import_calendar), null, ::importCalendar)
             Setting(
                 label = stringResource(Res.string.setting_theme),
                 value = stringResource(

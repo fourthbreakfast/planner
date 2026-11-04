@@ -6,7 +6,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-private class MemoryTaskStore : TaskStore {
+class MemoryTaskStore : TaskStore {
     val state = MutableStateFlow<List<Task>>(emptyList())
 
     override fun observeAll(): Flow<List<Task>> = state

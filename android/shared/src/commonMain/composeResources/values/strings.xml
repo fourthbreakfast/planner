@@ -182,6 +182,11 @@
         <item quantity="one">%1$d task added</item>
         <item quantity="other">%1$d tasks added</item>
     </plurals>
+    <string name="import_calendar">import calendar</string>
+    <plurals name="calendar_done">
+        <item quantity="one">%1$d event added</item>
+        <item quantity="other">%1$d events added</item>
+    </plurals>
     <string name="undo">undo</string>
     <string name="tasks_title">tasks</string>
     <string name="open_tasks_in_all">%1$d open main tasks, %2$d open subtasks</string>
