@@ -60,7 +60,3 @@ wsl -d NixOS -- gh release create "v$Version" $linuxApk $linuxMsi --repo fourthb
 if ($LASTEXITCODE) { throw 'publishing failed' }
 Write-Host "published v$Version"
 
-# windows users can also get it with winget: the manifest is written now, and offered to winget-pkgs if you say so
-& "$PSScriptRoot\winget.ps1" $Version
-$answer = Read-Host 'offer this version to winget now? (y/n)'
-if ($answer -eq 'y') { & "$PSScriptRoot\winget.ps1" $Version -Submit }

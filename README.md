@@ -32,7 +32,7 @@ the [latest release](https://github.com/fourthbreakfast/planner/releases/latest)
 
 **phone.** download the apk and open it on your phone. you need android 8 or newer, and your phone will ask you to allow installing it. updates install over the top and keep your data.
 
-**updates.** both apps look for a newer release once a day and offer it in the settings (and on windows in the bar at the bottom); one touch downloads it and starts the installer. the daily look can be turned off. on the phone, [obtainium](https://github.com/ImranR98/Obtainium) can also keep planner up to date from this repository's releases, and on windows `winget install fourthbreakfast.planner` and `winget upgrade` work once the package is listed.
+**updates.** both apps look for a newer release once a day and offer it in the settings (and on windows in the bar at the bottom); one touch downloads it and starts the installer. the daily look can be turned off..
 
 **windows.** download the msi and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
 
