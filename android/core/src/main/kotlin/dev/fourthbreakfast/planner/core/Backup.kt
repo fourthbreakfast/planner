@@ -3,11 +3,11 @@ package dev.fourthbreakfast.planner.core
 /** A file that is not a planner backup, or is damaged. */
 class BackupException(message: String) : Exception(message)
 
-private const val BACKUP_VERSION = 4
+private const val BACKUP_VERSION = 5
 
 /**
- * What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes, and only version 4 has [gone]:
- * what was deleted for good, which sync needs and an import ignores.
+ * What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes, and only versions 4 and later
+ * have [gone]: what was deleted for good, which sync files carry and an import ignores.
  */
 data class Backup(val tasks: List<Task>, val events: List<Event>, val notes: List<Note> = emptyList(), val gone: List<Gone> = emptyList())
 
@@ -42,6 +42,10 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
         append(", \"createdAt\": ").append(event.createdAt)
         append(", \"updatedAt\": ").append(event.updatedAt)
         append(", \"deletedAt\": ").append(event.deletedAt ?: "null")
+        append(", \"endDay\": ").append(event.endDay ?: "null")
+        append(", \"repeat\": ").append(quoted(event.repeat.name))
+        append(", \"repeatUntil\": ").append(event.repeatUntil ?: "null")
+        append(", \"skipDays\": [").append(event.skipDays.sorted().joinToString(", ")).append(']')
         append('}')
     }
     append(if (events.isEmpty()) "]" else "\n  ]")
@@ -67,12 +71,15 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
     append(if (gone.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
 }
 
-/** What a backup holds, or a [BackupException] when the text is not one. */
-fun decodeBackup(text: String): Backup {
+/**
+ * What a backup holds, or a [BackupException] when the text is not one. A file from a newer version is refused unless
+ * [acceptNewer]: sync reads it all the same, so that a newer app on one device does not stop the others syncing.
+ */
+fun decodeBackup(text: String, acceptNewer: Boolean = false): Backup {
     val root = JsonReader(text).read() as? Map<*, *> ?: throw BackupException("not a planner backup")
     if (root["app"] != "planner") throw BackupException("not a planner backup")
     val version = number(root["version"]).toInt()
-    if (version > BACKUP_VERSION) throw BackupException("made by a newer version of planner")
+    if (version > BACKUP_VERSION && !acceptNewer) throw BackupException("made by a newer version of planner")
     val tasks = root["tasks"] as? List<*> ?: throw BackupException("no tasks in this backup")
     val taskList = tasks.map { entry ->
         val task = entry as? Map<*, *> ?: throw BackupException("damaged task")
@@ -105,6 +112,11 @@ fun decodeBackup(text: String): Backup {
             createdAt = createdAt,
             updatedAt = event["updatedAt"]?.let { number(it).toLong() } ?: createdAt,
             deletedAt = event["deletedAt"]?.let { number(it).toLong() },
+            // versions before 5 have no repeating or longer events
+            endDay = event["endDay"]?.let { number(it).toLong() },
+            repeat = Repeat.entries.firstOrNull { it.name == event["repeat"] } ?: Repeat.NONE,
+            repeatUntil = event["repeatUntil"]?.let { number(it).toLong() },
+            skipDays = (event["skipDays"] as? List<*>).orEmpty().map { number(it).toLong() }.toSet(),
         )
     }
     // versions 1 and 2 were made before notes existed

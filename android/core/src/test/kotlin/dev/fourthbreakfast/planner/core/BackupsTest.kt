@@ -1,34 +1,8 @@
 package dev.fourthbreakfast.planner.core
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-
-private class MemoryTaskStore : TaskStore {
-    val state = MutableStateFlow<List<Task>>(emptyList())
-
-    override fun observeAll(): Flow<List<Task>> = state
-
-    override suspend fun all() = state.value
-
-    override suspend fun insert(tasks: List<Task>) {
-        state.value = state.value + tasks
-    }
-
-    override suspend fun update(tasks: List<Task>) {
-        val changed = tasks.associateBy { it.id }
-        state.value = state.value.map { changed[it.id] ?: it }
-    }
-
-    override suspend fun delete(tasks: List<Task>) {
-        val gone = tasks.mapTo(HashSet()) { it.id }
-        state.value = state.value.filterNot { it.id in gone }
-    }
-
-    override suspend fun <T> transaction(block: suspend () -> T): T = block()
-}
 
 class BackupsTest {
     private val tasks = MemoryTaskStore()
@@ -71,10 +45,11 @@ class BackupsTest {
         val freshTasks = MemoryTaskStore()
         val freshEvents = MemoryEventStore()
         val freshNotes = MemoryNoteStore()
-        assertEquals(4, Backups(freshTasks, freshEvents, freshNotes).import(file))
-        assertEquals(setOf(parent, child), freshTasks.state.value.toSet())
-        assertEquals(listOf(dentist), freshEvents.state.value)
-        assertEquals(listOf(groceries), freshNotes.state.value)
+        // what comes back counts as changed at the moment it was imported, and is otherwise the same
+        assertEquals(4, Backups(freshTasks, freshEvents, freshNotes, clock = { 7 }).import(file))
+        assertEquals(setOf(parent, child).map { it.copy(updatedAt = 7) }.toSet(), freshTasks.state.value.toSet())
+        assertEquals(listOf(dentist.copy(updatedAt = 7)), freshEvents.state.value)
+        assertEquals(listOf(groceries.copy(updatedAt = 7)), freshNotes.state.value)
     }
 
     @Test

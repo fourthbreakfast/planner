@@ -1,71 +1,31 @@
 package dev.fourthbreakfast.planner.core
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-private class MemorySyncTasks : TaskStore {
-    val state = MutableStateFlow<List<Task>>(emptyList())
-
-    override fun observeAll(): Flow<List<Task>> = state
-
-    override suspend fun all() = state.value
-
-    override suspend fun insert(tasks: List<Task>) {
-        state.value = state.value + tasks
-    }
-
-    override suspend fun update(tasks: List<Task>) {
-        val changed = tasks.associateBy { it.id }
-        state.value = state.value.map { changed[it.id] ?: it }
-    }
-
-    override suspend fun delete(tasks: List<Task>) {
-        val gone = tasks.mapTo(HashSet()) { it.id }
-        state.value = state.value.filterNot { it.id in gone }
-    }
-
-    override suspend fun <T> transaction(block: suspend () -> T): T = block()
-}
-
-private class MemoryLedger : SyncLedger {
-    val gone = ArrayList<Gone>()
-    val agreed = HashMap<String, Long>()
-
-    override suspend fun gone() = gone.toList()
-
-    override suspend fun addGone(items: List<Gone>) {
-        gone.removeAll { old -> items.any { it.id == old.id } }
-        gone += items
-    }
-
-    override suspend fun agreed() = agreed.toMap()
-
-    override suspend fun setAgreed(items: Map<String, Long>) {
-        agreed += items
-    }
-}
-
-/** One device: its stores, what sync remembers, and its sync. */
-private class Device {
-    val tasks = MemorySyncTasks()
-    val events = MemoryEventStore()
-    val notes = MemoryNoteStore()
+/**
+ * One device. Its stores delete the way the app's do: whatever goes for good leaves a mark with this device's own time,
+ * whether a person deleted it or a merge did.
+ */
+private class Device(var now: Long = 1_000L) {
     val ledger = MemoryLedger()
-    var now = 1_000L
+
+    private fun mark(ids: List<String>) = runBlocking { ledger.addGone(ids.map { Gone(it, now++) }) }
+
+    val tasks = MemoryTaskStore { mark(it.map(Task::id)) }
+    val events = MemoryEventStore()
+    val notes = MemoryNoteStore { mark(it.map(Note::id)) }
+
     val sync = Sync(tasks, events, notes, ledger) { now++ }
 
     fun note(id: String) = notes.state.value.firstOrNull { it.id == id }
 
-    /** Deletes a note for good, the way the app's stores do: the mark goes with it. */
-    fun deleteNoteForGood(id: String) = runBlocking {
-        notes.delete(listOfNotNull(note(id)))
-        ledger.addGone(listOf(Gone(id, now++)))
-    }
+    fun task(id: String) = tasks.state.value.first { it.id == id }
+
+    fun deleteNoteForGood(id: String) = runBlocking { notes.delete(listOfNotNull(note(id))) }
 }
 
 class SyncTest {
@@ -169,5 +129,69 @@ class SyncTest {
         assertEquals(listOf(Gone("x", 42)), backup.gone)
         pc.from(phone)
         assertEquals(listOf(Gone("x", 42)), pc.ledger.gone)
+    }
+
+    @Test
+    fun aDeleteKeepsItsOwnTimeAcrossDevices() = runBlocking {
+        // the laptop's clock is far ahead: taking in the delete must not stamp it with the laptop's time
+        val laptop = Device(now = 1_000_000)
+        phone.notes.insert(listOf(note("n", "hello", 5)))
+        pc.from(phone)
+        laptop.from(phone)
+        phone.deleteNoteForGood("n")
+        laptop.from(phone)
+        assertNull(laptop.note("n"))
+        // the pc changed the note after the phone deleted it, so the change keeps it everywhere
+        pc.notes.update(listOf(note("n", "still needed", 50_000)))
+        pc.from(laptop)
+        assertEquals("still needed", pc.note("n")?.body)
+        laptop.from(pc)
+        assertEquals("still needed", laptop.note("n")?.body)
+    }
+
+    @Test
+    fun twoTasksMovedIntoEachOtherAreUntangled() = runBlocking {
+        phone.tasks.insert(listOf(Task(id = "x", title = "x", createdAt = 1), Task(id = "y", title = "y", createdAt = 1)))
+        pc.from(phone)
+        phone.tasks.update(listOf(phone.task("x").copy(parentId = "y", updatedAt = 10)))
+        pc.tasks.update(listOf(pc.task("y").copy(parentId = "x", updatedAt = 20)))
+        phone.from(pc)
+        pc.from(phone)
+        // the later move made the loop, so that task goes back to the top; both devices agree
+        assertEquals(null, phone.task("y").parentId)
+        assertEquals("y", phone.task("x").parentId)
+        assertEquals(phone.tasks.state.value.map { it.parentId }.sortedBy { it.orEmpty() }, pc.tasks.state.value.map { it.parentId }.sortedBy { it.orEmpty() })
+        assertTrue(loopBreaks(phone.tasks.state.value).isEmpty())
+    }
+}
+
+class SyncDetailsTest {
+    @Test
+    fun aClockNeverGoesBackPastWhatItSaw() {
+        var wall = 100L
+        val clock = LogicalClock { wall }
+        assertEquals(100, clock.now())
+        clock.saw(5_000)
+        assertEquals(5_001, clock.now())
+        assertEquals(5_002, clock.now())
+        wall = 9_000
+        assertEquals(9_000, clock.now())
+    }
+
+    @Test
+    fun aPlaceIsFoundBetweenNeighbours() {
+        assertEquals(1.0, placeBetween(null, null)!!, 0.0)
+        assertEquals(1.5, placeBetween(1.0, 2.0)!!, 0.0)
+        assertEquals(0.0, placeBetween(null, 1.0)!!, 0.0)
+        assertEquals(3.0, placeBetween(2.0, null)!!, 0.0)
+        assertNull(placeBetween(1.0, 1.0))
+    }
+
+    @Test
+    fun aFileFromANewerVersionIsStillMerged() = runBlocking {
+        val sync = Sync(MemoryTaskStore(), MemoryEventStore(), MemoryNoteStore(), MemoryLedger())
+        val newer = encodeBackup(emptyList(), notes = listOf(Note(id = "n", body = "x", createdAt = 1))).replace(Regex("\"version\": \\d+"), "\"version\": 99")
+        assertTrue(newer.contains("\"version\": 99"))
+        assertEquals(1, sync.merge(newer))
     }
 }

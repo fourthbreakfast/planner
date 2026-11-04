@@ -6,8 +6,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
-import androidx.room.immediateTransaction
-import androidx.room.useWriterConnection
 import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.core.Gone
 import dev.fourthbreakfast.planner.core.SyncLedger
@@ -28,6 +26,9 @@ interface SyncDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addGone(items: List<GoneEntity>)
 
+    @Query("DELETE FROM gone WHERE id IN (:ids)")
+    suspend fun forgetGone(ids: List<String>)
+
     @Query("SELECT * FROM agreed")
     suspend fun agreed(): List<AgreedEntity>
 
@@ -42,17 +43,11 @@ class RoomSyncLedger(database: PlannerDatabase) : SyncLedger {
 
     override suspend fun addGone(items: List<Gone>) = dao.addGone(items.map { GoneEntity(it.id, it.at) })
 
+    override suspend fun forgetGone(ids: List<String>) {
+        if (ids.isNotEmpty()) dao.forgetGone(ids)
+    }
+
     override suspend fun agreed(): Map<String, Long> = dao.agreed().associate { it.id to it.updatedAt }
 
     override suspend fun setAgreed(items: Map<String, Long>) = dao.setAgreed(items.map { (id, at) -> AgreedEntity(id, at) })
 }
-
-/** Every store deletes for good through here, so the mark that keeps it gone on other devices is never left out. */
-internal suspend fun PlannerDatabase.forget(ids: List<String>) {
-    if (ids.isEmpty()) return
-    val now = System.currentTimeMillis()
-    syncDao().addGone(ids.map { GoneEntity(it, now) })
-}
-
-/** Runs [block] as one write, on a phone or a computer alike. A write inside another one joins it. */
-internal suspend fun <T> PlannerDatabase.inTransaction(block: suspend () -> T): T = useWriterConnection { it.immediateTransaction { block() } }

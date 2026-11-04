@@ -30,12 +30,12 @@ fun plexMono(): FontFamily = FontFamily(
     Font(Res.font.plex_mono_medium, FontWeight.Medium),
 )
 
-/** The type scale, built once the fonts are loaded. */
+/** The type scale, built once the fonts are loaded. [scale] shrinks every size alike, as a computer screen wants smaller type than a phone. */
 @Composable
-fun plannerTypography(): Typography {
+fun plannerTypography(scale: Float = 1f): Typography {
     val plex = plex()
     val mono = plexMono()
-    return Typography(
+    val base = Typography(
         displaySmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp),
         headlineSmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp),
         // the header and the small numbers and notes use a monospace, like a console
@@ -48,4 +48,19 @@ fun plannerTypography(): Typography {
         labelLarge = TextStyle(fontFamily = plex, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
         labelMedium = TextStyle(fontFamily = mono, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
     )
+    if (scale == 1f) return base
+    return Typography(
+        displaySmall = base.displaySmall.scaled(scale),
+        headlineSmall = base.headlineSmall.scaled(scale),
+        titleLarge = base.titleLarge.scaled(scale),
+        titleMedium = base.titleMedium.scaled(scale),
+        titleSmall = base.titleSmall.scaled(scale),
+        bodyLarge = base.bodyLarge.scaled(scale),
+        bodyMedium = base.bodyMedium.scaled(scale),
+        bodySmall = base.bodySmall.scaled(scale),
+        labelLarge = base.labelLarge.scaled(scale),
+        labelMedium = base.labelMedium.scaled(scale),
+    )
 }
+
+private fun TextStyle.scaled(scale: Float) = copy(fontSize = fontSize * scale, lineHeight = lineHeight * scale)

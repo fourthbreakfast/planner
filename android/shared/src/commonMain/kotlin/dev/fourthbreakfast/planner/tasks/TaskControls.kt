@@ -10,7 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -38,6 +36,8 @@ import dev.fourthbreakfast.planner.resources.priority_low
 import dev.fourthbreakfast.planner.resources.priority_medium
 import dev.fourthbreakfast.planner.resources.priority_none
 import dev.fourthbreakfast.planner.ui.CheckBoxMark
+import dev.fourthbreakfast.planner.ui.DrawnIconButton
+import dev.fourthbreakfast.planner.ui.openAllTriangle
 import dev.fourthbreakfast.planner.ui.theme.PriorityHigh
 import dev.fourthbreakfast.planner.ui.theme.PriorityLow
 import dev.fourthbreakfast.planner.ui.theme.PriorityMedium
@@ -155,27 +155,7 @@ fun PriorityMarker(priority: Priority, onClick: () -> Unit, modifier: Modifier =
 /** Opens everything or closes everything. A triangle pointing down opens, pointing up closes. */
 @Composable
 fun ExpandAllButton(anyCollapsed: Boolean, onClick: () -> Unit) {
-    val label = stringResource(if (anyCollapsed) Res.string.expand_all else Res.string.collapse_all)
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val w = size.width
-            val h = size.height
-            val tip = if (anyCollapsed) 0.66f else 0.34f
-            val base = if (anyCollapsed) 0.36f else 0.64f
-            val triangle = Path().apply {
-                moveTo(w * 0.24f, h * base)
-                lineTo(w * 0.76f, h * base)
-                lineTo(w * 0.5f, h * tip)
-                close()
-            }
-            drawPath(triangle, ink)
-        }
+    DrawnIconButton(stringResource(if (anyCollapsed) Res.string.expand_all else Res.string.collapse_all), onClick) { ink ->
+        openAllTriangle(ink, opens = anyCollapsed)
     }
 }

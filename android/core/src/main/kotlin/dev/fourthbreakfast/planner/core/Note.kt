@@ -22,21 +22,6 @@ data class Note(
     val inBin: Boolean get() = deletedAt != null
 }
 
-/** Where notes are kept. It knows nothing about the rules, those live in [Notes]. */
-interface NoteStore {
-    fun observeAll(): Flow<List<Note>>
-
-    suspend fun all(): List<Note>
-
-    suspend fun insert(notes: List<Note>)
-
-    suspend fun update(notes: List<Note>)
-
-    suspend fun delete(notes: List<Note>)
-
-    suspend fun <T> transaction(block: suspend () -> T): T
-}
-
 fun sortedNotes(notes: List<Note>): List<Note> = notes.sortedWith(compareBy({ !it.pinned }, { it.position }, { it.createdAt }))
 
 /** Everything the app can do with notes. */
@@ -55,11 +40,21 @@ class Notes(private val store: NoteStore, private val clock: () -> Long = System
         }
     }
 
-    suspend fun update(id: String, title: String, body: String) {
+    /**
+     * Writes what an editor holds, and returns the note's version afterwards. [base] is the version the editor last
+     * saw: when the note changed since then, through sync from another device, those words are not lost but kept as a
+     * copy in the bin, and the editor's words, typed last, become the note.
+     */
+    suspend fun update(id: String, title: String, body: String, base: Long? = null): Long? {
         val now = clock()
-        store.transaction {
-            val note = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
-            if (note.body != body || note.title != title) store.update(listOf(note.copy(title = title, body = body, updatedAt = now)))
+        return store.transaction {
+            val note = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction null
+            if (note.body == body && note.title == title) return@transaction note.updatedAt
+            if (base != null && note.updatedAt > base) {
+                store.insert(listOf(note.copy(id = UUID.randomUUID().toString(), deletedAt = now, updatedAt = now)))
+            }
+            store.update(listOf(note.copy(title = title, body = body, updatedAt = now)))
+            now
         }
     }
 
@@ -72,6 +67,12 @@ class Notes(private val store: NoteStore, private val clock: () -> Long = System
             val note = active.firstOrNull { it.id == id } ?: return@transaction
             val others = active.filter { it.id != id }
             val index = if (beforeId == null) others.size else others.indexOfFirst { it.id == beforeId }.takeIf { it >= 0 } ?: others.size
+            val place = placeBetween(others.getOrNull(index - 1)?.position, others.getOrNull(index)?.position)
+            if (place != null) {
+                store.update(listOf(note.copy(position = place, updatedAt = now)))
+                return@transaction
+            }
+            // no room left between the two: the notes are numbered again
             val ordered = others.toMutableList().apply { add(index, note) }
             store.update(
                 ordered.mapIndexedNotNull { i, item ->

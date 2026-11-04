@@ -3,6 +3,7 @@ package dev.fourthbreakfast.planner.sync
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.Process
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -13,70 +14,53 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.core.Sync
+import dev.fourthbreakfast.planner.ui.AndroidPrefs
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
-private const val PREFS = "sync"
-private const val PREF_ANYWHERE = "anywhere"
-private const val PREF_PAIRED = "paired"
 private const val WORK = "sync"
 private const val TICK_MILLIS = 2_000L
 private const val LINGER_MILLIS = 60_000L
 
 /**
- * Runs the app's Syncthing while the app is in use and someone is paired, or while the sync screen is open, and keeps
- * this device's file and the others' in step with the database. It stops a minute after the app goes out of sight.
- * Between uses, [SyncWorker] gives it a short run about every fifteen minutes.
+ * Sync on the phone: Syncthing runs while the app is in sight and someone is paired, or while the sync screen is open,
+ * and stops a minute after the app goes out of sight. Between uses, [SyncWorker] gives it a short run about every
+ * fifteen minutes.
  */
-class SyncController(private val context: Context, private val sync: Sync, private val changes: Flow<Any>, private val scope: CoroutineScope) : SyncControls {
-    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private val binary = File(context.applicationInfo.nativeLibraryDir, "libsyncthing.so")
-    private val root = File(context.filesDir, "syncthing")
-    private val syncthing = Syncthing(binary, File(root, "home"), File(root, "share")) { Log.i("planner", it) }
-    private val lock = Mutex()
+class SyncController(private val context: Context, sync: Sync, changes: Flow<Any>, scope: CoroutineScope) :
+    SyncRunner(
+        binary = binaryOf(context),
+        root = rootOf(context),
+        sync = sync,
+        changes = changes,
+        prefs = AndroidPrefs(context, "sync"),
+        keys = SyncPrefKeys(anywhere = "anywhere", name = "sync_name", paired = "paired"),
+        defaultName = Build.MODEL.orEmpty().ifBlank { "phone" }.lowercase(),
+        scope = scope,
+        log = { Log.i("planner", it) },
+    ) {
+    // android drops the packets devices find each other with unless an app asks for them
     private val multicast = (context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager)
         .createMulticastLock("planner sync")
         .apply { setReferenceCounted(false) }
-    private var files: DeviceFiles? = null
-    private var loop: Job? = null
     private var linger: Job? = null
     private var inSight = false
-    private var pairing = false
-
-    private val current = MutableStateFlow(SyncState())
-    override val state: StateFlow<SyncState> = current
-
-    /** False on a phone the bundled Syncthing was not built for. */
-    override val available: Boolean get() = binary.exists()
-
-    override val anywhere: Boolean get() = prefs.getBoolean(PREF_ANYWHERE, false)
-
-    private var paired: Boolean
-        get() = prefs.getBoolean(PREF_PAIRED, false)
-        set(value) {
-            if (value == paired) return
-            prefs.edit().putBoolean(PREF_PAIRED, value).apply()
-            schedule(value)
-        }
 
     fun onInSight() {
         inSight = true
         linger?.cancel()
-        if (paired) scope.launch { ensureRunning() }
+        startIfPaired()
     }
 
     fun onOutOfSight() {
@@ -88,141 +72,76 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         }
     }
 
-    /** The sync screen is open: it runs, and any device asking to pair is let in. */
-    override fun openPairing() {
-        pairing = true
-        scope.launch { ensureRunning() }
-    }
-
-    override fun closePairing() {
-        pairing = false
-        if (!paired) scope.launch { stop() }
-    }
-
-    override fun chooseAnywhere(on: Boolean) {
-        prefs.edit().putBoolean(PREF_ANYWHERE, on).apply()
-        scope.launch {
-            if (syncthing.running) {
-                stop()
-                ensureRunning()
-            }
-        }
-    }
-
-    /** Pairs with a device by its whole id, or by the short code it shows when it is on the same network. */
-    override suspend fun pairWith(code: String): Boolean {
-        ensureRunning()
-        val typed = code.trim().uppercase()
-        val id = if (typed.replace("-", "").length >= 52) {
-            typed
-        } else {
-            syncthing.nearby().firstOrNull { shortId(it) == typed.replace("-", "").take(7) } ?: return false
-        }
-        return try {
-            syncthing.pair(id, introducer = true)
-            paired = true
-            refresh()
-            true
-        } catch (_: IOException) {
-            false
-        }
-    }
-
-    override fun unpair(id: String) {
-        scope.launch {
-            try {
-                syncthing.unpair(id)
-                refresh()
-            } catch (_: IOException) {
-            }
-        }
-    }
-
     /** A short run for background work: trade with whoever is around, wait until everything is through, stop. */
     suspend fun runOnce() {
         if (!paired || !available) return
-        ensureRunning()
-        withTimeoutOrNull(120_000) {
-            while (isActive) {
-                delay(TICK_MILLIS)
-                if (state.value.peers.any { it.connected } && syncthing.settled()) break
-            }
-        }
-        if (!inSight && !pairing) stop()
-    }
-
-    private suspend fun ensureRunning() {
-        if (!available) return
-        lock.withLock {
-            if (syncthing.running) return
-            try {
-                syncthing.start(anywhere, deviceName())
-            } catch (e: Exception) {
-                // a program of its own that would not start is no reason for the app to stop
-                Log.w("planner", "syncthing did not start", e)
-                syncthing.stop()
-                current.value = current.value.copy(failed = true)
-                return
-            }
-            // android drops the packets devices find each other with unless an app asks for them
-            if (!multicast.isHeld) multicast.acquire()
-            val files = DeviceFiles(syncthing.folder, syncthing.myId, sync).also { this.files = it }
-            current.value = SyncState(running = true, myId = syncthing.myId)
-            loop = scope.launch { run(files) }
-        }
-    }
-
-    @OptIn(FlowPreview::class)
-    private suspend fun run(files: DeviceFiles) {
-        val publishing = scope.launch {
-            files.publish()
-            changes.debounce(1_000).collect { runCatching { files.publish() } }
-        }
         try {
-            while (scope.isActive) {
-                runCatching {
-                    files.takeIn()
-                    if (pairing) syncthing.asking().forEach { syncthing.pair(it, introducer = false) }
-                    refresh()
+            ensureRunning()
+            withTimeoutOrNull(120_000) {
+                while (isActive) {
+                    delay(TICK_MILLIS)
+                    if (settledOrUnsure()) break
                 }
-                delay(TICK_MILLIS)
             }
         } finally {
-            publishing.cancel()
+            // however the run ends, a syncthing nobody is looking at does not stay behind
+            if (!inSight && !pairing) withContext(NonCancellable) { stop() }
         }
     }
 
-    private suspend fun refresh() {
-        val peers = syncthing.peers()
-        paired = peers.isNotEmpty()
-        current.value = current.value.copy(peers = peers, nearby = if (pairing) syncthing.nearby() else emptyList())
+    /** Whether the run can end: everything is through, or syncthing stopped answering, which waiting will not mend. */
+    private suspend fun settledOrUnsure(): Boolean = try {
+        settled()
+    } catch (e: IOException) {
+        Log.w("planner", "sync run: $e")
+        true
     }
 
-    private suspend fun stop() {
-        lock.withLock {
-            loop?.cancel()
-            loop = null
-            files = null
-            syncthing.stop()
-            current.value = current.value.copy(running = false)
-            if (multicast.isHeld) multicast.release()
+    override fun onPairedChanged(paired: Boolean) = schedule(paired)
+
+    override fun onAnywhereChanged() {
+        if (paired) schedule(true, replace = true)
+    }
+
+    // a syncthing a killed run of the app left going still holds the database and the port, so it goes first. android
+    // normally stops an app's programs with it, but not always, and then sync would not start again until a restart
+    override suspend fun beforeStart() = withContext(Dispatchers.IO) {
+        val left = leftBehindSyncthings(binaryOf(context), File(rootOf(context), "home"))
+        for (pid in left) {
+            Log.i("planner", "stopping a syncthing left behind: $pid")
+            Process.killProcess(pid)
         }
+        // it is gone once linux no longer lists it
+        withTimeoutOrNull(5_000) { while (left.any { File("/proc/$it").exists() }) delay(100) }
+        Unit
     }
 
-    private fun schedule(on: Boolean) {
+    override fun afterStart() {
+        if (!multicast.isHeld) multicast.acquire()
+    }
+
+    override fun afterStop() {
+        if (multicast.isHeld) multicast.release()
+    }
+
+    private fun schedule(on: Boolean, replace: Boolean = false) {
         val work = WorkManager.getInstance(context)
         if (!on) {
             work.cancelUniqueWork(WORK)
             return
         }
         val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            // on the local network only, the run waits for wifi and spends no mobile data; sync anywhere may use either
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(if (anywhere) NetworkType.CONNECTED else NetworkType.UNMETERED).build())
             .build()
-        work.enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.KEEP, request)
+        work.enqueueUniquePeriodicWork(WORK, if (replace) ExistingPeriodicWorkPolicy.UPDATE else ExistingPeriodicWorkPolicy.KEEP, request)
     }
-
-    private fun deviceName(): String = Build.MODEL.orEmpty().ifBlank { "phone" }.lowercase()
 }
+
+// android only runs a program the app unpacked itself, as a library
+private fun binaryOf(context: Context) = File(context.applicationInfo.nativeLibraryDir, "libsyncthing.so")
+
+private fun rootOf(context: Context) = File(context.filesDir, "syncthing")
 
 /** The run between uses, whenever Android allows it. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {

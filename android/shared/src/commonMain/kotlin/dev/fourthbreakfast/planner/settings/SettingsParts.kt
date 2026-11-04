@@ -16,14 +16,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.fourthbreakfast.planner.ThemeChoice
+import dev.fourthbreakfast.planner.UiSettings
 import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.app_name
 import dev.fourthbreakfast.planner.resources.guide
 import dev.fourthbreakfast.planner.resources.guide_title
+import dev.fourthbreakfast.planner.resources.off
+import dev.fourthbreakfast.planner.resources.on
+import dev.fourthbreakfast.planner.resources.setting_theme
+import dev.fourthbreakfast.planner.resources.sync_devices
+import dev.fourthbreakfast.planner.resources.sync_title
+import dev.fourthbreakfast.planner.resources.theme_dark
+import dev.fourthbreakfast.planner.resources.theme_light
+import dev.fourthbreakfast.planner.resources.theme_system
+import dev.fourthbreakfast.planner.sync.SyncControls
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.StringArrayResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -85,3 +99,40 @@ fun Guide(list: StringArrayResource = Res.array.guide, onClose: () -> Unit) {
         }
     }
 }
+
+/** The line that opens sync, with how many devices are paired. Left out where sync does not run. */
+@Composable
+fun SyncSetting(sync: SyncControls, onOpen: () -> Unit) {
+    if (!sync.available) return
+    val peers = sync.state.collectAsStateWithLifecycle().value.peers.size
+    val count = if (peers == 0) null else pluralStringResource(Res.plurals.sync_devices, peers, peers)
+    Setting(stringResource(Res.string.sync_title), count, onOpen)
+}
+
+/** The theme, which goes round system, light and dark at each touch. */
+@Composable
+fun ThemeSetting(settings: UiSettings) {
+    val name = when (settings.theme) {
+        ThemeChoice.LIGHT -> Res.string.theme_light
+        ThemeChoice.DARK -> Res.string.theme_dark
+        ThemeChoice.SYSTEM -> Res.string.theme_system
+    }
+    Setting(stringResource(Res.string.setting_theme), stringResource(name)) {
+        settings.chooseTheme(ThemeChoice.entries[(settings.theme.ordinal + 1) % ThemeChoice.entries.size])
+    }
+}
+
+/** The app's name and version, quietly, at the foot of the settings. */
+@Composable
+fun VersionLine(version: String) {
+    Text(
+        text = stringResource(Res.string.app_name) + " " + version,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = Space.gutter, top = Space.x6),
+    )
+}
+
+/** How a setting that is switched on or off reads. */
+@Composable
+fun onOff(on: Boolean): String = stringResource(if (on) Res.string.on else Res.string.off)

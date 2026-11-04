@@ -192,4 +192,13 @@ class VisibleRowsTest {
         assertNull(resolveDrop(rows(tasks), tasks, "a", "a1x", DropZone.INTO)?.destination)
         assertNull(resolveDrop(rows(tasks), tasks, "a", "a", DropZone.INTO)?.destination)
     }
+
+    @Test
+    fun theEdgesOfARowPutATaskBesideItAndTheMiddleInsideIt() {
+        assertEquals(DropZone.BEFORE, dropZoneAt(0f))
+        assertEquals(DropZone.BEFORE, dropZoneAt(0.27f))
+        assertEquals(DropZone.INTO, dropZoneAt(0.5f))
+        assertEquals(DropZone.AFTER, dropZoneAt(0.73f))
+        assertEquals(DropZone.AFTER, dropZoneAt(0.99f))
+    }
 }

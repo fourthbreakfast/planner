@@ -1,36 +1,10 @@
 package dev.fourthbreakfast.planner.core
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-
-class MemoryEventStore : EventStore {
-    val state = MutableStateFlow<List<Event>>(emptyList())
-
-    override fun observeAll(): Flow<List<Event>> = state
-
-    override suspend fun all() = state.value
-
-    override suspend fun insert(events: List<Event>) {
-        state.value = state.value + events
-    }
-
-    override suspend fun update(events: List<Event>) {
-        val changed = events.associateBy { it.id }
-        state.value = state.value.map { changed[it.id] ?: it }
-    }
-
-    override suspend fun delete(events: List<Event>) {
-        val gone = events.mapTo(HashSet()) { it.id }
-        state.value = state.value.filterNot { it.id in gone }
-    }
-
-    override suspend fun <T> transaction(block: suspend () -> T): T = block()
-}
 
 class EventsTest {
     private val store = MemoryEventStore()

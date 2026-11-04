@@ -94,6 +94,13 @@ class Tasks(private val store: TaskStore, private val clock: () -> Long = System
                 else -> others.size
             }
             val moved = task.copy(parentId = to.parentId, updatedAt = now)
+            val place = placeBetween(others.getOrNull(index - 1)?.position, others.getOrNull(index)?.position)
+            if (place != null) {
+                store.update(listOf(moved.copy(position = place)))
+                if (moving.any { !it.done }) reopenAncestors(to.parentId, now)
+                return@transaction
+            }
+            // no room left between the two: the siblings are numbered again
             val ordered = others.toMutableList().apply { add(index, moved) }
             val changed = ordered.mapIndexedNotNull { i, sibling ->
                 val position = (i + 1).toDouble()

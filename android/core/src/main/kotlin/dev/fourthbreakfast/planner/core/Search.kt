@@ -10,3 +10,7 @@ fun matchesAll(text: String, words: List<String>): Boolean {
 
 /** Everything a search looks through in a note: its title and the words of every line. */
 fun noteText(note: Note): String = note.title + "\n" + parseBody(note.body).joinToString("\n") { it.text }
+
+/** The first line of a note's text, its title left out, with one of the [words] in it, to show under a result. */
+fun matchingLine(note: Note, words: List<String>): String? =
+    parseBody(note.body).map { it.text }.firstOrNull { line -> words.any { it in line.lowercase() } }?.trim()

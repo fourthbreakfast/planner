@@ -1,12 +1,15 @@
 import java.io.File
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
+import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.TaskProvider
+import org.gradle.kotlin.dsl.register
 import org.gradle.process.ExecOperations
 
 /**
@@ -65,5 +68,24 @@ abstract class SyncthingBinary : DefaultTask() {
             environment(toolchain + mapOf("CGO_ENABLED" to "0", "GOOS" to goos.get(), "GOARCH" to goarch.get()))
             commandLine("go", "build", "-trimpath", "-tags", "noupgrade", "-ldflags", flags, "-o", target.absolutePath, "./cmd/syncthing")
         }
+    }
+}
+
+/**
+ * Registers [name], which builds the pinned Syncthing for [goos] and [goarch] into the build folder's [outputDir], at
+ * [fileName] there. The phone and the windows app each register one for themselves.
+ */
+fun Project.syncthingBinary(name: String, goos: String, goarch: String, fileName: String, outputDir: String): TaskProvider<SyncthingBinary> {
+    val pinned = rootProject.layout.projectDirectory.dir("../third_party/syncthing")
+    return tasks.register<SyncthingBinary>(name) {
+        source.set(pinned)
+        version.set(
+            providers.exec { commandLine("git", "-C", pinned.asFile.path, "describe", "--tags", "--always") }
+                .standardOutput.asText.map { it.trim() },
+        )
+        this.goos.set(goos)
+        this.goarch.set(goarch)
+        this.fileName.set(fileName)
+        output.set(layout.buildDirectory.dir(outputDir))
     }
 }

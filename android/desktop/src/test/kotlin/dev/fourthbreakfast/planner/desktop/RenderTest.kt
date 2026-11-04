@@ -32,9 +32,9 @@ class RenderTest {
         app.tasksViewModel.add("call the dentist", null)
         app.tasksViewModel.add("buy oat milk", null)
         runBlocking {
-            app.events.add("lunch with sam", now, 12 * 60 + 30, "the corner cafe", "")
-            app.events.add("train to the coast", now + 1, 8 * 60 + 12, "central station", "", endMinute = 10 * 60 + 40)
-            app.events.add("mum's birthday", now + 3, null, "", "")
+            app.data.events.add("lunch with sam", now, 12 * 60 + 30, "the corner cafe", "")
+            app.data.events.add("train to the coast", now + 1, 8 * 60 + 12, "central station", "", endMinute = 10 * 60 + 40)
+            app.data.events.add("mum's birthday", now + 3, null, "", "")
         }
         var noteId: String? = null
         app.notesViewModel.add { id ->
@@ -43,7 +43,8 @@ class RenderTest {
                 id,
                 "packing list",
                 formatBody(listOf(NoteLine(LineKind.CHECK, text = "passport"), NoteLine(LineKind.CHECK, checked = true, text = "charger"))),
-            )
+                0,
+            ) {}
         }
         Thread.sleep(1_500)
         val trip = runBlocking { app.tasks.value.first { it.title == "plan the autumn trip" } }
@@ -54,9 +55,14 @@ class RenderTest {
         fun draw(name: String, dark: Boolean) {
             ImageComposeScene(1280, 820, Density(1f)) {
                 CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
-                    PlannerTheme(darkTheme = dark) {
-                        Dashboard(app.dashboard, app.tasksViewModel, app.agendaViewModel, app.notesViewModel) { onClose ->
-                            DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = {})
+                    PlannerTheme(darkTheme = dark, textScale = Desk.textScale) {
+                        Dashboard(
+                            app.dashboard,
+                            app.tasksViewModel,
+                            app.agendaViewModel,
+                            app.notesViewModel,
+                        ) { onClose ->
+                            DesktopSettings(app.data.backups, app.sync, app.updates, app.version, onClose, install = {})
                         }
                     }
                 }
@@ -124,6 +130,6 @@ class SeedTest {
         val backup = System.getenv("PLANNER_BACKUP")?.let(::File)
         assumeTrue(folder != null && backup != null)
         val app = DesktopApp(folder!!, "dev/fourthbreakfast/planner-seed-test")
-        runBlocking { app.tasksViewModel.importBackup(backup!!.readText()) }
+        runBlocking { app.data.backups.import(backup!!.readText()) }
     }
 }

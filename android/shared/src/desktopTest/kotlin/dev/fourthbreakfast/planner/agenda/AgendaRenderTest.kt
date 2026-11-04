@@ -6,15 +6,13 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.use
 import dev.fourthbreakfast.planner.Requests
 import dev.fourthbreakfast.planner.UiSettings
-import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.core.EventStore
 import dev.fourthbreakfast.planner.core.Events
+import dev.fourthbreakfast.planner.core.MemoryEventStore
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.PlannerServices
 import dev.fourthbreakfast.planner.ui.Prefs
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 import java.io.File
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
 import org.junit.Assume.assumeTrue
@@ -40,30 +38,6 @@ private class MemoryPrefs : Prefs {
     override fun putString(key: String, value: String?) = values.set(key, value)
 }
 
-private class MemoryEvents : EventStore {
-    val state = MutableStateFlow<List<Event>>(emptyList())
-
-    override fun observeAll() = state
-
-    override suspend fun all() = state.value
-
-    override suspend fun insert(events: List<Event>) {
-        state.value = state.value + events
-    }
-
-    override suspend fun update(events: List<Event>) {
-        val changed = events.associateBy { it.id }
-        state.value = state.value.map { changed[it.id] ?: it }
-    }
-
-    override suspend fun delete(events: List<Event>) {
-        val gone = events.mapTo(HashSet()) { it.id }
-        state.value = state.value.filterNot { it.id in gone }
-    }
-
-    override suspend fun <T> transaction(block: suspend () -> T): T = block()
-}
-
 /** Draws the agenda as a month, without a window, into PLANNER_RENDER to look at. Skipped unless that folder is given. */
 class AgendaRenderTest {
     @Test
@@ -72,7 +46,7 @@ class AgendaRenderTest {
         assumeTrue(out != null)
         out!!.mkdirs()
         val prefs = MemoryPrefs().apply { putBoolean("agenda_month", true) }
-        val events = Events(MemoryEvents())
+        val events = Events(MemoryEventStore())
         val now = today()
         runBlocking {
             events.add("lunch with sam", now, 12 * 60 + 30, "the corner cafe", "")

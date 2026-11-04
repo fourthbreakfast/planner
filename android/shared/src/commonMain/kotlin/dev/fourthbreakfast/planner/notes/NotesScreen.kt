@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,7 +46,6 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.core.Note
-import dev.fourthbreakfast.planner.core.isBlankBody
 import dev.fourthbreakfast.planner.core.linesUnderTitle
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.resources.Res
@@ -64,10 +64,12 @@ import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.RowSwipe
 import dev.fourthbreakfast.planner.ui.SearchButton
+import dev.fourthbreakfast.planner.ui.SettingsButton
 import dev.fourthbreakfast.planner.ui.SwipeRow
 import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
+import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
 import dev.fourthbreakfast.planner.ui.sweepAndHold
@@ -121,12 +123,8 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
         }
     }
 
-    // a note nobody wrote in does not stay: one left behind when the app was killed is taken away
-    LaunchedEffect(notes, openId) {
-        val now = System.currentTimeMillis()
-        notes.filter { it.id != openId && now - it.createdAt > 3000 && it.title.isBlank() && isBlankBody(it.body) }
-            .forEach { viewModel.dropEmpty(it.id) }
-    }
+    // a note made here that nobody wrote in does not stay: one left behind when the app was killed is taken away
+    LaunchedEffect(Unit) { viewModel.dropLeftDrafts(openId) }
 
     val open = notes.firstOrNull { it.id == openId }
     // the list, a note and the bin fade into one another
@@ -139,18 +137,18 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
     }
     Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "notes") { shown ->
         when {
-            shown == 1 && open != null -> NoteEditor(
-                initialTitle = open.title,
-                initialBody = open.body,
-                pinned = open.pinned,
-                onPin = { viewModel.setPinned(open.id, !open.pinned) },
-                toolbarAbove = settings.toolbarAbove,
-                onSave = { title, body -> viewModel.save(open.id, title, body) },
-                onClose = { title, body ->
-                    viewModel.close(open.id, title, body)
-                    openId = null
-                },
-            )
+            shown == 1 && open != null -> key(open.id) {
+                NoteEditor(
+                    note = open,
+                    onPin = { viewModel.setPinned(open.id, !open.pinned) },
+                    toolbarAbove = settings.toolbarAbove,
+                    onSave = { title, body, base, onSaved -> viewModel.save(open.id, title, body, base, onSaved) },
+                    onClose = {
+                        viewModel.closed(open.id)
+                        openId = null
+                    },
+                )
+            }
             shown == 2 -> NotesBin(binned, viewModel, onClose = { binOpen = false })
             else -> NotesList(
                 notes = notes,
@@ -228,7 +226,7 @@ private fun NotesList(
                 onHold = { key, at ->
                     dragKey = key
                     dragY = at.y - listBounds.top
-                    grab = dragY - (list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset ?: 0)
+                    grab = dragY - list.offsetOf(key)
                     updateDrop()
                 },
                 onDrag = { dy ->
@@ -273,6 +271,7 @@ private fun NotesList(
                     )
                     SearchButton(onOpenSearch)
                     BinButton(binCount, onOpenBin)
+                    SettingsButton(onOpenSettings)
                 }
             }
         },
@@ -310,8 +309,7 @@ private fun NotesList(
                             .then(if (dragging) Modifier.zIndex(1f) else Modifier)
                             .graphicsLayer {
                                 if (dragging) {
-                                    val offset = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == note.id }?.offset ?: 0
-                                    translationY = dragY - grab - offset
+                                    translationY = dragY - grab - list.offsetOf(note.id)
                                     alpha = 0.92f
                                     shadowElevation = 12f
                                 }

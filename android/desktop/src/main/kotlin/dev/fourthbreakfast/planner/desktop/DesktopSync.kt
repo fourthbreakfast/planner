@@ -1,166 +1,63 @@
 package dev.fourthbreakfast.planner.desktop
 
 import dev.fourthbreakfast.planner.core.Sync
-import dev.fourthbreakfast.planner.sync.DeviceFiles
-import dev.fourthbreakfast.planner.sync.SyncControls
-import dev.fourthbreakfast.planner.sync.SyncState
-import dev.fourthbreakfast.planner.sync.Syncthing
-import dev.fourthbreakfast.planner.sync.shortId
+import dev.fourthbreakfast.planner.sync.SyncPrefKeys
+import dev.fourthbreakfast.planner.sync.SyncRunner
 import dev.fourthbreakfast.planner.ui.Prefs
 import java.io.File
-import java.io.IOException
-import java.net.InetAddress
+import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-
-private const val PREF_ANYWHERE = "sync_anywhere"
-private const val PREF_PAIRED = "sync_paired"
-private const val TICK_MILLIS = 2_000L
+import kotlinx.coroutines.withContext
 
 /**
- * The computer's sync: the app's own Syncthing runs for as long as the window is open and something is paired, or
- * while the sync screen is open, and stops with the app.
+ * Sync on the computer: the app's own Syncthing runs for as long as the app does and something is paired, or while the
+ * sync screen is open, and stops with the app.
  */
-class DesktopSync(
-    private val binary: File?,
-    root: File,
-    private val sync: Sync,
-    private val changes: Flow<Any>,
-    private val prefs: Prefs,
-    private val scope: CoroutineScope,
-) : SyncControls {
-    private val syncthing = binary?.let { Syncthing(it, File(root, "home"), File(root, "share")) }
-    private val lock = Mutex()
-    private var loop: Job? = null
-    private var pairing = false
-    private val current = MutableStateFlow(SyncState())
+class DesktopSync(binary: File?, root: File, sync: Sync, changes: Flow<Any>, prefs: Prefs, scope: CoroutineScope) :
+    SyncRunner(
+        binary = binary,
+        root = root,
+        sync = sync,
+        changes = changes,
+        prefs = prefs,
+        keys = SyncPrefKeys(anywhere = "sync_anywhere", name = "sync_name", paired = "sync_paired"),
+        // the name windows gives the computer, read without asking the network
+        defaultName = (System.getenv("COMPUTERNAME") ?: "windows").lowercase(),
+        scope = scope,
+        log = logTo(File(root, "home/planner.log")),
+    ) {
+    private val leftBehind = LeftBehind(File(root, "home"))
 
-    override val state: StateFlow<SyncState> = current
+    override suspend fun beforeStart() = withContext(Dispatchers.IO) { leftBehind.stop() }
+}
 
-    override val available: Boolean get() = binary?.exists() == true
-
-    override val anywhere: Boolean get() = prefs.getBoolean(PREF_ANYWHERE, false)
-
-    private var paired: Boolean
-        get() = prefs.getBoolean(PREF_PAIRED, false)
-        set(value) = prefs.putBoolean(PREF_PAIRED, value)
-
-    /** Called once the window is up. */
-    fun begin() {
-        if (paired) scope.launch { ensureRunning() }
+/** What the app did with its Syncthing, and why it would not start, kept beside Syncthing's own log. */
+private fun logTo(file: File): (String) -> Unit = { line ->
+    runCatching {
+        if (file.length() > 200_000) file.delete()
+        file.appendText("${LocalDateTime.now().withNano(0)} $line\n")
     }
+}
 
-    override fun openPairing() {
-        pairing = true
-        scope.launch { ensureRunning() }
-    }
-
-    override fun closePairing() {
-        pairing = false
-        if (!paired) scope.launch { stop() }
-    }
-
-    override fun chooseAnywhere(on: Boolean) {
-        prefs.putBoolean(PREF_ANYWHERE, on)
-        scope.launch {
-            if (syncthing?.running == true) {
-                stop()
-                ensureRunning()
-            }
-        }
-    }
-
-    override suspend fun pairWith(code: String): Boolean {
-        val syncthing = syncthing ?: return false
-        ensureRunning()
-        val typed = code.trim().uppercase()
-        val id = if (typed.replace("-", "").length >= 52) {
-            typed
-        } else {
-            syncthing.nearby().firstOrNull { shortId(it) == typed.replace("-", "").take(7) } ?: return false
-        }
-        return try {
-            syncthing.pair(id, introducer = true)
-            refresh()
-            true
-        } catch (_: IOException) {
-            false
-        }
-    }
-
-    override fun unpair(id: String) {
-        scope.launch {
-            try {
-                syncthing?.unpair(id)
-                refresh()
-            } catch (_: IOException) {
-            }
-        }
-    }
-
-    private suspend fun ensureRunning() {
-        val syncthing = syncthing ?: return
-        if (!available) return
-        lock.withLock {
-            if (syncthing.running) return
-            try {
-                syncthing.start(anywhere, InetAddress.getLocalHost().hostName.lowercase())
-            } catch (_: Exception) {
-                // a program of its own that would not start is no reason for the app to stop
-                syncthing.stop()
-                current.value = current.value.copy(failed = true)
-                return
-            }
-            val files = DeviceFiles(syncthing.folder, syncthing.myId, sync)
-            current.value = SyncState(running = true, myId = syncthing.myId)
-            loop = scope.launch { run(syncthing, files) }
-        }
-    }
-
-    @OptIn(FlowPreview::class)
-    private suspend fun run(syncthing: Syncthing, files: DeviceFiles) {
-        val publishing = scope.launch {
-            runCatching { files.publish() }
-            changes.debounce(1_000).collect { runCatching { files.publish() } }
-        }
-        try {
-            while (scope.isActive) {
-                runCatching {
-                    files.takeIn()
-                    if (pairing) syncthing.asking().forEach { syncthing.pair(it, introducer = false) }
-                    refresh()
-                }
-                delay(TICK_MILLIS)
-            }
-        } finally {
-            publishing.cancel()
-        }
-    }
-
-    private suspend fun refresh() {
-        val syncthing = syncthing ?: return
-        val peers = syncthing.peers()
-        paired = peers.isNotEmpty()
-        current.value = current.value.copy(peers = peers, nearby = if (pairing) syncthing.nearby() else emptyList())
-    }
-
-    /** Stops Syncthing, letting it close its database. */
-    suspend fun stop() {
-        lock.withLock {
-            loop?.cancel()
-            loop = null
-            syncthing?.stop()
-            current.value = current.value.copy(running = false)
+/**
+ * A Syncthing an earlier run of the app left going, when it was killed rather than quit: Windows does not stop the
+ * children of a killed program. It holds the folder and the port, so it is stopped before a new one starts. Only a
+ * Syncthing started with this app's own home folder is touched.
+ */
+private class LeftBehind(private val home: File) {
+    fun stop() {
+        val query = "Get-CimInstance Win32_Process -Filter \"Name='syncthing.exe'\" | " +
+            "Where-Object { \$_.CommandLine -like '*${home.path.replace("'", "''")}*' } | " +
+            "ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }"
+        runCatching {
+            ProcessBuilder("powershell", "-NoProfile", "-NonInteractive", "-Command", query)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start()
+                .waitFor(15, TimeUnit.SECONDS)
         }
     }
 }

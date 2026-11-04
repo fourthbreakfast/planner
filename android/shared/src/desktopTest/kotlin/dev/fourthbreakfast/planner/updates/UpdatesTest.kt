@@ -21,14 +21,22 @@ class UpdatesTest {
     fun aReleasePageGivesTheVersionAndBothFiles() {
         val json = """
             {"tag_name": "v0.9.0", "assets": [
-              {"browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.apk"},
-              {"browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.msi"}
+              {"name": "planner-0.9.0.apk", "digest": "sha256:ABC", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.apk"},
+              {"name": "planner-0.9.0.msi", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.msi"}
             ]}
         """.trimIndent()
         val release = parseRelease(json)!!
         assertEquals("0.9.0", release.version)
-        assertTrue(release.apk!!.endsWith(".apk"))
-        assertTrue(release.msi!!.endsWith(".msi"))
+        assertTrue(release.apk!!.url.endsWith(".apk"))
+        assertEquals("ABC", release.apk!!.sha256)
+        assertTrue(release.msi!!.url.endsWith(".msi"))
+        assertNull(release.msi!!.sha256)
+    }
+
+    @Test
+    fun aFileNotOfferedOverHttpsIsLeftOut() {
+        val json = """{"tag_name": "v0.9.0", "assets": [{"name": "planner.apk", "browser_download_url": "file:///somewhere/planner.apk"}]}"""
+        assertNull(parseRelease(json)!!.apk)
     }
 
     @Test
