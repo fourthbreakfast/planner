@@ -73,6 +73,7 @@ import dev.fourthbreakfast.planner.ui.SwipeRow
 import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
+import dev.fourthbreakfast.planner.ui.listLines
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
@@ -460,8 +461,7 @@ fun ViewToggle(asMonth: Boolean, onClick: () -> Unit) {
         val h = size.height
         val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round)
         if (asMonth) {
-            // three lines, a list
-            for (y in listOf(0.28f, 0.5f, 0.72f)) drawLine(ink, Offset(w * 0.18f, h * y), Offset(w * 0.82f, h * y), line.width, StrokeCap.Round)
+            listLines(ink)
         } else {
             // a page with a bar on top and a grid of days
             drawRect(ink, Offset(w * 0.14f, h * 0.18f), Size(w * 0.72f, h * 0.68f), style = line)

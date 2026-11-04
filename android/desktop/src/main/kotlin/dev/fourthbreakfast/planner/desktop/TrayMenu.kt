@@ -32,6 +32,7 @@ import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 import java.awt.GraphicsEnvironment
 import java.awt.MouseInfo
 import java.awt.Point
+import java.awt.Rectangle
 import java.awt.SystemTray
 import java.awt.Toolkit
 import java.awt.TrayIcon
@@ -175,11 +176,24 @@ private fun placeMenu(click: Point, width: Int, height: Int): WindowPosition {
     val configuration = device.defaultConfiguration
     val bounds = configuration.bounds
     val insets = Toolkit.getDefaultToolkit().getScreenInsets(configuration)
-    val left = bounds.x + insets.left
-    val right = bounds.x + bounds.width - insets.right
-    val top = bounds.y + insets.top
-    val bottom = bounds.y + bounds.height - insets.bottom
-    val x = (if (click.x + width > right) click.x - width else click.x).coerceIn(left, maxOf(left, right - width))
-    val y = (if (click.y + height > bottom) click.y - height else click.y).coerceIn(top, maxOf(top, bottom - height))
-    return WindowPosition(x.dp, y.dp)
+    val area = Rectangle(
+        bounds.x + insets.left,
+        bounds.y + insets.top,
+        bounds.width - insets.left - insets.right,
+        bounds.height - insets.top - insets.bottom,
+    )
+    val corner = menuCorner(click, width, height, area)
+    return WindowPosition(corner.x.dp, corner.y.dp)
+}
+
+/**
+ * Where a menu [width] by [height] has its top left corner for a click at [click]: at the click, flipped up or left where
+ * it would reach past [area], the screen without the taskbar, and kept inside it.
+ */
+internal fun menuCorner(click: Point, width: Int, height: Int, area: Rectangle): Point {
+    val right = area.x + area.width
+    val bottom = area.y + area.height
+    val x = (if (click.x + width > right) click.x - width else click.x).coerceIn(area.x, maxOf(area.x, right - width))
+    val y = (if (click.y + height > bottom) click.y - height else click.y).coerceIn(area.y, maxOf(area.y, bottom - height))
+    return Point(x, y)
 }

@@ -65,6 +65,8 @@ import dev.fourthbreakfast.planner.ui.SettingsButton
 import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
+import dev.fourthbreakfast.planner.ui.itemAt
+import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.rememberKeyboardShown
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
@@ -166,7 +168,7 @@ internal fun TaskList(
     }
 
     fun updateDropTarget() {
-        val row = list.layoutInfo.visibleItemsInfo.firstOrNull { dragY >= it.offset && dragY < it.offset + it.size }
+        val row = list.itemAt(dragY)
         val key = row?.key as? String
         if (row == null || key == null || key == dragKey) {
             dropKey = null
@@ -174,11 +176,7 @@ internal fun TaskList(
             return
         }
         val fraction = (dragY - row.offset) / row.size
-        dropZone = when {
-            fraction < 0.28f -> DropZone.BEFORE
-            fraction > 0.72f -> DropZone.AFTER
-            else -> DropZone.INTO
-        }
+        dropZone = dropZoneAt(fraction)
         val moved = dragKey ?: return
         val drop = resolveDrop(currentRows, currentTasks, moved, key, if (key == EndRow.key) DropZone.BEFORE else dropZone)
         // a place nothing can land on shows nothing
@@ -252,7 +250,7 @@ internal fun TaskList(
                 onHold = { key, at ->
                     dragKey = key
                     dragY = at.y - listBounds.top
-                    grabInRow = dragY - (list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset ?: 0)
+                    grabInRow = dragY - list.offsetOf(key)
                 },
                 onDrag = { dy ->
                     dragY += dy
@@ -270,10 +268,7 @@ internal fun TaskList(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     val inList = listBounds.contains(down.position) &&
-                        list.layoutInfo.visibleItemsInfo.any {
-                            val y = down.position.y - listBounds.top
-                            it.key != EndRow.key && y >= it.offset && y < it.offset + it.size
-                        }
+                        list.itemAt(down.position.y - listBounds.top).let { it != null && it.key != EndRow.key }
                     if (!inList && !addBarBounds.contains(down.position)) focusManager.clearFocus()
                 }
             },
@@ -344,8 +339,7 @@ internal fun TaskList(
                         .then(if (dragging) Modifier.zIndex(1f) else Modifier)
                         .graphicsLayer {
                             if (dragging) {
-                                val offset = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == row.key }?.offset ?: 0
-                                translationY = dragY - grabInRow - offset
+                                translationY = dragY - grabInRow - list.offsetOf(row.key)
                                 alpha = 0.92f
                                 shadowElevation = 12f
                             }

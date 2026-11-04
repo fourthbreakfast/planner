@@ -5,6 +5,7 @@ import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
@@ -40,6 +41,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -47,7 +49,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import dev.fourthbreakfast.planner.core.Priority
@@ -76,8 +80,14 @@ import dev.fourthbreakfast.planner.tasks.TaskCheck
 import dev.fourthbreakfast.planner.tasks.TaskNode
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.arrange
+import dev.fourthbreakfast.planner.tasks.dropZoneAt
 import dev.fourthbreakfast.planner.tasks.rankedDestination
 import dev.fourthbreakfast.planner.tasks.resolveDrop
+import dev.fourthbreakfast.planner.ui.binIcon
+import dev.fourthbreakfast.planner.ui.itemAt
+import dev.fourthbreakfast.planner.ui.offsetOf
+import dev.fourthbreakfast.planner.ui.openAllTriangle
+import dev.fourthbreakfast.planner.ui.plus
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
@@ -111,13 +121,8 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
     var drop by remember { mutableStateOf<Pair<String, DropZone>?>(null) }
 
     fun targetAt(y: Float): Pair<String, DropZone>? {
-        val item = list.layoutInfo.visibleItemsInfo.firstOrNull { y >= it.offset && y < it.offset + it.size } ?: return null
-        val fraction = (y - item.offset) / item.size
-        val zone = when {
-            fraction < 0.28f -> DropZone.BEFORE
-            fraction > 0.72f -> DropZone.AFTER
-            else -> DropZone.INTO
-        }
+        val item = list.itemAt(y) ?: return null
+        val zone = dropZoneAt((y - item.offset) / item.size)
         return (item.key as? String)?.let { it to zone }
     }
 
@@ -127,19 +132,7 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
             if (parentIds.isNotEmpty()) {
                 HeaderButton(stringResource(if (anyClosed) Res.string.expand_all else Res.string.collapse_all), {
                     state.openTasks = if (anyClosed) parentIds else emptySet()
-                }) { ink ->
-                    val tip = if (anyClosed) 0.66f else 0.34f
-                    val base = if (anyClosed) 0.36f else 0.64f
-                    drawPath(
-                        androidx.compose.ui.graphics.Path().apply {
-                            moveTo(size.width * 0.24f, size.height * base)
-                            lineTo(size.width * 0.76f, size.height * base)
-                            lineTo(size.width * 0.5f, size.height * tip)
-                            close()
-                        },
-                        ink,
-                    )
-                }
+                }) { openAllTriangle(it, opens = anyClosed) }
             }
             DeskBin(binCount, { state.panel = Panel.TaskBin })
         }
@@ -196,9 +189,8 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                             .pointerInput(task.id) {
                                 detectDragGestures(
                                     onDragStart = { at ->
-                                        val item = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == task.id }
                                         dragging = task.id
-                                        dragY = (item?.offset ?: 0) + at.y
+                                        dragY = list.offsetOf(task.id) + at.y
                                     },
                                     onDrag = { change, amount ->
                                         change.consume()
@@ -234,7 +226,7 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                                 }) { ink ->
                                     val open = !node.collapsed
                                     drawPath(
-                                        androidx.compose.ui.graphics.Path().apply {
+                                        Path().apply {
                                             if (open) {
                                                 moveTo(size.width * 0.3f, size.height * 0.38f)
                                                 lineTo(size.width * 0.7f, size.height * 0.38f)
@@ -305,9 +297,7 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
                 stringResource(Res.string.add_inside_hint, aimed.title),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant,
-                modifier = Modifier.padding(start = Space.x2 + Space.x5 + Space.x6 + Space.x2, top = Space.x2).combinedClickableCompat {
-                    state.aimedTask = null
-                },
+                modifier = Modifier.padding(start = Space.x2 + Space.x5 + Space.x6 + Space.x2, top = Space.x2).clickable { state.aimedTask = null },
             )
         }
         var typing by remember { mutableStateOf(false) }
@@ -352,12 +342,23 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
     }
 }
 
-/** A text field in place of a title: enter keeps the new words, escape the old ones. */
+/**
+ * A text field in place of a title: enter or clicking elsewhere keeps the new words, escape the old ones, as renaming does
+ * on the phone. [onDone] hears once, with the words or null for none.
+ */
 @Composable
-fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?) -> Unit) {
+private fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?) -> Unit) {
     val colors = MaterialTheme.colorScheme
-    var text by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(initial, androidx.compose.ui.text.TextRange(0, initial.length))) }
+    var text by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
     val focus = remember { FocusRequester() }
+    var hadFocus by remember { mutableStateOf(false) }
+    var finished by remember { mutableStateOf(false) }
+
+    fun finish(words: String?) {
+        if (finished) return
+        finished = true
+        onDone(words)
+    }
     LaunchedEffect(Unit) { focus.requestFocus() }
     BasicTextField(
         value = text,
@@ -366,13 +367,17 @@ fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
         cursorBrush = SolidColor(colors.onBackground),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onDone(text.text.trim()) }),
+        keyboardActions = KeyboardActions(onDone = { finish(text.text.trim()) }),
         modifier = modifier
             .padding(start = Space.x2)
             .focusRequester(focus)
+            .onFocusChanged {
+                if (hadFocus && !it.isFocused) finish(text.text.trim())
+                hadFocus = it.isFocused
+            }
             .onPreviewKeyEvent { event ->
                 if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
-                    onDone(null)
+                    finish(null)
                     true
                 } else {
                     false
@@ -380,6 +385,3 @@ fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?
             },
     )
 }
-
-@OptIn(ExperimentalFoundationApi::class)
-private fun Modifier.combinedClickableCompat(onClick: () -> Unit): Modifier = this.combinedClickable(onClick = onClick)

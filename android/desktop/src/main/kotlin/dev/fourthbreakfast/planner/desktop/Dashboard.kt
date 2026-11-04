@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import dev.fourthbreakfast.planner.agenda.EventEditor
 import dev.fourthbreakfast.planner.agenda.movedDraft
 import dev.fourthbreakfast.planner.agenda.today
 import dev.fourthbreakfast.planner.core.Repeat
+import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.binEntries
 import dev.fourthbreakfast.planner.notes.NoteEditor
 import dev.fourthbreakfast.planner.notes.NotesBin
@@ -117,7 +119,7 @@ fun handleDashboardKey(
     tasks: TasksViewModel,
     agenda: AgendaViewModel,
     notes: NotesViewModel,
-    allTasks: () -> List<dev.fourthbreakfast.planner.core.Task>,
+    allTasks: () -> List<Task>,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val ctrl = event.isCtrlPressed
@@ -177,13 +179,14 @@ fun Dashboard(
     val allTasks by tasksViewModel.all.collectAsState(initial = emptyList())
     val allEvents by agendaViewModel.all.collectAsState(initial = emptyList())
     val allNotes by notesViewModel.all.collectAsState(initial = emptyList())
+    val taskBin = remember(allTasks) { binEntries(allTasks) }
     val toolbarAbove = LocalServices.current.settings.toolbarAbove
     val requests = LocalServices.current.requests
 
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
         Row(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                TaskColumn(allTasks, binEntries(allTasks).size, state, tasksViewModel)
+                TaskColumn(allTasks, taskBin.size, state, tasksViewModel)
             }
             Divider()
             Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -234,7 +237,7 @@ fun Dashboard(
                 val close = { state.panel = null }
                 when (panel) {
                     is Panel.NoteOpen -> allNotes.firstOrNull { it.id == panel.id }?.let { note ->
-                        androidx.compose.runtime.key(note.id) {
+                        key(note.id) {
                             NoteEditor(
                                 note = note,
                                 onPin = { notesViewModel.setPinned(note.id, !note.pinned) },
@@ -246,7 +249,7 @@ fun Dashboard(
                     }
                     is Panel.EventOpen -> {
                         val editing = panel.id?.let { id -> allEvents.firstOrNull { it.id == id } }
-                        androidx.compose.runtime.key(panel) {
+                        key(panel) {
                             EventEditor(
                                 initial = editing,
                                 occurrence = panel.occurrence,
@@ -265,7 +268,7 @@ fun Dashboard(
                             )
                         }
                     }
-                    Panel.TaskBin -> BinScreen(binEntries(allTasks), tasksViewModel, onClose = close)
+                    Panel.TaskBin -> BinScreen(taskBin, tasksViewModel, onClose = close)
                     Panel.AgendaBin -> AgendaBin(allEvents.filter { it.inBin }.sortedByDescending { it.deletedAt }, agendaViewModel, onClose = close)
                     Panel.NoteBin -> NotesBin(allNotes.filter { it.inBin }.sortedByDescending { it.deletedAt }, notesViewModel, onClose = close)
                     Panel.Search -> SearchScreen(notesViewModel, onOpen = { launch ->
@@ -280,9 +283,12 @@ fun Dashboard(
             }
         }
         // a share or a tray action asks for something: the dashboard acts on it
-        androidx.compose.runtime.LaunchedEffect(requests.pending) {
+        LaunchedEffect(requests.pending) {
             when (val request = requests.pending) {
-                Launch.NewTask -> state.focused = Section.TASKS.also { state.focusAdd++ }
+                Launch.NewTask -> {
+                    state.focused = Section.TASKS
+                    state.focusAdd++
+                }
                 Launch.NewEvent -> state.newEvent(null)
                 Launch.NewNote -> notesViewModel.add { state.openNote(it) }
                 is Launch.OpenEvent -> state.openEvent(request.id)

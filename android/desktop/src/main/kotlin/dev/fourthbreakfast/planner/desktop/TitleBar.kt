@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -48,6 +49,7 @@ import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.theme.Space
 import java.awt.Cursor
 import java.awt.Frame
+import java.awt.MouseInfo
 import java.awt.Window
 import org.jetbrains.compose.resources.stringResource
 
@@ -120,7 +122,7 @@ internal fun WindowButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     forceHover: Boolean = false,
-    draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit,
+    draw: DrawScope.(Color) -> Unit,
 ) {
     val (hover, pointerOver) = rememberHover()
     val hovered = pointerOver || forceHover
@@ -174,7 +176,7 @@ private fun Edge(
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     change.consume()
-                    val mouse = java.awt.MouseInfo.getPointerInfo().location
+                    val mouse = MouseInfo.getPointerInfo().location
                     val b = window.bounds
                     val min = window.minimumSize
                     var x = b.x

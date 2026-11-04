@@ -56,6 +56,8 @@ import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.show_list
 import dev.fourthbreakfast.planner.resources.show_month
 import dev.fourthbreakfast.planner.ui.LocalServices
+import dev.fourthbreakfast.planner.ui.binIcon
+import dev.fourthbreakfast.planner.ui.listLines
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.theme.Space
 import java.time.YearMonth

@@ -22,8 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,8 @@ import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.bin_with_count
 import dev.fourthbreakfast.planner.ui.SegmentNumber
 import dev.fourthbreakfast.planner.ui.SegmentText
+import dev.fourthbreakfast.planner.ui.binIcon
+import dev.fourthbreakfast.planner.ui.plus
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
@@ -68,7 +73,7 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
 
 /** A small drawn button in the column header, the same quiet ink as the phone's icons. */
 @Composable
-fun HeaderButton(label: String, onClick: () -> Unit, draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit) {
+fun HeaderButton(label: String, onClick: () -> Unit, draw: DrawScope.(Color) -> Unit) {
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
@@ -85,48 +90,29 @@ fun HeaderButton(label: String, onClick: () -> Unit, draw: androidx.compose.ui.g
     }
 }
 
-/** A plus, for adding, drawn as the phone's. */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.plus(ink: Color) {
-    val line = Space.strokeThin.toPx()
-    drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), line, StrokeCap.Round)
-    drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), line, StrokeCap.Round)
-}
-
 /** A plain calendar page: two rings at the top, a line under them, nothing inside. */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.calendar(ink: Color) {
+fun DrawScope.calendar(ink: Color) {
     val line = Space.strokeThin.toPx()
     val w = size.width
     val h = size.height
     drawRect(
         ink,
         Offset(w * 0.16f, h * 0.22f),
-        androidx.compose.ui.geometry.Size(w * 0.68f, h * 0.62f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(line),
+        Size(w * 0.68f, h * 0.62f),
+        style = Stroke(line),
     )
     drawLine(ink, Offset(w * 0.16f, h * 0.42f), Offset(w * 0.84f, h * 0.42f), line)
     for (x in listOf(0.36f, 0.64f)) drawLine(ink, Offset(w * x, h * 0.12f), Offset(w * x, h * 0.30f), line, StrokeCap.Round)
 }
 
-/** Three lines, a list. */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.listLines(ink: Color) {
-    val line = Space.strokeThin.toPx()
-    for (y in listOf(
-        0.28f,
-        0.5f,
-        0.72f,
-    )) {
-        drawLine(ink, Offset(size.width * 0.18f, size.height * y), Offset(size.width * 0.82f, size.height * y), line, StrokeCap.Round)
-    }
-}
-
 /** A magnifying glass, for search. */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.magnifier(ink: Color) {
+fun DrawScope.magnifier(ink: Color) {
     val line = Space.strokeThin.toPx()
     drawCircle(
         ink,
         radius = size.width * 0.28f,
         center = Offset(size.width * 0.44f, size.height * 0.44f),
-        style = androidx.compose.ui.graphics.drawscope.Stroke(line),
+        style = Stroke(line),
     )
     drawLine(ink, Offset(size.width * 0.64f, size.height * 0.64f), Offset(size.width * 0.84f, size.height * 0.84f), line, StrokeCap.Round)
 }
@@ -177,35 +163,8 @@ fun DeskBin(count: Int, onClick: () -> Unit) {
     HeaderButton(label, onClick) { binIcon(it) }
 }
 
-/** A bin: a body narrowing to its foot, a lid with a handle, as the phone draws it. */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.binIcon(ink: Color) {
-    val line = androidx.compose.ui.graphics.drawscope.Stroke(
-        Space.strokeThin.toPx(),
-        cap = StrokeCap.Round,
-        join = androidx.compose.ui.graphics.StrokeJoin.Round,
-    )
-    val w = size.width
-    val h = size.height
-    val body = androidx.compose.ui.graphics.Path().apply {
-        moveTo(w * 0.22f, h * 0.28f)
-        lineTo(w * 0.28f, h * 0.92f)
-        lineTo(w * 0.72f, h * 0.92f)
-        lineTo(w * 0.78f, h * 0.28f)
-    }
-    drawPath(body, ink, style = line)
-    val lid = androidx.compose.ui.graphics.Path().apply {
-        moveTo(w * 0.12f, h * 0.28f)
-        lineTo(w * 0.88f, h * 0.28f)
-        moveTo(w * 0.38f, h * 0.28f)
-        lineTo(w * 0.38f, h * 0.10f)
-        lineTo(w * 0.62f, h * 0.10f)
-        lineTo(w * 0.62f, h * 0.28f)
-    }
-    drawPath(lid, ink, style = line)
-}
-
 /** A › pointing right, for a line in use. */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.chevron(ink: Color) {
+fun DrawScope.chevron(ink: Color) {
     val line = Space.strokeThin.toPx()
     drawLine(ink, Offset(size.width * 0.36f, size.height * 0.18f), Offset(size.width * 0.68f, size.height * 0.5f), line, StrokeCap.Round)
     drawLine(ink, Offset(size.width * 0.68f, size.height * 0.5f), Offset(size.width * 0.36f, size.height * 0.82f), line, StrokeCap.Round)
