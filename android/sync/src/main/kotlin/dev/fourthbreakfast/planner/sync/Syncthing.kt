@@ -279,3 +279,14 @@ internal fun writeIgnore(folder: File, text: String) {
     val ignore = File(folder, ".stignore")
     if (!ignore.exists() || ignore.readText() != text) java.nio.file.Files.writeString(ignore.toPath(), text)
 }
+
+/**
+ * The processes that run [binary] with [home] as their home, as Linux lists them under [proc]: a Syncthing an earlier
+ * run of the app left going when it was killed, which still holds the database and the port. Only processes this user
+ * may see are listed, which are the only ones it may stop. Used on the phone; Windows has no /proc.
+ */
+fun leftBehindSyncthings(binary: File, home: File, proc: File = File("/proc")): List<Int> = proc.listFiles().orEmpty().mapNotNull { entry ->
+    val pid = entry.name.toIntOrNull() ?: return@mapNotNull null
+    val args = runCatching { File(entry, "cmdline").readText() }.getOrNull()?.split('\u0000') ?: return@mapNotNull null
+    pid.takeIf { args.firstOrNull() == binary.path && "--home=${home.path}" in args }
+}
