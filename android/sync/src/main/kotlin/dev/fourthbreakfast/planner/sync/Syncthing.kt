@@ -60,8 +60,7 @@ class Syncthing(
         val config = File(home, "config.xml")
         if (!config.exists()) run("generate", "--home=${home.path}", "--no-port-probing")
         config.writeText(plannerConfig(config.readText(), ports, anywhere))
-        // the temporary file a device writes before putting its file in place is never shared
-        File(folder, ".stignore").writeText("*.tmp\n")
+        writeIgnore(folder, IGNORE)
 
         val port = ServerSocket(0, 1, InetAddress.getLoopbackAddress()).use { it.localPort }
         val key = randomKey()
@@ -239,6 +238,8 @@ class Syncthing(
     }
 
     private companion object {
+        // the temporary file a device writes before putting its file in place is never shared
+        const val IGNORE = "*.tmp\n"
         val isWindows = System.getProperty("os.name").orEmpty().startsWith("Windows")
 
         val ENVIRONMENT = mapOf("STNODEFAULTFOLDER" to "1", "STNOUPGRADE" to "1")
@@ -255,3 +256,9 @@ private fun JsonObject.string(name: String): String = this[name]?.jsonPrimitive?
 
 /** The short form of a device id Syncthing shows people: its first seven characters. */
 fun shortId(id: String): String = id.replace("-", "").take(7).uppercase()
+
+/** Puts [text] in the folder's .stignore, written in place so a file Syncthing has hidden on Windows still takes it. */
+internal fun writeIgnore(folder: File, text: String) {
+    val ignore = File(folder, ".stignore")
+    if (!ignore.exists() || ignore.readText() != text) java.nio.file.Files.writeString(ignore.toPath(), text)
+}

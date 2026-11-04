@@ -38,7 +38,16 @@ class DesktopSync(
     private val prefs: Prefs,
     private val scope: CoroutineScope,
 ) : SyncControls {
-    private val syncthing = binary?.let { Syncthing(it, File(root, "home"), File(root, "share")) }
+    // what the app did with its Syncthing, and why it would not start, kept beside Syncthing's own log
+    private val logFile = File(root, "home/planner.log")
+    private val syncthing = binary?.let { Syncthing(it, File(root, "home"), File(root, "share"), log = ::note) }
+
+    private fun note(line: String) {
+        runCatching {
+            if (logFile.length() > 200_000) logFile.delete()
+            logFile.appendText("${java.time.LocalDateTime.now().withNano(0)} $line\n")
+        }
+    }
     private val leftBehind = LeftBehind(File(root, "home"))
     private val lock = Mutex()
     private var loop: Job? = null
@@ -142,8 +151,9 @@ class DesktopSync(
             try {
                 // the name windows gives the computer, read without asking the network
                 syncthing.start(anywhere, (System.getenv("COMPUTERNAME") ?: "windows").lowercase())
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // a program of its own that would not start is no reason for the app to stop
+                note("could not start: $e")
                 syncthing.stop()
                 current.value = current.value.copy(failed = true)
                 return
