@@ -55,7 +55,7 @@ private fun luhn(group: String): Char {
  * The id of the device listening at [host]:[port], read from the certificate it shows when a connection starts, or
  * null when nothing answers there within [timeoutMillis]. The connection is dropped once the certificate is seen.
  */
-fun deviceIdAt(host: String, port: Int, timeoutMillis: Int = 700): String? {
+fun deviceIdAt(host: String, port: Int, timeoutMillis: Int = 700, log: (String) -> Unit = {}): String? {
     var seen: X509Certificate? = null
     val trust = object : X509TrustManager {
         override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
@@ -74,11 +74,12 @@ fun deviceIdAt(host: String, port: Int, timeoutMillis: Int = 700): String? {
             val tls = context.socketFactory.createSocket(plain, host, port, true) as SSLSocket
             // the other side wants a certificate from this one too, and may well refuse the handshake without it: the
             // certificate it sent first is all that is wanted here
-            runCatching { tls.startHandshake() }
+            runCatching { tls.startHandshake() }.onFailure { log("$host handshake: $it") }
             runCatching { tls.close() }
         }
         seen?.let(::deviceId)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        log("$host: $e")
         seen?.let(::deviceId)
     }
 }
