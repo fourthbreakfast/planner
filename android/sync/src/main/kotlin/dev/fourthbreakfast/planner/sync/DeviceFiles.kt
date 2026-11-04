@@ -33,6 +33,27 @@ class DeviceFiles(private val folder: File, private val myId: String, private va
         written = text
     }
 
+    /**
+     * Names go with the files: this device writes the name it goes by beside its file, and gives each paired device the
+     * name that device wrote for itself, so a device is called the same everywhere and is named only on itself.
+     */
+    suspend fun carryNames(syncthing: Syncthing, ownName: String) {
+        withContext(Dispatchers.IO) {
+            folder.mkdirs()
+            val own = File(folder, "$myId.name")
+            if (!own.exists() || own.readText() != ownName) own.writeText(ownName)
+        }
+        val written = withContext(Dispatchers.IO) {
+            folder.listFiles().orEmpty()
+                .filter { it.isFile && it.name.endsWith(".name") && it.name != "$myId.name" }
+                .associate { it.name.removeSuffix(".name") to it.readText().trim() }
+        }
+        for (peer in syncthing.peers()) {
+            val name = written[peer.id]?.takeIf { it.isNotEmpty() } ?: continue
+            if (name != peer.name) syncthing.rename(peer.id, name)
+        }
+    }
+
     /** Merges every other device's file that changed since it was last read, and returns how many things changed here. */
     suspend fun takeIn(): Int {
         val files = withContext(Dispatchers.IO) {

@@ -167,7 +167,12 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(start = Space.gutter, end = Space.rowPad),
                 ) {
-                    NameField(peer.name.ifBlank { shortId(peer.id) }, Modifier.weight(1f)) { controller.renamePeer(peer.id, it) }
+                    Text(
+                        text = peer.name.ifBlank { shortId(peer.id) },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.onBackground,
+                        modifier = Modifier.weight(1f),
+                    )
                     Text(
                         text = stringResource(if (peer.connected) Res.string.sync_connected else Res.string.sync_waiting),
                         style = MaterialTheme.typography.labelMedium,

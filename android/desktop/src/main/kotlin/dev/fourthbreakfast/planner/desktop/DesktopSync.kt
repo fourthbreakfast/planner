@@ -91,17 +91,6 @@ class DesktopSync(
         }
     }
 
-    override fun renamePeer(id: String, name: String) {
-        val clean = name.trim().take(40)
-        if (clean.isEmpty()) return
-        scope.launch {
-            runCatching {
-                syncthing?.rename(id, clean)
-                refresh()
-            }
-        }
-    }
-
     override fun openPairing() {
         pairing = true
         scope.launch { ensureRunning() }
@@ -151,6 +140,7 @@ class DesktopSync(
             files.publish()
             this.syncthing?.rescan()
             files.takeIn()
+            files.carryNames(this.syncthing ?: return@runCatching, deviceName)
             refresh()
         }
     }
@@ -218,6 +208,7 @@ class DesktopSync(
             while (scope.isActive) {
                 runCatching {
                     files.takeIn()
+                    files.carryNames(syncthing, deviceName)
                     refresh()
                 }
                 delay(TICK_MILLIS)
