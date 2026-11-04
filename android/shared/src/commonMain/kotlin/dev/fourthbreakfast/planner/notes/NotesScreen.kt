@@ -69,6 +69,7 @@ import dev.fourthbreakfast.planner.ui.SwipeRow
 import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
+import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
 import dev.fourthbreakfast.planner.ui.sweepAndHold
@@ -225,7 +226,7 @@ private fun NotesList(
                 onHold = { key, at ->
                     dragKey = key
                     dragY = at.y - listBounds.top
-                    grab = dragY - (list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset ?: 0)
+                    grab = dragY - list.offsetOf(key)
                     updateDrop()
                 },
                 onDrag = { dy ->
@@ -308,8 +309,7 @@ private fun NotesList(
                             .then(if (dragging) Modifier.zIndex(1f) else Modifier)
                             .graphicsLayer {
                                 if (dragging) {
-                                    val offset = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == note.id }?.offset ?: 0
-                                    translationY = dragY - grab - offset
+                                    translationY = dragY - grab - list.offsetOf(note.id)
                                     alpha = 0.92f
                                     shadowElevation = 12f
                                 }

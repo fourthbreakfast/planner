@@ -38,7 +38,7 @@ fun spanFor(look: Int): SpanStyle = SpanStyle(
     textDecoration = if (look and UNDERLINE != 0) TextDecoration.Underline else null,
 )
 
-/** The words of a line with their looks, starting [offset] characters in (the editor keeps a guard in front). */
+/** Appends [text], each run of letters with the same look in [looks] as one styled stretch. */
 fun AnnotatedString.Builder.appendStyled(text: String, looks: List<Int>) {
     var start = 0
     while (start < text.length) {

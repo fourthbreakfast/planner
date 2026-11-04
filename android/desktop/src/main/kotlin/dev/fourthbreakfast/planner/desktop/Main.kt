@@ -51,7 +51,10 @@ import dev.fourthbreakfast.planner.ui.is24HourClock
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 import dev.fourthbreakfast.planner.updates.UpdateState
 import dev.fourthbreakfast.planner.updates.Updates
+import java.awt.Dimension
+import java.awt.Point
 import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -129,7 +132,7 @@ fun main(args: Array<String>) {
                 windowState.isMinimized = false
             }
         }
-        var menuAt by remember { mutableStateOf<java.awt.Point?>(null) }
+        var menuAt by remember { mutableStateOf<Point?>(null) }
         val icon = remember { appIconPainter() }
         val dark = app.settings.theme.isDark()
         val tray = remember {
@@ -168,7 +171,7 @@ fun main(args: Array<String>) {
             val then = if (exe != null) " && start \"\" \"$exe\"" else ""
             try {
                 ProcessBuilder("cmd", "/c", "msiexec /i \"${ready.file.path}\" /passive /norestart$then").start()
-            } catch (_: java.io.IOException) {
+            } catch (_: IOException) {
                 // the installer could not be started: the app stays, and the update is still offered
                 return
             }
@@ -210,7 +213,7 @@ fun main(args: Array<String>) {
                 }
             },
         ) {
-            window.minimumSize = java.awt.Dimension(900, 560)
+            window.minimumSize = Dimension(900, 560)
             val frame = remember { NativeFrame() }
             LaunchedEffect(Unit) { frame.install(window, Desk.edge.value.toInt()) }
             CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {

@@ -65,27 +65,7 @@ fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
             .clickable(onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = label },
     ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            val w = size.width
-            val h = size.height
-            val body = Path().apply {
-                moveTo(w * 0.22f, h * 0.28f)
-                lineTo(w * 0.28f, h * 0.92f)
-                lineTo(w * 0.72f, h * 0.92f)
-                lineTo(w * 0.78f, h * 0.28f)
-            }
-            drawPath(body, ink, style = line)
-            val lid = Path().apply {
-                moveTo(w * 0.12f, h * 0.28f)
-                lineTo(w * 0.88f, h * 0.28f)
-                moveTo(w * 0.38f, h * 0.28f)
-                lineTo(w * 0.38f, h * 0.10f)
-                lineTo(w * 0.62f, h * 0.10f)
-                lineTo(w * 0.62f, h * 0.28f)
-            }
-            drawPath(lid, ink, style = line)
-        }
+        Canvas(Modifier.size(Space.icon)) { binIcon(ink) }
         if (binCount > 0) {
             Text(
                 text = binCount.toString(),
@@ -133,11 +113,7 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
 /** A plus, to add something: drawn like the other icons, quiet, in a touch square at the bottom right. */
 @Composable
 fun AddButton(label: String, onClick: () -> Unit) {
-    DrawnIconButton(label, onClick) { ink ->
-        val width = Space.strokeThin.toPx()
-        drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), width, StrokeCap.Round)
-        drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), width, StrokeCap.Round)
-    }
+    DrawnIconButton(label, onClick) { ink -> plus(ink) }
 }
 
 /** An arrow pointing back, in the spot where the bin button is on the main screen. */

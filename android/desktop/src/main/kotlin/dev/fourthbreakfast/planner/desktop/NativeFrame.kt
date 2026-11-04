@@ -3,6 +3,7 @@ package dev.fourthbreakfast.planner.desktop
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import com.sun.jna.Callback
 import com.sun.jna.CallbackReference
@@ -11,6 +12,8 @@ import com.sun.jna.Pointer
 import com.sun.jna.Structure
 import com.sun.jna.win32.StdCallLibrary
 import java.awt.Window
+import java.io.File
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * What Windows needs to know about a window drawn without its frame, so that dragging it to an edge snaps it, Win and
@@ -40,6 +43,9 @@ class NativeFrame {
     var maximizeHovered by mutableStateOf(false)
         private set
 
+    // what handled the window's messages before, which gets everything not answered here. Windows can ask before it is
+    // known, from its own thread, so it is read fresh each time, and while it is not yet known Windows' default answers
+    @Volatile
     private var previous = 0L
 
     // kept as a field: the native side holds only an address, and a callback collected away would crash the window
@@ -53,10 +59,10 @@ class NativeFrame {
             val user32 = User32X.INSTANCE
             val proc = object : WindowProc {
                 override fun callback(hwnd: Pointer, message: Int, wParam: Long, lParam: Long): Long = try {
-                    handle(user32, hwnd, message, wParam, lParam, edgeDp) ?: user32.CallWindowProcW(Pointer(previous), hwnd, message, wParam, lParam)
+                    handle(user32, hwnd, message, wParam, lParam, edgeDp) ?: passOn(user32, previous, hwnd, message, wParam, lParam)
                 } catch (e: Throwable) {
                     trace("failed: $e")
-                    user32.CallWindowProcW(Pointer(previous), hwnd, message, wParam, lParam)
+                    passOn(user32, previous, hwnd, message, wParam, lParam)
                 }
             }
             handler = proc
@@ -77,7 +83,7 @@ class NativeFrame {
     }
 
     private fun trace(line: String) {
-        runCatching { java.io.File(System.getProperty("java.io.tmpdir"), "planner-frame.txt").appendText(line + System.lineSeparator()) }
+        runCatching { File(System.getProperty("java.io.tmpdir"), "planner-frame.txt").appendText(line + System.lineSeparator()) }
     }
 
     /** The answer to a message, or null to leave it to what handled it before. */
@@ -148,49 +154,35 @@ class NativeFrame {
         var child = user32.GetWindow(frame, GW_CHILD)
         while (child != null) {
             val target = child
-            var before = 0L
+            // asked from Windows' thread, perhaps before it is known
+            val before = AtomicLong()
             val proc = object : WindowProc {
                 override fun callback(hwnd: Pointer, message: Int, wParam: Long, lParam: Long): Long = try {
                     if (message == WM_NCHITTEST && hitAt(user32, frame, lParam, edgeDp) != HTCLIENT) {
                         HTTRANSPARENT.toLong()
                     } else {
-                        user32.CallWindowProcW(Pointer(before), hwnd, message, wParam, lParam)
+                        passOn(user32, before.get(), hwnd, message, wParam, lParam)
                     }
                 } catch (e: Throwable) {
                     trace("child failed: $e")
-                    user32.CallWindowProcW(Pointer(before), hwnd, message, wParam, lParam)
+                    passOn(user32, before.get(), hwnd, message, wParam, lParam)
                 }
             }
-            before = user32.SetWindowLongPtrW(target, GWLP_WNDPROC, Pointer.nativeValue(CallbackReference.getFunctionPointer(proc)))
-            if (before != 0L) children += proc
+            before.set(user32.SetWindowLongPtrW(target, GWLP_WNDPROC, Pointer.nativeValue(CallbackReference.getFunctionPointer(proc))))
+            if (before.get() != 0L) children += proc
             child = user32.GetWindow(target, GW_HWNDNEXT)
         }
     }
 
     private fun hit(user32: User32X, hwnd: Pointer, x: Int, y: Int, width: Int, height: Int, edgeDp: Int): Int {
         val maximized = user32.IsZoomed(hwnd) != 0
-        if (!maximized) {
-            val edge = (edgeDp * user32.GetDpiForWindow(hwnd) / 96.0).toInt().coerceAtLeast(2)
-            val left = x < edge
-            val right = x >= width - edge
-            val top = y < edge
-            val bottom = y >= height - edge
-            when {
-                top && left -> return HTTOPLEFT
-                top && right -> return HTTOPRIGHT
-                bottom && left -> return HTBOTTOMLEFT
-                bottom && right -> return HTBOTTOMRIGHT
-                left -> return HTLEFT
-                right -> return HTRIGHT
-                top -> return HTTOP
-                bottom -> return HTBOTTOM
-            }
-        }
-        val maximize = maximizeButton
-        if (maximize.contains(androidx.compose.ui.geometry.Offset(x.toFloat(), y.toFloat()))) return HTMAXBUTTON
-        if (dragArea.contains(androidx.compose.ui.geometry.Offset(x.toFloat(), y.toFloat()))) return HTCAPTION
-        return HTCLIENT
+        val edge = (edgeDp * user32.GetDpiForWindow(hwnd) / 96.0).toInt().coerceAtLeast(2)
+        return frameHit(x, y, width, height, if (maximized) 0 else edge, maximizeButton, dragArea)
     }
+
+    /** What handled the message before, or Windows' default when that is not known yet. */
+    private fun passOn(user32: User32X, to: Long, hwnd: Pointer, message: Int, wParam: Long, lParam: Long): Long =
+        if (to == 0L) user32.DefWindowProcW(hwnd, message, wParam, lParam) else user32.CallWindowProcW(Pointer(to), hwnd, message, wParam, lParam)
 
     /** What is handled for a window: its handle, what was asked, and the two numbers that come with it. */
     interface WindowProc : Callback {
@@ -227,6 +219,8 @@ class NativeFrame {
 
         fun GetWindowLongPtrW(window: Pointer, index: Int): Long
 
+        fun DefWindowProcW(window: Pointer, message: Int, wParam: Long, lParam: Long): Long
+
         fun CallWindowProcW(previous: Pointer, window: Pointer, message: Int, wParam: Long, lParam: Long): Long
 
         fun SetWindowPos(window: Pointer, after: Pointer?, x: Int, y: Int, width: Int, height: Int, flags: Int): Boolean
@@ -250,7 +244,7 @@ class NativeFrame {
         }
     }
 
-    private companion object {
+    internal companion object {
         const val GWLP_WNDPROC = -4
         const val GWL_STYLE = -16
         const val WS_CAPTION = 0x00C00000L
@@ -290,5 +284,31 @@ class NativeFrame {
         const val HTBOTTOM = 15
         const val HTBOTTOMLEFT = 16
         const val HTBOTTOMRIGHT = 17
+    }
+}
+
+/**
+ * Where a point [x], [y] of a window [width] by [height] is, as Windows asks it: on one of its edges or corners within
+ * [edge] pixels of the side (none when maximized, which passes 0), on the maximize button, on the bar it is dragged by,
+ * or in the drawing. The answer is one of Windows' hit test codes.
+ */
+internal fun frameHit(x: Int, y: Int, width: Int, height: Int, edge: Int, maximizeButton: Rect, dragArea: Rect): Int {
+    val left = x < edge
+    val right = x >= width - edge
+    val top = y < edge
+    val bottom = y >= height - edge
+    val point = Offset(x.toFloat(), y.toFloat())
+    return when {
+        top && left -> NativeFrame.HTTOPLEFT
+        top && right -> NativeFrame.HTTOPRIGHT
+        bottom && left -> NativeFrame.HTBOTTOMLEFT
+        bottom && right -> NativeFrame.HTBOTTOMRIGHT
+        left -> NativeFrame.HTLEFT
+        right -> NativeFrame.HTRIGHT
+        top -> NativeFrame.HTTOP
+        bottom -> NativeFrame.HTBOTTOM
+        maximizeButton.contains(point) -> NativeFrame.HTMAXBUTTON
+        dragArea.contains(point) -> NativeFrame.HTCAPTION
+        else -> NativeFrame.HTCLIENT
     }
 }

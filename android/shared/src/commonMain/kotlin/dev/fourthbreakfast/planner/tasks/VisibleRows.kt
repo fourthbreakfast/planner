@@ -118,3 +118,13 @@ fun rankedMark(rows: List<ListRow>, tasks: List<Task>, taskId: String, to: Desti
     val next = visible.drop(index + 1).firstOrNull { it.depth <= visible[index].depth }
     return if (next != null) DropMark(next.key, DropZone.BEFORE, depth) else DropMark(visible.last().key, DropZone.AFTER, depth)
 }
+
+/**
+ * Which part of a row a point is over, from how far down the row it is, 0 at its top and 1 at its bottom: the top and
+ * bottom edges put a task beside the row, the middle inside it.
+ */
+fun dropZoneAt(fraction: Float): DropZone = when {
+    fraction < 0.28f -> DropZone.BEFORE
+    fraction > 0.72f -> DropZone.AFTER
+    else -> DropZone.INTO
+}

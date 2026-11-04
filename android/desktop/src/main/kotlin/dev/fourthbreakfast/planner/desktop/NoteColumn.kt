@@ -43,6 +43,9 @@ import dev.fourthbreakfast.planner.resources.pinned
 import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.search
 import dev.fourthbreakfast.planner.resources.unpin
+import dev.fourthbreakfast.planner.ui.binIcon
+import dev.fourthbreakfast.planner.ui.itemAt
+import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
@@ -100,14 +103,12 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                             .pointerInput(note.id) {
                                 detectDragGestures(
                                     onDragStart = { at ->
-                                        dragY = (list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == note.id }?.offset ?: 0) + at.y
+                                        dragY = list.offsetOf(note.id) + at.y
                                     },
                                     onDrag = { change, amount ->
                                         change.consume()
                                         dragY += amount.y
-                                        target = list.layoutInfo.visibleItemsInfo
-                                            .firstOrNull { dragY >= it.offset && dragY < it.offset + it.size }
-                                            ?.key?.let { it as? String }?.takeIf { it != note.id }
+                                        target = (list.itemAt(dragY)?.key as? String)?.takeIf { it != note.id }
                                     },
                                     onDragEnd = {
                                         // dropped on a note, it goes just above it
