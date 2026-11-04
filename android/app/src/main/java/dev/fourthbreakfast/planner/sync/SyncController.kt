@@ -3,6 +3,7 @@ package dev.fourthbreakfast.planner.sync
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.Process
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -18,6 +19,7 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -38,9 +40,8 @@ private const val LINGER_MILLIS = 60_000L
  */
 class SyncController(private val context: Context, sync: Sync, changes: Flow<Any>, scope: CoroutineScope) :
     SyncRunner(
-        // Android only runs a program the app unpacked itself, as a library
-        binary = File(context.applicationInfo.nativeLibraryDir, "libsyncthing.so"),
-        root = File(context.filesDir, "syncthing"),
+        binary = binaryOf(context),
+        root = rootOf(context),
         sync = sync,
         changes = changes,
         prefs = AndroidPrefs(context, "sync"),
@@ -102,6 +103,19 @@ class SyncController(private val context: Context, sync: Sync, changes: Flow<Any
         if (paired) schedule(true, replace = true)
     }
 
+    // a syncthing a killed run of the app left going still holds the database and the port, so it goes first. android
+    // normally stops an app's programs with it, but not always, and then sync would not start again until a restart
+    override suspend fun beforeStart() = withContext(Dispatchers.IO) {
+        val left = leftBehindSyncthings(binaryOf(context), File(rootOf(context), "home"))
+        for (pid in left) {
+            Log.i("planner", "stopping a syncthing left behind: $pid")
+            Process.killProcess(pid)
+        }
+        // it is gone once linux no longer lists it
+        withTimeoutOrNull(5_000) { while (left.any { File("/proc/$it").exists() }) delay(100) }
+        Unit
+    }
+
     override fun afterStart() {
         if (!multicast.isHeld) multicast.acquire()
     }
@@ -123,6 +137,11 @@ class SyncController(private val context: Context, sync: Sync, changes: Flow<Any
         work.enqueueUniquePeriodicWork(WORK, if (replace) ExistingPeriodicWorkPolicy.UPDATE else ExistingPeriodicWorkPolicy.KEEP, request)
     }
 }
+
+// android only runs a program the app unpacked itself, as a library
+private fun binaryOf(context: Context) = File(context.applicationInfo.nativeLibraryDir, "libsyncthing.so")
+
+private fun rootOf(context: Context) = File(context.filesDir, "syncthing")
 
 /** The run between uses, whenever Android allows it. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {

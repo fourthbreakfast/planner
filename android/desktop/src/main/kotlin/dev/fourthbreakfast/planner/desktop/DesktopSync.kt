@@ -8,7 +8,9 @@ import java.io.File
 import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 
 /**
  * Sync on the computer: the app's own Syncthing runs for as long as the app does and something is paired, or while the
@@ -29,7 +31,7 @@ class DesktopSync(binary: File?, root: File, sync: Sync, changes: Flow<Any>, pre
     ) {
     private val leftBehind = LeftBehind(File(root, "home"))
 
-    override fun beforeStart() = leftBehind.stop()
+    override suspend fun beforeStart() = withContext(Dispatchers.IO) { leftBehind.stop() }
 }
 
 /** What the app did with its Syncthing, and why it would not start, kept beside Syncthing's own log. */

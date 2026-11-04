@@ -76,7 +76,7 @@ abstract class SyncRunner(
     protected open fun onAnywhereChanged() {}
 
     /** Called just before Syncthing starts. */
-    protected open fun beforeStart() {}
+    protected open suspend fun beforeStart() {}
 
     /** Called once Syncthing has started. */
     protected open fun afterStart() {}
