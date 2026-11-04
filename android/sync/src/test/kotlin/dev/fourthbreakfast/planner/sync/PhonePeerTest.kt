@@ -25,7 +25,7 @@ class PhonePeerTest {
         val pc = Device(binary!!, root, Ports(22101, 21101, "127.0.0.1"))
         try {
             pc.start("test pc")
-            pc.syncthing.pair(id, introducer = true, address = address)
+            pc.syncthing.pair(id, introducer = true, addresses = listOf(address))
             withTimeout(120_000) { while (pc.syncthing.peers().none { it.connected }) delay(500) }
             println("connected to ${pc.syncthing.peers().map { it.name }}")
             pc.tasks.insert(listOf(Task(id = "from-the-pc", title = "from the pc", createdAt = System.currentTimeMillis())))

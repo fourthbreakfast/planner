@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 data class SyncState(
     val running: Boolean = false,
     val myId: String = "",
+    /** Where this device can be dialed on its local networks. */
+    val addresses: List<String> = emptyList(),
     val peers: List<Peer> = emptyList(),
     val nearby: List<String> = emptyList(),
     /** Devices asking to sync, waiting for a yes or a no. */
@@ -29,7 +31,10 @@ interface SyncControls {
 
     fun chooseAnywhere(on: Boolean)
 
-    /** Pairs with a device by its whole id, or by the short code it shows when it is on the same network. */
+    /**
+     * Pairs with a device by the code it shows: its whole id, with its addresses when scanned, or just the first letters
+     * of it when it is on the same network.
+     */
     suspend fun pairWith(code: String): Boolean
 
     fun letIn(id: String)

@@ -60,6 +60,7 @@ import dev.fourthbreakfast.planner.resources.sync_type_code
 import dev.fourthbreakfast.planner.resources.sync_unavailable
 import dev.fourthbreakfast.planner.resources.sync_waiting
 import dev.fourthbreakfast.planner.sync.SyncControls
+import dev.fourthbreakfast.planner.sync.pairText
 import dev.fourthbreakfast.planner.sync.shortId
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.QuietButton
@@ -113,7 +114,7 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
             }
             Line(stringResource(Res.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))
             if (state.myId.isNotEmpty()) {
-                QrCode(state.myId, Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
+                QrCode(pairText(state.myId, state.addresses), Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
             }
             if (scan != null) Setting(stringResource(Res.string.sync_scan), null) { scan(::pair) }
             Row(

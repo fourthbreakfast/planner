@@ -5,6 +5,8 @@ import dev.fourthbreakfast.planner.sync.DeviceFiles
 import dev.fourthbreakfast.planner.sync.SyncControls
 import dev.fourthbreakfast.planner.sync.SyncState
 import dev.fourthbreakfast.planner.sync.Syncthing
+import dev.fourthbreakfast.planner.sync.findOnLan
+import dev.fourthbreakfast.planner.sync.parsePairCode
 import dev.fourthbreakfast.planner.sync.shortId
 import dev.fourthbreakfast.planner.ui.Prefs
 import java.io.File
@@ -96,14 +98,18 @@ class DesktopSync(
     override suspend fun pairWith(code: String): Boolean {
         val syncthing = syncthing ?: return false
         ensureRunning()
-        val typed = code.trim().uppercase()
-        val id = if (typed.replace("-", "").length >= 52) {
-            typed
+        val code = parsePairCode(code)
+        val found = if (code.id.replace("-", "").length >= 52) {
+            code.id to code.addresses
         } else {
-            syncthing.nearby().firstOrNull { shortId(it) == typed.replace("-", "").take(7) } ?: return false
+            val short = code.id.replace("-", "").take(7)
+            // seen on the network already, or asked for door to door when the broadcasts do not get through
+            syncthing.nearby().firstOrNull { shortId(it) == short }?.let { it to emptyList() }
+                ?: findOnLan(short, syncthing.listenPort)?.let { (id, address) -> id to listOf(address) }
+                ?: return false
         }
         return try {
-            syncthing.pair(id, introducer = true)
+            syncthing.pair(found.first, introducer = true, addresses = found.second)
             refresh()
             true
         } catch (_: IOException) {
@@ -159,7 +165,7 @@ class DesktopSync(
                 return
             }
             val files = DeviceFiles(syncthing.folder, syncthing.myId, sync)
-            current.value = SyncState(running = true, myId = syncthing.myId)
+            current.value = SyncState(running = true, myId = syncthing.myId, addresses = syncthing.addresses())
             loop = scope.launch { run(syncthing, files) }
         }
     }
