@@ -22,21 +22,6 @@ data class Note(
     val inBin: Boolean get() = deletedAt != null
 }
 
-/** Where notes are kept. It knows nothing about the rules, those live in [Notes]. */
-interface NoteStore {
-    fun observeAll(): Flow<List<Note>>
-
-    suspend fun all(): List<Note>
-
-    suspend fun insert(notes: List<Note>)
-
-    suspend fun update(notes: List<Note>)
-
-    suspend fun delete(notes: List<Note>)
-
-    suspend fun <T> transaction(block: suspend () -> T): T
-}
-
 fun sortedNotes(notes: List<Note>): List<Note> = notes.sortedWith(compareBy({ !it.pinned }, { it.position }, { it.createdAt }))
 
 /** Everything the app can do with notes. */

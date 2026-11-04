@@ -41,10 +41,10 @@ import dev.fourthbreakfast.planner.core.Notes
 import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.core.Tasks
 import dev.fourthbreakfast.planner.core.newestChange
-import dev.fourthbreakfast.planner.data.RoomEventStore
-import dev.fourthbreakfast.planner.data.RoomNoteStore
 import dev.fourthbreakfast.planner.data.RoomSyncLedger
-import dev.fourthbreakfast.planner.data.RoomTaskStore
+import dev.fourthbreakfast.planner.data.roomEventStore
+import dev.fourthbreakfast.planner.data.roomNoteStore
+import dev.fourthbreakfast.planner.data.roomTaskStore
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.shortcut_event
@@ -94,9 +94,9 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .build()
-    private val taskStore = RoomTaskStore(database)
-    private val eventStore = RoomEventStore(database)
-    private val noteStore = RoomNoteStore(database)
+    private val taskStore = roomTaskStore(database)
+    private val eventStore = roomEventStore(database)
+    private val noteStore = roomNoteStore(database)
     private val prefs = DesktopPrefs(prefsNode)
 
     // one clock for every change, which never goes back past a time already seen here or from another device

@@ -1,93 +1,31 @@
 package dev.fourthbreakfast.planner.core
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-private class MemorySyncTasks : TaskStore {
-    val state = MutableStateFlow<List<Task>>(emptyList())
-
-    override fun observeAll(): Flow<List<Task>> = state
-
-    override suspend fun all() = state.value
-
-    override suspend fun insert(tasks: List<Task>) {
-        state.value = state.value + tasks
-    }
-
-    override suspend fun update(tasks: List<Task>) {
-        val changed = tasks.associateBy { it.id }
-        state.value = state.value.map { changed[it.id] ?: it }
-    }
-
-    override suspend fun delete(tasks: List<Task>) {
-        val gone = tasks.mapTo(HashSet()) { it.id }
-        state.value = state.value.filterNot { it.id in gone }
-    }
-
-    override suspend fun <T> transaction(block: suspend () -> T): T = block()
-}
-
-private class MemoryLedger : SyncLedger {
-    val gone = ArrayList<Gone>()
-    val agreed = HashMap<String, Long>()
-
-    override suspend fun gone() = gone.toList()
-
-    override suspend fun addGone(items: List<Gone>) {
-        gone.removeAll { old -> items.any { it.id == old.id } }
-        gone += items
-    }
-
-    override suspend fun forgetGone(ids: List<String>) {
-        gone.removeAll { it.id in ids }
-    }
-
-    override suspend fun agreed() = agreed.toMap()
-
-    override suspend fun setAgreed(items: Map<String, Long>) {
-        agreed += items
-    }
-}
-
-/** One device: its stores, what sync remembers, and its sync. */
 /**
  * One device. Its stores delete the way the app's do: whatever goes for good leaves a mark with this device's own time,
  * whether a person deleted it or a merge did.
  */
 private class Device(var now: Long = 1_000L) {
-    val tasks = MemorySyncTasks()
-    val events = MemoryEventStore()
-    val notes = MemoryNoteStore()
     val ledger = MemoryLedger()
 
     private fun mark(ids: List<String>) = runBlocking { ledger.addGone(ids.map { Gone(it, now++) }) }
 
-    private val taskStore = object : TaskStore by tasks {
-        override suspend fun delete(tasks: List<Task>) {
-            this@Device.tasks.delete(tasks)
-            mark(tasks.map { it.id })
-        }
-    }
+    val tasks = MemoryTaskStore { mark(it.map(Task::id)) }
+    val events = MemoryEventStore()
+    val notes = MemoryNoteStore { mark(it.map(Note::id)) }
 
-    private val noteStore = object : NoteStore by notes {
-        override suspend fun delete(notes: List<Note>) {
-            this@Device.notes.delete(notes)
-            mark(notes.map { it.id })
-        }
-    }
-
-    val sync = Sync(taskStore, events, noteStore, ledger) { now++ }
+    val sync = Sync(tasks, events, notes, ledger) { now++ }
 
     fun note(id: String) = notes.state.value.firstOrNull { it.id == id }
 
     fun task(id: String) = tasks.state.value.first { it.id == id }
 
-    fun deleteNoteForGood(id: String) = runBlocking { noteStore.delete(listOfNotNull(note(id))) }
+    fun deleteNoteForGood(id: String) = runBlocking { notes.delete(listOfNotNull(note(id))) }
 }
 
 class SyncTest {
@@ -251,22 +189,9 @@ class SyncDetailsTest {
 
     @Test
     fun aFileFromANewerVersionIsStillMerged() = runBlocking {
-        val store = MemoryNoteStore()
-        val tasks = object : TaskStore {
-            override fun observeAll() = kotlinx.coroutines.flow.flowOf(emptyList<Task>())
-
-            override suspend fun all() = emptyList<Task>()
-
-            override suspend fun insert(tasks: List<Task>) = Unit
-
-            override suspend fun update(tasks: List<Task>) = Unit
-
-            override suspend fun delete(tasks: List<Task>) = Unit
-
-            override suspend fun <T> transaction(block: suspend () -> T): T = block()
-        }
-        val sync = Sync(tasks, MemoryEventStore(), store, MemoryLedger())
-        val newer = encodeBackup(emptyList(), notes = listOf(Note(id = "n", body = "x", createdAt = 1))).replace("\"version\": 4", "\"version\": 9")
+        val sync = Sync(MemoryTaskStore(), MemoryEventStore(), MemoryNoteStore(), MemoryLedger())
+        val newer = encodeBackup(emptyList(), notes = listOf(Note(id = "n", body = "x", createdAt = 1))).replace(Regex("\"version\": \\d+"), "\"version\": 99")
+        assertTrue(newer.contains("\"version\": 99"))
         assertEquals(1, sync.merge(newer))
     }
 }

@@ -14,10 +14,10 @@ import dev.fourthbreakfast.planner.core.Notes
 import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.core.Tasks
 import dev.fourthbreakfast.planner.core.newestChange
-import dev.fourthbreakfast.planner.data.RoomEventStore
-import dev.fourthbreakfast.planner.data.RoomNoteStore
 import dev.fourthbreakfast.planner.data.RoomSyncLedger
-import dev.fourthbreakfast.planner.data.RoomTaskStore
+import dev.fourthbreakfast.planner.data.roomEventStore
+import dev.fourthbreakfast.planner.data.roomNoteStore
+import dev.fourthbreakfast.planner.data.roomTaskStore
 import dev.fourthbreakfast.planner.reminders.Reminders
 import dev.fourthbreakfast.planner.sync.SyncController
 import dev.fourthbreakfast.planner.ui.AndroidPrefs
@@ -41,9 +41,9 @@ class PlannerApp : Application() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val taskStore by lazy { RoomTaskStore(database) }
-    private val eventStore by lazy { RoomEventStore(database) }
-    private val noteStore by lazy { RoomNoteStore(database) }
+    private val taskStore by lazy { roomTaskStore(database) }
+    private val eventStore by lazy { roomEventStore(database) }
+    private val noteStore by lazy { roomNoteStore(database) }
     private val syncLedger by lazy { RoomSyncLedger(database) }
     private val reminders by lazy { Reminders(this) }
 

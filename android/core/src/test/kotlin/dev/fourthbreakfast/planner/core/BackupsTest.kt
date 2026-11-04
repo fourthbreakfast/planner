@@ -1,34 +1,8 @@
 package dev.fourthbreakfast.planner.core
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-
-class MemoryTaskStore : TaskStore {
-    val state = MutableStateFlow<List<Task>>(emptyList())
-
-    override fun observeAll(): Flow<List<Task>> = state
-
-    override suspend fun all() = state.value
-
-    override suspend fun insert(tasks: List<Task>) {
-        state.value = state.value + tasks
-    }
-
-    override suspend fun update(tasks: List<Task>) {
-        val changed = tasks.associateBy { it.id }
-        state.value = state.value.map { changed[it.id] ?: it }
-    }
-
-    override suspend fun delete(tasks: List<Task>) {
-        val gone = tasks.mapTo(HashSet()) { it.id }
-        state.value = state.value.filterNot { it.id in gone }
-    }
-
-    override suspend fun <T> transaction(block: suspend () -> T): T = block()
-}
 
 class BackupsTest {
     private val tasks = MemoryTaskStore()
