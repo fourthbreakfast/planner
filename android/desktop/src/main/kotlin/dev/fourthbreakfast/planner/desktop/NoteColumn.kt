@@ -7,10 +7,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -44,7 +46,6 @@ import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.search
 import dev.fourthbreakfast.planner.resources.unpin
 import dev.fourthbreakfast.planner.ui.binIcon
-import dev.fourthbreakfast.planner.ui.itemAt
 import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
@@ -60,8 +61,28 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
     val boxes = rememberPreviewBoxes(colors.onSurfaceVariant)
     state.visibleNotes = notes.map { it.id }
     val list = rememberLazyListState()
+    var dragKey by remember { mutableStateOf<String?>(null) }
     var dragY by remember { mutableStateOf(0f) }
-    var target by remember { mutableStateOf<String?>(null) }
+    var grab by remember { mutableStateOf(0f) }
+    var dropKey by remember { mutableStateOf<String?>(null) }
+
+    // as on the phone: the held note lands before the first other note whose middle is below its own, or last
+    fun updateDrop() {
+        val held = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == dragKey } ?: return
+        val centre = dragY - grab + held.size / 2f
+        val before = list.layoutInfo.visibleItemsInfo
+            .filter { it.key != dragKey && it.key != END_KEY }
+            .firstOrNull { it.offset + it.size / 2f > centre }
+        dropKey = (before?.key as? String) ?: END_KEY
+    }
+
+    fun finishDrag(moved: Boolean) {
+        val key = dragKey
+        val before = dropKey
+        dragKey = null
+        dropKey = null
+        if (moved && key != null && before != null) viewModel.move(key, before.takeIf { it != END_KEY })
+    }
 
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("notes", notes.size, state.focused == Section.NOTES) {
@@ -90,7 +111,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                                 },
                             )
                             .drawBehind {
-                                if (target == note.id) drawLine(colors.onBackground, Offset(0f, 0f), Offset(size.width, 0f), Space.strokeThick.toPx())
+                                if (dropKey == note.id) drawLine(colors.onBackground, Offset(0f, 0f), Offset(size.width, 0f), Space.strokeThick.toPx())
                             }
                             .hoverable(hover)
                             .combinedClickable(
@@ -103,19 +124,17 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                             .pointerInput(note.id) {
                                 detectDragGestures(
                                     onDragStart = { at ->
+                                        dragKey = note.id
+                                        grab = at.y
                                         dragY = list.offsetOf(note.id) + at.y
                                     },
                                     onDrag = { change, amount ->
                                         change.consume()
                                         dragY += amount.y
-                                        target = (list.itemAt(dragY)?.key as? String)?.takeIf { it != note.id }
+                                        updateDrop()
                                     },
-                                    onDragEnd = {
-                                        // dropped on a note, it goes just above it
-                                        target?.let { viewModel.move(note.id, it) }
-                                        target = null
-                                    },
-                                    onDragCancel = { target = null },
+                                    onDragEnd = { finishDrag(moved = true) },
+                                    onDragCancel = { finishDrag(moved = false) },
                                 )
                             }
                             .padding(start = Space.gutter, end = Desk.inset, top = Space.x3, bottom = Space.x3),
@@ -152,7 +171,29 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                     }
                 }
             }
+            // room under the last note, where a dragged note can be dropped to go last
+            item(key = END_KEY) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(Desk.row)
+                        .drawBehind {
+                            if (dropKey ==
+                                END_KEY
+                            ) {
+                                drawLine(
+                                    colors.onBackground,
+                                    Offset(Space.gutter.toPx(), 0f),
+                                    Offset(size.width - Desk.inset.toPx(), 0f),
+                                    Space.strokeThick.toPx(),
+                                )
+                            }
+                        },
+                )
+            }
         }
         FootAdd(stringResource(Res.string.add_note)) { viewModel.add { id -> state.openNote(id) } }
     }
 }
+
+private const val END_KEY = "end"
