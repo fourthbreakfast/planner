@@ -42,6 +42,7 @@ class DesktopSync(
 ) : SyncControls {
     // what the app did with its Syncthing, and why it would not start, kept beside Syncthing's own log
     private val logFile = File(root, "home/planner.log")
+    private var files: DeviceFiles? = null
     private val syncthing = binary?.let { Syncthing(it, File(root, "home"), File(root, "share"), log = ::note) }
 
     private fun note(line: String) {
@@ -117,6 +118,17 @@ class DesktopSync(
         }
     }
 
+    override suspend fun syncNow() {
+        ensureRunning()
+        val files = files ?: return
+        runCatching {
+            files.publish()
+            this.syncthing?.rescan()
+            files.takeIn()
+            refresh()
+        }
+    }
+
     // a device that asked is let in only on a yes: never just because the sync screen was open
     override fun letIn(id: String) {
         scope.launch {
@@ -164,7 +176,7 @@ class DesktopSync(
                 current.value = current.value.copy(failed = true)
                 return
             }
-            val files = DeviceFiles(syncthing.folder, syncthing.myId, sync)
+            val files = DeviceFiles(syncthing.folder, syncthing.myId, sync).also { this.files = it }
             current.value = SyncState(running = true, myId = syncthing.myId, addresses = syncthing.addresses())
             loop = scope.launch { run(syncthing, files) }
         }
@@ -205,6 +217,7 @@ class DesktopSync(
         lock.withLock {
             loop?.cancel()
             loop = null
+            files = null
             syncthing?.stop()
             current.value = current.value.copy(running = false)
         }

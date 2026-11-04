@@ -46,6 +46,8 @@
     <string name="sync_not_found">not found</string>
     <string name="sync_connected">connected</string>
     <string name="sync_waiting">waiting</string>
+    <string name="sync_now">sync now</string>
+    <string name="sync_syncing">syncing</string>
     <string name="sync_remove">remove</string>
     <string name="sync_asks">%1$s asks to sync</string>
     <string name="sync_let_in">let in</string>
