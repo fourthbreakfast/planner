@@ -219,23 +219,19 @@ fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.siz
     }
 }
 
-/** A cog for the settings: eight square teeth around a ring, with a hole in the middle, all in one thin line. */
+/** A plain cog for the settings: six blunt teeth on a body with flat sides between them, and a round hole, in one thin line. */
 fun DrawScope.cog(ink: Color) {
     val line = Space.strokeThin.toPx()
     val c = Offset(size.width / 2, size.height / 2)
     val outer = size.minDimension * 0.46f
-    val inner = size.minDimension * 0.34f
-    val teeth = 8
+    val inner = size.minDimension * 0.33f
+    fun at(r: Float, turn: Double) = Offset(c.x + r * kotlin.math.cos(turn).toFloat(), c.y + r * kotlin.math.sin(turn).toFloat())
     val path = androidx.compose.ui.graphics.Path()
-    for (i in 0 until teeth * 2) {
-        // each tooth and each gap takes the same turn, the tooth standing out to the outer ring
-        val start = (i / (teeth * 2f)) * 2 * Math.PI - Math.PI / (teeth * 2)
-        val end = start + 2 * Math.PI / (teeth * 2)
-        val r = if (i % 2 == 0) outer else inner
-        val a = Offset(c.x + r * kotlin.math.cos(start).toFloat(), c.y + r * kotlin.math.sin(start).toFloat())
-        val b = Offset(c.x + r * kotlin.math.cos(end).toFloat(), c.y + r * kotlin.math.sin(end).toFloat())
-        if (i == 0) path.moveTo(a.x, a.y) else path.lineTo(a.x, a.y)
-        path.lineTo(b.x, b.y)
+    for (i in 0 until 6) {
+        val middle = i * Math.PI / 3 - Math.PI / 2
+        // a tooth narrows a little as it stands out, so it reads as a cog and not a star
+        val points = listOf(at(inner, middle - 0.30), at(outer, middle - 0.20), at(outer, middle + 0.20), at(inner, middle + 0.30))
+        points.forEachIndexed { n, p -> if (i == 0 && n == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
     }
     path.close()
     drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(line, join = androidx.compose.ui.graphics.StrokeJoin.Round))

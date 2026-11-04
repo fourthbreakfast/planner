@@ -61,7 +61,6 @@ class RenderTest {
                             app.tasksViewModel,
                             app.agendaViewModel,
                             app.notesViewModel,
-                            foot = { StatusLine(app.sync, app.updates, onUpdate = {}, onSettings = {}) },
                         ) { onClose ->
                             DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = {})
                         }

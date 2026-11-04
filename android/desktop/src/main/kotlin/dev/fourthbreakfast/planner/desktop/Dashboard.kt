@@ -10,7 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -172,7 +171,6 @@ fun Dashboard(
     tasksViewModel: TasksViewModel,
     agendaViewModel: AgendaViewModel,
     notesViewModel: NotesViewModel,
-    foot: @Composable () -> Unit,
     settings: @Composable (onClose: () -> Unit) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -207,12 +205,8 @@ fun Dashboard(
                 )
             }
             Divider()
-            Column(Modifier.weight(1f).fillMaxHeight()) {
-                Box(Modifier.weight(1f)) {
-                    NoteColumn(allNotes.filterNot { it.inBin }, allNotes.count { it.inBin }, state, notesViewModel)
-                }
-                // sync and the settings, level with the task column's add line
-                foot()
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                NoteColumn(allNotes.filterNot { it.inBin }, allNotes.count { it.inBin }, state, notesViewModel)
             }
         }
 

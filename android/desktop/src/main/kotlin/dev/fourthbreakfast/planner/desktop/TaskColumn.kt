@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -302,33 +304,44 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
                 modifier = Modifier.combinedClickableCompat { state.aimedTask = null },
             )
         }
-        Box(Modifier.fillMaxWidth().height(Desk.row), contentAlignment = Alignment.CenterStart) {
-            if (text.isEmpty()) Text(stringResource(Res.string.add_task_hint), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-            BasicTextField(
-                value = text,
-                onValueChange = { text = it.replace("\n", "") },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
-                cursorBrush = SolidColor(colors.onBackground),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    if (text.isNotBlank()) viewModel.add(text.trim(), aimed?.id)
-                    aimed?.let { state.openTasks = state.openTasks + it.id }
-                    text = ""
-                }),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focus)
-                    .onPreviewKeyEvent { event ->
-                        if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && (text.isNotEmpty() || aimed != null)) {
-                            text = ""
-                            state.aimedTask = null
-                            true
-                        } else {
-                            false
-                        }
-                    },
+        var typing by remember { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth().height(Desk.row), verticalAlignment = Alignment.CenterVertically) {
+            // the + is an invitation, the › says the line is in use, as on the phone
+            Text(
+                if (typing || text.isNotEmpty()) "›" else "+",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.width(Space.x6 + Space.x1),
             )
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                if (text.isEmpty()) Text(stringResource(Res.string.add_task_hint), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it.replace("\n", "") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
+                    cursorBrush = SolidColor(colors.onBackground),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (text.isNotBlank()) viewModel.add(text.trim(), aimed?.id)
+                        aimed?.let { state.openTasks = state.openTasks + it.id }
+                        text = ""
+                    }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focus)
+                        .onFocusChanged { typing = it.isFocused }
+                        .onPreviewKeyEvent { event ->
+                            if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && (text.isNotEmpty() || aimed != null)) {
+                                text = ""
+                                state.aimedTask = null
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                )
+            }
         }
     }
 }
