@@ -62,7 +62,7 @@ class RenderTest {
                             app.agendaViewModel,
                             app.notesViewModel,
                         ) { onClose ->
-                            DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = {})
+                            DesktopSettings(app.data.backups, app.sync, app.updates, app.version, onClose, install = {})
                         }
                     }
                 }
@@ -130,6 +130,6 @@ class SeedTest {
         val backup = System.getenv("PLANNER_BACKUP")?.let(::File)
         assumeTrue(folder != null && backup != null)
         val app = DesktopApp(folder!!, "dev/fourthbreakfast/planner-seed-test")
-        runBlocking { app.tasksViewModel.importBackup(backup!!.readText()) }
+        runBlocking { app.data.backups.import(backup!!.readText()) }
     }
 }

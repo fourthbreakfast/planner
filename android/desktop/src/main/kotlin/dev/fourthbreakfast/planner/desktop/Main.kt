@@ -3,7 +3,6 @@ package dev.fourthbreakfast.planner.desktop
 import androidx.compose.foundation.DefaultContextMenuRepresentation
 import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,9 +31,9 @@ import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.PlannerData
 import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.Requests
-import dev.fourthbreakfast.planner.ThemeChoice
 import dev.fourthbreakfast.planner.UiSettings
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
+import dev.fourthbreakfast.planner.isDark
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.shortcut_event
@@ -85,7 +84,7 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
         .build()
     val data = PlannerData(database).also { data -> scope.launch { data.startClock() } }
     private val prefs = DesktopPrefs(prefsNode)
-    val tasksViewModel = TasksViewModel(data.tasks, data.backups)
+    val tasksViewModel = TasksViewModel(data.tasks)
     val agendaViewModel = AgendaViewModel(data.events)
     val notesViewModel = NotesViewModel(data.notes, prefs)
     val settings = UiSettings(prefs)
@@ -131,11 +130,7 @@ fun main(args: Array<String>) {
         }
         var menuAt by remember { mutableStateOf<java.awt.Point?>(null) }
         val icon = remember { appIconPainter() }
-        val dark = when (app.settings.theme) {
-            ThemeChoice.LIGHT -> false
-            ThemeChoice.DARK -> true
-            ThemeChoice.SYSTEM -> isSystemInDarkTheme()
-        }
+        val dark = app.settings.theme.isDark()
         val tray = remember {
             AppTray(
                 onOpen = {
@@ -236,7 +231,7 @@ fun main(args: Array<String>) {
                                         app.agendaViewModel,
                                         app.notesViewModel,
                                     ) { onClose ->
-                                        DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = ::install)
+                                        DesktopSettings(app.data.backups, app.sync, app.updates, app.version, onClose, install = ::install)
                                     }
                                 }
                             }
