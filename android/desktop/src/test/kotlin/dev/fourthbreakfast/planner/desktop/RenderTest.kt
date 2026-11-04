@@ -32,9 +32,9 @@ class RenderTest {
         app.tasksViewModel.add("call the dentist", null)
         app.tasksViewModel.add("buy oat milk", null)
         runBlocking {
-            app.events.add("lunch with sam", now, 12 * 60 + 30, "the corner cafe", "")
-            app.events.add("train to the coast", now + 1, 8 * 60 + 12, "central station", "", endMinute = 10 * 60 + 40)
-            app.events.add("mum's birthday", now + 3, null, "", "")
+            app.data.events.add("lunch with sam", now, 12 * 60 + 30, "the corner cafe", "")
+            app.data.events.add("train to the coast", now + 1, 8 * 60 + 12, "central station", "", endMinute = 10 * 60 + 40)
+            app.data.events.add("mum's birthday", now + 3, null, "", "")
         }
         var noteId: String? = null
         app.notesViewModel.add { id ->

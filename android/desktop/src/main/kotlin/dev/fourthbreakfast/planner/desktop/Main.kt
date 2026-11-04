@@ -29,22 +29,12 @@ import androidx.compose.ui.window.rememberWindowState
 import androidx.room.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import dev.fourthbreakfast.planner.Launch
+import dev.fourthbreakfast.planner.PlannerData
 import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.Requests
 import dev.fourthbreakfast.planner.ThemeChoice
 import dev.fourthbreakfast.planner.UiSettings
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
-import dev.fourthbreakfast.planner.core.Backups
-import dev.fourthbreakfast.planner.core.Events
-import dev.fourthbreakfast.planner.core.LogicalClock
-import dev.fourthbreakfast.planner.core.Notes
-import dev.fourthbreakfast.planner.core.Sync
-import dev.fourthbreakfast.planner.core.Tasks
-import dev.fourthbreakfast.planner.core.newestChange
-import dev.fourthbreakfast.planner.data.RoomSyncLedger
-import dev.fourthbreakfast.planner.data.roomEventStore
-import dev.fourthbreakfast.planner.data.roomNoteStore
-import dev.fourthbreakfast.planner.data.roomTaskStore
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.shortcut_event
@@ -67,7 +57,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -94,25 +83,19 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .build()
-    private val taskStore = roomTaskStore(database)
-    private val eventStore = roomEventStore(database)
-    private val noteStore = roomNoteStore(database)
+    val data = PlannerData(database).also { data -> scope.launch { data.startClock() } }
     private val prefs = DesktopPrefs(prefsNode)
-
-    // one clock for every change, which never goes back past a time already seen here or from another device
-    private val clock = LogicalClock().also { clock -> scope.launch { clock.saw(newestChange(taskStore, eventStore, noteStore)) } }
-    val events = Events(eventStore, clock::now)
-    val tasksViewModel = TasksViewModel(Tasks(taskStore, clock::now), Backups(taskStore, eventStore, noteStore, RoomSyncLedger(database), clock::now))
-    val agendaViewModel = AgendaViewModel(events)
-    val notesViewModel = NotesViewModel(Notes(noteStore, clock::now), prefs)
+    val tasksViewModel = TasksViewModel(data.tasks, data.backups)
+    val agendaViewModel = AgendaViewModel(data.events)
+    val notesViewModel = NotesViewModel(data.notes, prefs)
     val settings = UiSettings(prefs)
     val services = PlannerServices(Requests(), settings, prefs)
     val backStack = BackStack()
     val sync = DesktopSync(
         bundledSyncthing(),
         File(folder, "syncthing"),
-        Sync(taskStore, eventStore, noteStore, RoomSyncLedger(database), clock::now, clock::saw),
-        merge(taskStore.observeAll(), eventStore.observeAll(), noteStore.observeAll()),
+        data.sync,
+        data.changes,
         prefs,
         scope,
     )
@@ -164,7 +147,7 @@ fun main(args: Array<String>) {
         }
         val reminders =
             remember {
-                DesktopReminders(app.events.all, app.scope, is24Hour = is24HourClock()) { title, text -> tray.say(title, text) }
+                DesktopReminders(app.data.events.all, app.scope, is24Hour = is24HourClock()) { title, text -> tray.say(title, text) }
             }
         LaunchedEffect(Unit) {
             app.sync.begin()
