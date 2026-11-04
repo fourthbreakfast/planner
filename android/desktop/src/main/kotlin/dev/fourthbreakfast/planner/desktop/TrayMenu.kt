@@ -80,15 +80,16 @@ class AppTray(private val onOpen: () -> Unit, private val onMenu: (Point) -> Uni
     }
 }
 
-private val menuWidth = 220.dp
-private val menuPad = 4.dp
-private val lineHeight = 9.dp
+private val menuWidth = 176.dp
+private val menuPad = 3.dp
+private val lineHeight = 7.dp
+private val rowHeight = 30.dp
 
 /** The tray's menu, opened beside where the icon was clicked and closed by choosing, Escape, or going elsewhere. */
 @Composable
 fun TrayMenu(at: Point?, entries: List<TrayEntry>, dark: Boolean, onDismiss: () -> Unit) {
     val state = rememberDialogState(size = DpSize(menuWidth, 100.dp))
-    val height = menuPad * 2 + 2.dp + entries.fold(0.dp) { sum, entry -> sum + if (entry is TrayEntry.Item) Desk.row else lineHeight }
+    val height = menuPad * 2 + 2.dp + entries.fold(0.dp) { sum, entry -> sum + if (entry is TrayEntry.Item) rowHeight else lineHeight }
     LaunchedEffect(at, height) {
         if (at != null) {
             state.size = DpSize(menuWidth, height)
@@ -131,7 +132,7 @@ fun TrayMenu(at: Point?, entries: List<TrayEntry>, dark: Boolean, onDismiss: () 
             ) {
                 for (entry in entries) {
                     when (entry) {
-                        TrayEntry.Line -> Box(Modifier.height(lineHeight).fillMaxWidth().padding(vertical = 4.dp).background(colors.outline.copy(alpha = 0.5f)))
+                        TrayEntry.Line -> Box(Modifier.height(lineHeight).fillMaxWidth().padding(vertical = 3.dp).background(colors.outline.copy(alpha = 0.5f)))
                         is TrayEntry.Item -> TrayRow(entry.label) {
                             entry.onClick()
                             onDismiss()
@@ -150,7 +151,7 @@ private fun TrayRow(label: String, onClick: () -> Unit) {
         contentAlignment = Alignment.CenterStart,
         modifier = Modifier
             .fillMaxWidth()
-            .height(Desk.row)
+            .height(rowHeight)
             .background(if (hovered) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
             .hoverable(source)
             .clickable(interactionSource = source, indication = null, onClick = onClick),
