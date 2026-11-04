@@ -29,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -48,6 +49,7 @@ import dev.fourthbreakfast.planner.resources.sync_asks
 import dev.fourthbreakfast.planner.resources.sync_connected
 import dev.fourthbreakfast.planner.resources.sync_credit
 import dev.fourthbreakfast.planner.resources.sync_let_in
+import dev.fourthbreakfast.planner.resources.sync_name
 import dev.fourthbreakfast.planner.resources.sync_not_found
 import dev.fourthbreakfast.planner.resources.sync_now
 import dev.fourthbreakfast.planner.resources.sync_on
@@ -116,6 +118,7 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                 return@Column
             }
             Line(stringResource(Res.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))
+            NameLine(stringResource(Res.string.sync_name), controller.deviceName, controller::renameThisDevice)
             if (state.myId.isNotEmpty()) {
                 QrCode(pairText(state.myId, state.addresses), Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
             }
@@ -164,12 +167,7 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(start = Space.gutter, end = Space.rowPad),
                 ) {
-                    Text(
-                        text = peer.name.ifBlank { shortId(peer.id) },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.onBackground,
-                        modifier = Modifier.weight(1f),
-                    )
+                    NameField(peer.name.ifBlank { shortId(peer.id) }, Modifier.weight(1f)) { controller.renamePeer(peer.id, it) }
                     Text(
                         text = stringResource(if (peer.connected) Res.string.sync_connected else Res.string.sync_waiting),
                         style = MaterialTheme.typography.labelMedium,
@@ -232,4 +230,36 @@ private fun QrCode(text: String, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/** A line that names this device: the name is written in place, kept when the keyboard is done or the line is left. */
+@Composable
+private fun NameLine(label: String, name: String, onRename: (String) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(horizontal = Space.gutter),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+        NameField(name, Modifier.weight(1f).padding(start = Space.x4), endAligned = true, onRename = onRename)
+    }
+}
+
+/** A name that can be changed where it stands. */
+@Composable
+private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: Boolean = false, onRename: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    var text by remember(name) { mutableStateOf(name) }
+    BasicTextField(
+        value = text,
+        onValueChange = { text = it.replace("\n", "") },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = colors.onBackground,
+            textAlign = if (endAligned) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+        ),
+        cursorBrush = SolidColor(colors.onBackground),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { onRename(text) }),
+        modifier = modifier.onFocusChanged { if (!it.isFocused && text != name) onRename(text) },
+    )
 }

@@ -24,6 +24,14 @@ interface SyncControls {
 
     val anywhere: Boolean
 
+    /** The name this device goes by, which devices paired from now on show it as. */
+    val deviceName: String
+
+    fun renameThisDevice(name: String)
+
+    /** Changes the name this device shows for another one. */
+    fun renamePeer(id: String, name: String)
+
     /** The sync screen is open: sync runs, and devices asking to pair are shown, to be let in or turned down. */
     fun openPairing()
 

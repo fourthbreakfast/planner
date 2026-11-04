@@ -40,6 +40,7 @@
         <item quantity="other">%1$d devices</item>
     </plurals>
     <string name="sync_this_device">this device</string>
+    <string name="sync_name">name</string>
     <string name="sync_scan">scan a code</string>
     <string name="sync_type_code">type a code</string>
     <string name="sync_pair">pair</string>

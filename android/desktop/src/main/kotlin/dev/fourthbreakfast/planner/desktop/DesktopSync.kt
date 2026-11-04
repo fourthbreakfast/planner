@@ -25,6 +25,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 private const val PREF_ANYWHERE = "sync_anywhere"
+private const val PREF_NAME = "sync_name"
 private const val PREF_PAIRED = "sync_paired"
 private const val TICK_MILLIS = 2_000L
 
@@ -74,6 +75,31 @@ class DesktopSync(
     /** Called once the window is up. */
     fun begin() {
         if (paired) scope.launch { ensureRunning() }
+    }
+
+    override val deviceName: String get() = prefs.getString(PREF_NAME) ?: (System.getenv("COMPUTERNAME") ?: "windows").lowercase()
+
+    override fun renameThisDevice(name: String) {
+        val clean = name.trim().take(40)
+        if (clean.isEmpty()) return
+        prefs.putString(PREF_NAME, clean)
+        scope.launch {
+            runCatching {
+                val st = syncthing ?: return@runCatching
+                if (st.running) st.rename(st.myId, clean)
+            }
+        }
+    }
+
+    override fun renamePeer(id: String, name: String) {
+        val clean = name.trim().take(40)
+        if (clean.isEmpty()) return
+        scope.launch {
+            runCatching {
+                syncthing?.rename(id, clean)
+                refresh()
+            }
+        }
     }
 
     override fun openPairing() {
@@ -168,7 +194,7 @@ class DesktopSync(
             leftBehind.stop()
             try {
                 // the name windows gives the computer, read without asking the network
-                syncthing.start(anywhere, (System.getenv("COMPUTERNAME") ?: "windows").lowercase())
+                syncthing.start(anywhere, deviceName)
             } catch (e: Exception) {
                 // a program of its own that would not start is no reason for the app to stop
                 note("could not start: $e")
