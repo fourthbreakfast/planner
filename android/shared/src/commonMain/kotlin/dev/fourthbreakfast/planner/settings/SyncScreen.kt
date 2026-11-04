@@ -34,6 +34,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -254,6 +260,11 @@ private fun NameLine(label: String, name: String, onRename: (String) -> Unit) {
 private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: Boolean = false, onRename: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
     var text by remember(name) { mutableStateOf(name) }
+    val focus = LocalFocusManager.current
+    fun accept() {
+        if (text != name) onRename(text)
+        focus.clearFocus()
+    }
     BasicTextField(
         value = text,
         onValueChange = { text = it.replace("\n", "") },
@@ -264,7 +275,19 @@ private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: B
         ),
         cursorBrush = SolidColor(colors.onBackground),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onRename(text) }),
-        modifier = modifier.onFocusChanged { if (!it.isFocused && text != name) onRename(text) },
+        keyboardActions = KeyboardActions(onDone = { accept() }),
+        modifier = modifier
+            .onPreviewKeyEvent { event ->
+                when {
+                    event.type != KeyEventType.KeyDown -> false
+                    event.key == Key.Enter || event.key == Key.NumPadEnter -> true.also { accept() }
+                    event.key == Key.Escape -> true.also {
+                        text = name
+                        focus.clearFocus()
+                    }
+                    else -> false
+                }
+            }
+            .onFocusChanged { if (!it.isFocused && text != name) onRename(text) },
     )
 }
