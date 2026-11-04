@@ -230,7 +230,7 @@ fun main(args: Array<String>) {
             val frame = remember { NativeFrame() }
             LaunchedEffect(Unit) { frame.install(window, Desk.edge.value.toInt()) }
             CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
-                PlannerTheme(darkTheme = dark) {
+                PlannerTheme(darkTheme = dark, textScale = Desk.textScale) {
                     val colors = MaterialTheme.colorScheme
                     // right click menus in the app's own colours, not the system grey
                     val menus = remember(colors) {

@@ -121,7 +121,7 @@ fun TrayMenu(at: Point?, entries: List<TrayEntry>, dark: Boolean, onDismiss: () 
                 window.requestFocus()
             }
         }
-        PlannerTheme(darkTheme = dark) {
+        PlannerTheme(darkTheme = dark, textScale = Desk.textScale) {
             val colors = MaterialTheme.colorScheme
             Column(
                 Modifier
