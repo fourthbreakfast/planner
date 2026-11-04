@@ -121,6 +121,7 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
             }
             Setting(stringResource(R.string.export_tasks), null, backup.export)
             Setting(stringResource(R.string.import_tasks), null, backup.import)
+            Setting(stringResource(R.string.import_calendar), null, backup.importCalendar)
             Setting(
                 label = stringResource(R.string.setting_toolbar),
                 value = stringResource(if (settings.toolbarAbove) R.string.toolbar_keyboard else R.string.toolbar_top),

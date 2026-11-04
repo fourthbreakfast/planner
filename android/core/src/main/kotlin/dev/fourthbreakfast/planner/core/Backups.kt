@@ -25,6 +25,14 @@ class Backups(
         return addedTasks.size + addedEvents.size + addedNotes.size
     }
 
+    /** Adds the events of a calendar file the agenda does not have, and returns how many that was. Reading it again adds nothing. */
+    suspend fun importCalendar(text: String): Int {
+        val incoming = parseIcs(text, clock()).distinctBy { it.id }
+        val added = importEvents(incoming)
+        ledger?.forgetGone(added)
+        return added.size
+    }
+
     private suspend fun importTasks(incoming: List<Task>): List<String> = tasks.transaction {
         val existing = tasks.all().mapTo(HashSet()) { it.id }
         val known = existing + incoming.map { it.id }

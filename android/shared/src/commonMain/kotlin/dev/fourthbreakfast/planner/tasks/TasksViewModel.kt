@@ -21,6 +21,8 @@ class TasksViewModel(private val tasks: Tasks, private val backups: Backups) : V
 
     suspend fun importBackup(text: String): Int = backups.import(text)
 
+    suspend fun importCalendar(text: String): Int = backups.importCalendar(text)
+
     fun rename(id: String, title: String) {
         viewModelScope.launch { tasks.rename(id, title) }
     }

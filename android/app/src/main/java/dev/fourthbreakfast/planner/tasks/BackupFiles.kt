@@ -14,7 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class BackupFiles(val export: () -> Unit, val import: () -> Unit)
+class BackupFiles(val export: () -> Unit, val import: () -> Unit, val importCalendar: () -> Unit)
 
 private const val FILE_NAME = "planner-backup.json"
 
@@ -69,10 +69,36 @@ fun rememberBackupFiles(viewModel: TasksViewModel, say: suspend (String) -> Unit
             }
         }
     }
-    return remember(saver, opener) {
+    val calendarOpener = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                val message = try {
+                    val text = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+                            ?: throw IOException("no file")
+                    }
+                    val added = viewModel.importCalendar(text)
+                    if (added == 0) {
+                        resources.getString(R.string.import_nothing_new)
+                    } else {
+                        resources.getQuantityString(R.plurals.calendar_done, added, added)
+                    }
+                } catch (_: BackupException) {
+                    resources.getString(R.string.import_failed)
+                } catch (_: IOException) {
+                    resources.getString(R.string.import_failed)
+                } catch (_: SecurityException) {
+                    resources.getString(R.string.import_failed)
+                }
+                say(message)
+            }
+        }
+    }
+    return remember(saver, opener, calendarOpener) {
         BackupFiles(
             export = { saver.launch(FILE_NAME) },
             import = { opener.launch(arrayOf("*/*")) },
+            importCalendar = { calendarOpener.launch(arrayOf("text/calendar", "application/octet-stream", "text/plain")) },
         )
     }
 }
