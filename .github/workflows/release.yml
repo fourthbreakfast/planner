@@ -1,0 +1,61 @@
+name: release
+
+# pushing a tag such as v1.0.1 builds the signed phone apk and the windows installer, and publishes both as a release
+# with that version's part of CHANGELOG.md as its notes. the signing key and its password are the repository's secrets
+# PLANNER_KEYSTORE_B64 (the key file, base64) and PLANNER_KEYSTORE_PASSWORD.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: the tag has to be the version in gradle.properties
+        run: |
+          declared=$(grep '^plannerVersion=' gradle.properties | cut -d= -f2 | tr -d '\r')
+          if [ "v$declared" != "$GITHUB_REF_NAME" ]; then echo "gradle.properties says $declared, the tag is $GITHUB_REF_NAME"; exit 1; fi
+          echo "VERSION=$declared" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: third_party/syncthing/go.mod
+          cache: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+      - name: the signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.PLANNER_KEYSTORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "PLANNER_KEYSTORE=$(cygpath -w "$RUNNER_TEMP/release.jks")" >> "$GITHUB_ENV"
+      - name: build
+        env:
+          PLANNER_KEYSTORE_PASSWORD: ${{ secrets.PLANNER_KEYSTORE_PASSWORD }}
+        run: ./gradlew assembleRelease :desktop:packageMsi --no-configuration-cache --console=plain
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="app/build/outputs/apk/release/planner-$VERSION.apk"
+          mv app/build/outputs/apk/release/app-release.apk "$apk"
+          msi="desktop/build/compose/binaries/main/msi/planner-$VERSION.msi"
+          test -f "$msi"
+          awk -v v="$VERSION" '/^## /{p = ($2 == v); next} p' ../CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if [ -s "$RUNNER_TEMP/notes.md" ]; then notes=(--notes-file "$RUNNER_TEMP/notes.md"); else notes=(--generate-notes); fi
+          gh release create "v$VERSION" "$apk" "$msi" --title "planner $VERSION" "${notes[@]}"
