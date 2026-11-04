@@ -37,8 +37,8 @@ import org.jetbrains.compose.resources.stringResource
 
 /** The desktop's own sizes: a mouse needs less room than a thumb. */
 object Desk {
-    /** A computer screen is read from further and pointed at finely, so its type is a little smaller than the phone's. */
-    val textScale = 0.9f
+    /** A computer screen is read from further and pointed at finely, so its type could be scaled; it is the phone's size, as Windows apps like Simplenote set theirs. */
+    val textScale = 1f
 
     val titleBar = 40.dp
     val row = 36.dp
