@@ -93,7 +93,8 @@ class RowSwipe(private val scope: CoroutineScope, private val canGoLeft: Boolean
                 offset.animateTo(0f)
                 if (x < -width / SWIPE_FRACTION) onLeft(swiped)
             }
-            key = null
+            // a row swiped meanwhile is its own swipe, and keeps going
+            if (key == swiped) key = null
         }
     }
 }
