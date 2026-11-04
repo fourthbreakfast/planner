@@ -37,6 +37,9 @@ interface SyncControls {
      */
     suspend fun pairWith(code: String): Boolean
 
+    /** Sends what changed here and takes in what changed there, now rather than at the next turn. */
+    suspend fun syncNow()
+
     fun letIn(id: String)
 
     fun refuse(id: String)

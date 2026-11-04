@@ -133,6 +133,17 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         }
     }
 
+    override suspend fun syncNow() {
+        ensureRunning()
+        val files = files ?: return
+        runCatching {
+            files.publish()
+            syncthing.rescan()
+            files.takeIn()
+            refresh()
+        }
+    }
+
     // a device that asked is let in only on a yes: never just because the sync screen was open
     override fun letIn(id: String) {
         scope.launch {

@@ -49,11 +49,13 @@ import dev.fourthbreakfast.planner.resources.sync_connected
 import dev.fourthbreakfast.planner.resources.sync_credit
 import dev.fourthbreakfast.planner.resources.sync_let_in
 import dev.fourthbreakfast.planner.resources.sync_not_found
+import dev.fourthbreakfast.planner.resources.sync_now
 import dev.fourthbreakfast.planner.resources.sync_on
 import dev.fourthbreakfast.planner.resources.sync_pair
 import dev.fourthbreakfast.planner.resources.sync_refuse
 import dev.fourthbreakfast.planner.resources.sync_remove
 import dev.fourthbreakfast.planner.resources.sync_scan
+import dev.fourthbreakfast.planner.resources.sync_syncing
 import dev.fourthbreakfast.planner.resources.sync_this_device
 import dev.fourthbreakfast.planner.resources.sync_title
 import dev.fourthbreakfast.planner.resources.sync_type_code
@@ -88,6 +90,7 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
     val scope = rememberCoroutineScope()
     var code by rememberSaveable { mutableStateOf("") }
     var notFound by remember { mutableStateOf(false) }
+    var syncing by remember { mutableStateOf(false) }
     var anywhere by remember { mutableStateOf(controller.anywhere) }
     val colors = MaterialTheme.colorScheme
 
@@ -173,6 +176,17 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                         color = colors.onSurfaceVariant,
                     )
                     QuietButton(stringResource(Res.string.sync_remove)) { controller.unpair(peer.id) }
+                }
+            }
+            if (state.peers.isNotEmpty()) {
+                Setting(stringResource(Res.string.sync_now), if (syncing) stringResource(Res.string.sync_syncing) else null) {
+                    if (!syncing) {
+                        syncing = true
+                        scope.launch {
+                            controller.syncNow()
+                            syncing = false
+                        }
+                    }
                 }
             }
             Setting(
