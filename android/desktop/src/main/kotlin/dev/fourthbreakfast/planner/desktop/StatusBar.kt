@@ -47,5 +47,6 @@ fun TitleStatus(sync: DesktopSync, updates: Updates, onUpdate: (UpdateState.Read
             modifier = Modifier.clickable { onUpdate(ready) }.padding(horizontal = Space.x3),
         )
     }
-    HeaderButton(stringResource(Res.string.settings_title), onSettings) { cog(it) }
+    // the same size and hover as the window buttons beside it
+    WindowButton(stringResource(Res.string.settings_title), hoverColor = colors.secondaryContainer, onClick = onSettings) { cog(it) }
 }

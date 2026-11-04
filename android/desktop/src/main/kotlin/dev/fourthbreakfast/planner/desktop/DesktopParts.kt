@@ -27,15 +27,23 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.bin
+import dev.fourthbreakfast.planner.resources.bin_with_count
 import dev.fourthbreakfast.planner.ui.SegmentNumber
 import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.theme.Space
+import org.jetbrains.compose.resources.stringResource
 
 /** The desktop's own sizes: a mouse needs less room than a thumb. */
 object Desk {
     val titleBar = 40.dp
     val row = 36.dp
+
+    // every control in a column is a 32dp square with a 16dp drawing, its edge 12dp in from the column's right side
     val button = 32.dp
+    val icon = 16.dp
+    val inset = 12.dp
     val columnMin = 280.dp
     val panel = 560.dp
     val edge = 6.dp
@@ -47,7 +55,7 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.gutter, end = Space.x1),
+        modifier = Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.gutter, end = Desk.inset),
     ) {
         SegmentText(name, if (focused) colors.onBackground else colors.onSurfaceVariant)
         if (count != null) SegmentNumber(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
@@ -71,7 +79,7 @@ fun HeaderButton(label: String, onClick: () -> Unit, draw: androidx.compose.ui.g
             .clickable(onClick = onClick)
             .semantics { contentDescription = label },
     ) {
-        Canvas(Modifier.size(Space.icon)) { draw(ink) }
+        Canvas(Modifier.size(Desk.icon)) { draw(ink) }
     }
 }
 
@@ -146,8 +154,57 @@ fun FootAdd(label: String, onClick: () -> Unit) {
     Row(
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.x1, top = Space.x2, bottom = Space.x2).height(Desk.row),
+        modifier = Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.gutter, end = Desk.inset),
     ) {
         HeaderButton(label, onClick) { plus(it) }
     }
+}
+
+/** The bin, with how many things are in it written just before it when there are any. */
+@Composable
+fun DeskBin(count: Int, onClick: () -> Unit) {
+    val label = if (count > 0) stringResource(Res.string.bin_with_count, count) else stringResource(Res.string.bin)
+    if (count > 0) {
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = Space.x2),
+        )
+    }
+    HeaderButton(label, onClick) { binIcon(it) }
+}
+
+/** A bin: a body narrowing to its foot, a lid with a handle, as the phone draws it. */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.binIcon(ink: Color) {
+    val line = androidx.compose.ui.graphics.drawscope.Stroke(
+        Space.strokeThin.toPx(),
+        cap = StrokeCap.Round,
+        join = androidx.compose.ui.graphics.StrokeJoin.Round,
+    )
+    val w = size.width
+    val h = size.height
+    val body = androidx.compose.ui.graphics.Path().apply {
+        moveTo(w * 0.22f, h * 0.28f)
+        lineTo(w * 0.28f, h * 0.92f)
+        lineTo(w * 0.72f, h * 0.92f)
+        lineTo(w * 0.78f, h * 0.28f)
+    }
+    drawPath(body, ink, style = line)
+    val lid = androidx.compose.ui.graphics.Path().apply {
+        moveTo(w * 0.12f, h * 0.28f)
+        lineTo(w * 0.88f, h * 0.28f)
+        moveTo(w * 0.38f, h * 0.28f)
+        lineTo(w * 0.38f, h * 0.10f)
+        lineTo(w * 0.62f, h * 0.10f)
+        lineTo(w * 0.62f, h * 0.28f)
+    }
+    drawPath(lid, ink, style = line)
+}
+
+/** A › pointing right, for a line in use. */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.chevron(ink: Color) {
+    val line = Space.strokeThin.toPx()
+    drawLine(ink, Offset(size.width * 0.36f, size.height * 0.18f), Offset(size.width * 0.68f, size.height * 0.5f), line, StrokeCap.Round)
+    drawLine(ink, Offset(size.width * 0.68f, size.height * 0.5f), Offset(size.width * 0.36f, size.height * 0.82f), line, StrokeCap.Round)
 }
