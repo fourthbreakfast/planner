@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.core.matchesAll
+import dev.fourthbreakfast.planner.core.matchingLine
 import dev.fourthbreakfast.planner.core.noteText
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.core.searchWords
@@ -97,8 +98,7 @@ fun SearchScreen(notes: NotesViewModel, onOpen: (Launch) -> Unit, onClose: () ->
     ) { padding ->
         LazyColumn(Modifier.padding(padding).fillMaxSize()) {
             items(found, key = { it.id }) { note ->
-                val line = noteText(note).lines().drop(1).firstOrNull { l -> words.any { it in l.lowercase() } }?.trim()
-                Result(noteTitle(note), line) { onOpen(Launch.OpenNote(note.id)) }
+                Result(noteTitle(note), matchingLine(note, words)) { onOpen(Launch.OpenNote(note.id)) }
             }
             if (words.isNotEmpty() && found.isEmpty()) {
                 item(key = "none") {
