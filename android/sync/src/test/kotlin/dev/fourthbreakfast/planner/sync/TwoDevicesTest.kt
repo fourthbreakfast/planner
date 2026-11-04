@@ -142,9 +142,11 @@ class TwoDevicesTest {
         try {
             pc.start("pc")
             phone.start("phone")
-            pc.syncthing.pair(phone.syncthing.myId, introducer = true, address = phone.syncthing.address)
-            phone.syncthing.pair(pc.syncthing.myId, introducer = false, address = pc.syncthing.address)
+            pc.syncthing.pair(phone.syncthing.myId, introducer = true, addresses = listOf(phone.syncthing.address))
+            phone.syncthing.pair(pc.syncthing.myId, introducer = false, addresses = listOf(pc.syncthing.address))
             until("connected") { pc.syncthing.peers().all { it.connected } && phone.syncthing.peers().all { it.connected } }
+            // a device tells its id to anyone who starts a connection, which is how one is found without broadcasts
+            assertEquals(phone.syncthing.myId, deviceIdAt("127.0.0.1", 22192))
             assertEquals(listOf("phone"), pc.syncthing.peers().map { it.name })
 
             pc.tasks.insert(listOf(Task(id = "t", title = "buy milk", createdAt = 1)))
@@ -179,7 +181,7 @@ class TwoDevicesTest {
         try {
             pc.start("pc")
             phone.start("phone")
-            pc.syncthing.pair(phone.syncthing.myId, introducer = true, address = phone.syncthing.address)
+            pc.syncthing.pair(phone.syncthing.myId, introducer = true, addresses = listOf(phone.syncthing.address))
             until("the phone sees the pc asking") { phone.syncthing.asking().any { it.id == pc.syncthing.myId && it.name == "pc" } }
             // nothing is let in by itself
             assertEquals(emptyList<Peer>(), phone.syncthing.peers())

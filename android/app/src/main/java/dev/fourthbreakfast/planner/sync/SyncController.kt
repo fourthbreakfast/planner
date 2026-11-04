@@ -113,14 +113,18 @@ class SyncController(private val context: Context, private val sync: Sync, priva
     /** Pairs with a device by its whole id, or by the short code it shows when it is on the same network. */
     override suspend fun pairWith(code: String): Boolean {
         ensureRunning()
-        val typed = code.trim().uppercase()
-        val id = if (typed.replace("-", "").length >= 52) {
-            typed
+        val code = parsePairCode(code)
+        val found = if (code.id.replace("-", "").length >= 52) {
+            code.id to code.addresses
         } else {
-            syncthing.nearby().firstOrNull { shortId(it) == typed.replace("-", "").take(7) } ?: return false
+            val short = code.id.replace("-", "").take(7)
+            // seen on the network already, or asked for door to door when the broadcasts do not get through
+            syncthing.nearby().firstOrNull { shortId(it) == short }?.let { it to emptyList() }
+                ?: findOnLan(short, syncthing.listenPort)?.let { (id, address) -> id to listOf(address) }
+                ?: return false
         }
         return try {
-            syncthing.pair(id, introducer = true)
+            syncthing.pair(found.first, introducer = true, addresses = found.second)
             paired = true
             refresh()
             true
@@ -189,7 +193,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
             // android drops the packets devices find each other with unless an app asks for them
             if (!multicast.isHeld) multicast.acquire()
             val files = DeviceFiles(syncthing.folder, syncthing.myId, sync).also { this.files = it }
-            current.value = SyncState(running = true, myId = syncthing.myId)
+            current.value = SyncState(running = true, myId = syncthing.myId, addresses = syncthing.addresses())
             loop = scope.launch { run(files) }
         }
     }

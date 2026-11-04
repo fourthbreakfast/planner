@@ -56,7 +56,14 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
         val camera = rememberLauncherForActivityResult(ScanContract()) { result -> result.contents?.let { onCode?.invoke(it) } }
         SyncScreen(controller, scan = { then ->
             onCode = then
-            camera.launch(ScanOptions().setPrompt("").setBeepEnabled(false).setOrientationLocked(true).setDesiredBarcodeFormats(ScanOptions.QR_CODE))
+            camera.launch(
+                ScanOptions()
+                    .setPrompt("")
+                    .setBeepEnabled(false)
+                    .setOrientationLocked(true)
+                    .setCaptureActivity(ScanActivity::class.java)
+                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE),
+            )
         }, failed = stringResource(R.string.sync_blocked), onClose = { syncOpen = false })
         return
     }

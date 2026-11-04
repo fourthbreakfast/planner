@@ -46,6 +46,8 @@ class Syncthing(
     /** Where another copy on this same computer reaches this one, for tests that cannot rely on discovery. */
     val address: String get() = "tcp://127.0.0.1:${ports.listen}"
 
+    val listenPort: Int get() = ports.listen
+
     /** This device's Syncthing id, known once it has started. */
     var myId: String = ""
         private set
@@ -169,6 +171,9 @@ class Syncthing(
             }
     }
 
+    /** This device's addresses on its local networks, for another device to dial. */
+    fun addresses(): List<String> = lanAddresses(ports.listen)
+
     /** Devices running the app that this one can see on the local network. */
     suspend fun nearby(): List<String> = api().get("/rest/system/discovery").jsonObject.keys.filter { it != myId }
 
@@ -186,10 +191,10 @@ class Syncthing(
      * Starts syncing with another device. The device that pairs by code takes the other as its [introducer]: it then
      * learns every device the other one already syncs with, so pairing a new device with any one of them is enough.
      * Only one side of a pair may introduce, so the side that lets a device in does not. A device taken away on the
-     * introducing side is taken away from the devices it introduced to as well, so a lost phone can be shut out. The [address] is found by
-     * itself unless given.
+     * introducing side is taken away from the devices it introduced to as well, so a lost phone can be shut out. The device is dialed at its [addresses], and found by itself
+     * as well.
      */
-    suspend fun pair(id: String, introducer: Boolean, address: String = "dynamic") {
+    suspend fun pair(id: String, introducer: Boolean, addresses: List<String> = emptyList()) {
         val api = api()
         val known = peers().any { it.id == id }
         if (!known) {
@@ -197,7 +202,7 @@ class Syncthing(
                 "/rest/config/devices",
                 buildJsonObject {
                     put("deviceID", id)
-                    put("addresses", buildJsonArray { add(JsonPrimitive(address)) })
+                    put("addresses", buildJsonArray { (addresses + "dynamic").forEach { add(JsonPrimitive(it)) } })
                     put("introducer", introducer)
                     put("skipIntroductionRemovals", false)
                     put("autoAcceptFolders", true)
