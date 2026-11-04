@@ -23,6 +23,8 @@ import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.app_name
 import dev.fourthbreakfast.planner.resources.guide
 import dev.fourthbreakfast.planner.resources.guide_title
+import dev.fourthbreakfast.planner.resources.off
+import dev.fourthbreakfast.planner.resources.on
 import dev.fourthbreakfast.planner.resources.setting_theme
 import dev.fourthbreakfast.planner.resources.sync_devices
 import dev.fourthbreakfast.planner.resources.sync_title
@@ -130,3 +132,7 @@ fun VersionLine(version: String) {
         modifier = Modifier.padding(start = Space.gutter, top = Space.x6),
     )
 }
+
+/** How a setting that is switched on or off reads. */
+@Composable
+fun onOff(on: Boolean): String = stringResource(if (on) Res.string.on else Res.string.off)

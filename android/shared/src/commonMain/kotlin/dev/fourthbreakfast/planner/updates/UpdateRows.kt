@@ -8,9 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import dev.fourthbreakfast.planner.resources.Res
-import dev.fourthbreakfast.planner.resources.backup_off
 import dev.fourthbreakfast.planner.resources.setting_updates
-import dev.fourthbreakfast.planner.resources.sync_on
 import dev.fourthbreakfast.planner.resources.up_to_date
 import dev.fourthbreakfast.planner.resources.update_checking
 import dev.fourthbreakfast.planner.resources.update_daily
@@ -18,6 +16,7 @@ import dev.fourthbreakfast.planner.resources.update_downloading
 import dev.fourthbreakfast.planner.resources.update_failed
 import dev.fourthbreakfast.planner.resources.update_ready
 import dev.fourthbreakfast.planner.settings.Setting
+import dev.fourthbreakfast.planner.settings.onOff
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -45,7 +44,7 @@ fun UpdateRows(updates: Updates, version: String, install: (UpdateState.Ready) -
             else -> scope.launch { updates.check() }
         }
     }
-    Setting(stringResource(Res.string.update_daily), stringResource(if (daily) Res.string.sync_on else Res.string.backup_off)) {
+    Setting(stringResource(Res.string.update_daily), onOff(daily)) {
         daily = !daily
         updates.daily = daily
     }

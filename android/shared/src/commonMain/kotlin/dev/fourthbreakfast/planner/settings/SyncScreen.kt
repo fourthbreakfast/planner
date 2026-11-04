@@ -49,7 +49,6 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import dev.fourthbreakfast.planner.resources.Res
-import dev.fourthbreakfast.planner.resources.backup_off
 import dev.fourthbreakfast.planner.resources.sync_anywhere
 import dev.fourthbreakfast.planner.resources.sync_asks
 import dev.fourthbreakfast.planner.resources.sync_connected
@@ -58,7 +57,6 @@ import dev.fourthbreakfast.planner.resources.sync_let_in
 import dev.fourthbreakfast.planner.resources.sync_name
 import dev.fourthbreakfast.planner.resources.sync_not_found
 import dev.fourthbreakfast.planner.resources.sync_now
-import dev.fourthbreakfast.planner.resources.sync_on
 import dev.fourthbreakfast.planner.resources.sync_pair
 import dev.fourthbreakfast.planner.resources.sync_refuse
 import dev.fourthbreakfast.planner.resources.sync_remove
@@ -200,7 +198,7 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
             }
             Setting(
                 stringResource(Res.string.sync_anywhere),
-                stringResource(if (anywhere) Res.string.sync_on else Res.string.backup_off),
+                onOff(anywhere),
             ) {
                 anywhere = !anywhere
                 controller.chooseAnywhere(anywhere)
