@@ -52,13 +52,9 @@ fun BinBar(count: Int, from: Tab, onEmpty: () -> Unit, onClose: () -> Unit) {
                 .statusBarsPadding()
                 .padding(horizontal = Space.rowPad),
         ) {
-            listOf(Tab.TASKS, Tab.AGENDA, Tab.NOTES).forEach { tab ->
+            Tab.entries.forEach { tab ->
                 Box(
-                    contentAlignment = when (tab) {
-                        Tab.TASKS -> Alignment.CenterStart
-                        Tab.AGENDA -> Alignment.Center
-                        Tab.NOTES -> Alignment.CenterEnd
-                    },
+                    contentAlignment = tab.alignment,
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = Space.touch)
