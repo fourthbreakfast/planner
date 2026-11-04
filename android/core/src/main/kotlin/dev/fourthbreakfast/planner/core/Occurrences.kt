@@ -44,6 +44,3 @@ fun occurrences(event: Event, from: Long, to: Long): List<Occurrence> {
 fun occurrences(events: List<Event>, from: Long, to: Long): List<Occurrence> = events
     .flatMap { occurrences(it, from, to) }
     .sortedWith(compareBy<Occurrence>({ it.start }, { it.event.minute ?: -1 }, { it.event.createdAt }))
-
-/** The next time [event] starts on [day] or after, looking no further than [within] days, or null. */
-fun nextStart(event: Event, day: Long, within: Long = 800): Long? = occurrences(event, day, day + within).firstOrNull { it.start >= day }?.start
