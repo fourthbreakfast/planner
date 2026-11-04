@@ -20,4 +20,12 @@ class SearchTest {
         assertTrue(matchesAll(noteText(note), searchWords("shop milk")))
         assertTrue(!matchesAll(noteText(note), searchWords("bread")))
     }
+
+    @Test
+    fun theLineShownUnderAResultIsTheFirstWithAWordInIt() {
+        val lines = listOf("eggs", "  Oat milk  ", "more milk").map { NoteLine(text = it, styles = List(it.length) { 0 }) }
+        val note = Note(title = "milk run", body = formatBody(lines), createdAt = 1)
+        assertEquals("Oat milk", matchingLine(note, searchWords("milk")))
+        assertEquals(null, matchingLine(note, searchWords("bread")))
+    }
 }
