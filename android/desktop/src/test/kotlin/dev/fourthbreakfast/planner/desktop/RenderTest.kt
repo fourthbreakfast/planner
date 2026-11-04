@@ -55,7 +55,7 @@ class RenderTest {
         fun draw(name: String, dark: Boolean) {
             ImageComposeScene(1280, 820, Density(1f)) {
                 CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
-                    PlannerTheme(darkTheme = dark) {
+                    PlannerTheme(darkTheme = dark, textScale = Desk.textScale) {
                         Dashboard(
                             app.dashboard,
                             app.tasksViewModel,
