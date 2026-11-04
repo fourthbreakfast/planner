@@ -63,7 +63,6 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("notes", notes.size, state.focused == Section.NOTES) {
             HeaderButton(stringResource(Res.string.search), { state.panel = Panel.Search }) { magnifier(it) }
-            HeaderButton(stringResource(Res.string.add_note), { viewModel.add { id -> state.openNote(id) } }) { plus(it) }
             BinButton(binCount, { state.panel = Panel.NoteBin })
         }
         if (notes.isEmpty()) Quiet(stringResource(Res.string.nothing_written))
@@ -153,5 +152,6 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                 }
             }
         }
+        FootAdd(stringResource(Res.string.add_note)) { viewModel.add { id -> state.openNote(id) } }
     }
 }
