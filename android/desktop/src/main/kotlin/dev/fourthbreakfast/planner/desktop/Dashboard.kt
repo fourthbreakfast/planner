@@ -38,6 +38,7 @@ import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.agenda.AgendaBin
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.agenda.EventEditor
+import dev.fourthbreakfast.planner.agenda.WhichTimesChooser
 import dev.fourthbreakfast.planner.agenda.movedDraft
 import dev.fourthbreakfast.planner.agenda.today
 import dev.fourthbreakfast.planner.core.Repeat
@@ -79,6 +80,9 @@ class DashboardState {
     var panel by mutableStateOf<Panel?>(null)
     var selectedTask by mutableStateOf<String?>(null)
     var selectedEvent by mutableStateOf<String?>(null)
+
+    /** An event time asked to be removed, as its id and day, until it is known whether that is one time or every time. */
+    var eventToRemove by mutableStateOf<String?>(null)
     var selectedNote by mutableStateOf<String?>(null)
     var renamingTask by mutableStateOf<String?>(null)
     var aimedTask by mutableStateOf<String?>(null)
@@ -155,7 +159,7 @@ fun handleDashboardKey(
             allTasks().firstOrNull { it.id == state.selectedTask }?.let { tasks.setDone(it, !it.done) }
         event.key == Key.Delete -> when (state.focused) {
             Section.TASKS -> allTasks().firstOrNull { it.id == state.selectedTask }?.let { tasks.moveToBin(it) }
-            Section.AGENDA -> state.selectedEvent?.let { agenda.moveToBin(it.substringBefore('@')) }
+            Section.AGENDA -> state.eventToRemove = state.selectedEvent
             Section.NOTES -> state.selectedNote?.let { notes.moveToBin(it) }
         }
         else -> return false
@@ -183,6 +187,25 @@ fun Dashboard(
     val toolbarAbove = LocalServices.current.settings.toolbarAbove
     val requests = LocalServices.current.requests
 
+    state.eventToRemove?.let { key ->
+        val id = key.substringBefore('@')
+        val day = key.substringAfter('@', "").toLongOrNull()
+        val event = allEvents.firstOrNull { it.id == id }
+        if (event == null || event.repeat == Repeat.NONE || day == null) {
+            LaunchedEffect(key) {
+                agendaViewModel.moveToBin(id)
+                state.eventToRemove = null
+            }
+        } else {
+            WhichTimesChooser(
+                onPick = { onlyThisTime ->
+                    agendaViewModel.delete(id, day, onlyThisTime)
+                    state.eventToRemove = null
+                },
+                onCancel = { state.eventToRemove = null },
+            )
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
         Row(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -195,7 +218,7 @@ fun Dashboard(
                     events,
                     allEvents.count { it.inBin },
                     state,
-                    onRemove = { agendaViewModel.moveToBin(it) },
+                    onRemove = { state.eventToRemove = it },
                     onMove = { event, from, day ->
                         // a repeating event moves only the time that was dragged; the others stay
                         agendaViewModel.save(event.id, from, movedDraft(event, from, day), onlyThisTime = event.repeat != Repeat.NONE)

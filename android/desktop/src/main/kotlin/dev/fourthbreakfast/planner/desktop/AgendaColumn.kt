@@ -164,7 +164,7 @@ private fun EventLine(
     ContextMenuArea(items = {
         listOf(
             ContextMenuItem(openLabel) { state.openEvent(key) },
-            ContextMenuItem(binLabel) { onRemove(event.id) },
+            ContextMenuItem(binLabel) { onRemove(key) },
         )
     }) {
         Row(
@@ -226,7 +226,7 @@ private fun EventLine(
                 if (event.location.isNotEmpty()) Text(event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 EventSpanAndRepeat(event, day, today)
             }
-            if (hovered) HeaderButton(stringResource(Res.string.bin), { onRemove(event.id) }) { binIcon(it) }
+            if (hovered) HeaderButton(stringResource(Res.string.bin), { onRemove(key) }) { binIcon(it) }
         }
     }
 }
