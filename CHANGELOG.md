@@ -13,6 +13,9 @@ what changed in each release, newest first. these notes are also the text of eac
 - updates download in the background and are checked against the checksum github publishes
 - reminders only ring for events still there, and late ones show when the phone wakes
 - a restored backup stays restored, and phone backups stay out of the cloud
+- a delete could come back between devices when one device's clock ran behind; deletes now keep the time they were made. a cancelled time of a repeating event in an imported calendar no longer shows, a later time of a long repeating event shows the right last day, and dragging one on the computer keeps its length
+- pairing while sync was not running no longer crashes the phone, a failed background sync no longer leaves syncthing running, and a syncthing left behind by a killed app is stopped before the next one starts
+- on the computer, removing a repeating event asks whether it is this time or every time, notes drag as on the phone and can be dropped last, the tray menu and the title bar are plainer, and Enter accepts a device name
 - winget and obtainium are no longer used; the release is the apk and the msi
 
 ## 0.8.0
