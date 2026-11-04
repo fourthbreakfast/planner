@@ -54,7 +54,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.time.temporal.WeekFields
 import java.util.Locale
 import org.jetbrains.compose.resources.stringResource
 
@@ -153,6 +152,21 @@ private fun NumberGrid(values: List<Int>, columns: Int, selected: Int?, label: (
 }
 
 /**
+ * The start and end after an hour or a minute is touched in the time chooser, on the end when [editingEnd]: the other
+ * part of that time stays. An end always comes at least five minutes after the start, and a start that passes the end
+ * takes the end along to an hour after it, never past midnight.
+ */
+fun pickedTime(start: Int, end: Int, editingEnd: Boolean, hour: Int?, minute: Int?): Pair<Int, Int> {
+    val current = if (editingEnd) end else start
+    val next = (hour ?: (current / 60)) * 60 + (minute ?: (current % 60))
+    return if (editingEnd) {
+        start to maxOf(next, minOf(start + 5, LAST_MINUTE))
+    } else {
+        next to if (end <= next) minOf(next + 60, LAST_MINUTE) else end
+    }
+}
+
+/**
  * The time of an event: all day, a start, or a start and an end. The hours and the minutes are two grids of
  * numbers, the same size and look as everything else, and what is chosen is filled in.
  */
@@ -175,14 +189,9 @@ fun TimeChooser(initialStart: Int?, initialEnd: Int?, onSet: (start: Int?, end: 
     var editingEnd by remember { mutableStateOf(false) }
 
     fun pick(hour: Int?, minute: Int?) {
-        val current = if (editingEnd) end else start
-        val next = (hour ?: (current / 60)) * 60 + (minute ?: (current % 60))
-        if (editingEnd) {
-            end = maxOf(next, minOf(start + 5, LAST_MINUTE))
-        } else {
-            start = next
-            if (end <= start) end = minOf(start + 60, LAST_MINUTE)
-        }
+        val (newStart, newEnd) = pickedTime(start, end, editingEnd, hour, minute)
+        start = newStart
+        end = newEnd
     }
 
     ChooserPanel(onDismiss = onCancel) {
@@ -257,9 +266,8 @@ fun DayChooser(initialDay: Long?, today: Long, onSet: (Long) -> Unit, onCancel: 
     val locale = Locale.getDefault()
     var chosen by remember { mutableStateOf(initialDay ?: today) }
     var month by remember { mutableStateOf(YearMonth.from(LocalDate.ofEpochDay(initialDay ?: today))) }
-    val first = WeekFields.of(locale).firstDayOfWeek
-    val offset = (month.atDay(1).dayOfWeek.value - first.value + 7) % 7
-    val cells: List<Long?> = List(offset) { null } + (1..month.lengthOfMonth()).map { month.atDay(it).toEpochDay() }
+    val first = firstDayOfWeek(locale)
+    val cells = monthCells(month, first)
 
     ChooserPanel(onDismiss = onCancel) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -316,7 +324,6 @@ fun DayChooser(initialDay: Long?, today: Long, onSet: (Long) -> Unit, onCancel: 
                         }
                     }
                 }
-                repeat(7 - week.size) { Box(Modifier.weight(1f)) }
             }
         }
         Row(Modifier.fillMaxWidth().padding(top = Space.x2), horizontalArrangement = Arrangement.End) {
