@@ -137,7 +137,7 @@ fun androidx.compose.ui.graphics.drawscope.DrawScope.magnifier(ink: Color) {
 fun Quiet(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyLarge,
+        style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(start = Space.gutter, top = Space.x3),
     )
