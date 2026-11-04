@@ -74,11 +74,38 @@ fun HeaderButton(label: String, onClick: () -> Unit, draw: androidx.compose.ui.g
     }
 }
 
-/** A plus, for adding. */
+/** A plus, for adding, drawn as the phone's. */
 fun androidx.compose.ui.graphics.drawscope.DrawScope.plus(ink: Color) {
     val line = Space.strokeThin.toPx()
-    drawLine(ink, Offset(size.width * 0.5f, size.height * 0.2f), Offset(size.width * 0.5f, size.height * 0.8f), line, StrokeCap.Round)
-    drawLine(ink, Offset(size.width * 0.2f, size.height * 0.5f), Offset(size.width * 0.8f, size.height * 0.5f), line, StrokeCap.Round)
+    drawLine(ink, Offset(size.width * 0.5f, size.height * 0.14f), Offset(size.width * 0.5f, size.height * 0.86f), line, StrokeCap.Round)
+    drawLine(ink, Offset(size.width * 0.14f, size.height * 0.5f), Offset(size.width * 0.86f, size.height * 0.5f), line, StrokeCap.Round)
+}
+
+/** A plain calendar page: two rings at the top, a line under them, nothing inside. */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.calendar(ink: Color) {
+    val line = Space.strokeThin.toPx()
+    val w = size.width
+    val h = size.height
+    drawRect(
+        ink,
+        Offset(w * 0.16f, h * 0.22f),
+        androidx.compose.ui.geometry.Size(w * 0.68f, h * 0.62f),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(line),
+    )
+    drawLine(ink, Offset(w * 0.16f, h * 0.42f), Offset(w * 0.84f, h * 0.42f), line)
+    for (x in listOf(0.36f, 0.64f)) drawLine(ink, Offset(w * x, h * 0.12f), Offset(w * x, h * 0.30f), line, StrokeCap.Round)
+}
+
+/** Three lines, a list. */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.listLines(ink: Color) {
+    val line = Space.strokeThin.toPx()
+    for (y in listOf(
+        0.28f,
+        0.5f,
+        0.72f,
+    )) {
+        drawLine(ink, Offset(size.width * 0.18f, size.height * y), Offset(size.width * 0.82f, size.height * y), line, StrokeCap.Round)
+    }
 }
 
 /** A magnifying glass, for search. */

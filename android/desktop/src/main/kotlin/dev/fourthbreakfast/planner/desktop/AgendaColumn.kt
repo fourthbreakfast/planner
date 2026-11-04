@@ -35,7 +35,6 @@ import dev.fourthbreakfast.planner.agenda.EarlierRow
 import dev.fourthbreakfast.planner.agenda.EventItem
 import dev.fourthbreakfast.planner.agenda.MonthGrid
 import dev.fourthbreakfast.planner.agenda.PREF_MONTH
-import dev.fourthbreakfast.planner.agenda.ViewToggle
 import dev.fourthbreakfast.planner.agenda.agendaRows
 import dev.fourthbreakfast.planner.agenda.busyDays
 import dev.fourthbreakfast.planner.agenda.dateText
@@ -56,6 +55,8 @@ import dev.fourthbreakfast.planner.resources.earlier
 import dev.fourthbreakfast.planner.resources.nothing_planned
 import dev.fourthbreakfast.planner.resources.open_event
 import dev.fourthbreakfast.planner.resources.remove_task
+import dev.fourthbreakfast.planner.resources.show_list
+import dev.fourthbreakfast.planner.resources.show_month
 import dev.fourthbreakfast.planner.resources.until_day
 import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.LocalServices
@@ -82,14 +83,14 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
 
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("agenda", upcomingCount(events, today), state.focused == Section.AGENDA) {
-            ViewToggle(asMonth) {
+            HeaderButton(stringResource(if (asMonth) Res.string.show_list else Res.string.show_month), {
                 asMonth = !asMonth
                 prefs.putBoolean(PREF_MONTH, asMonth)
                 if (asMonth) {
                     state.chosenDay = today
                     month = today
                 }
-            }
+            }) { if (asMonth) listLines(it) else calendar(it) }
             HeaderButton(stringResource(Res.string.add_event), { state.newEvent(if (asMonth) state.chosenDay else null) }) { plus(it) }
             BinButton(binCount, { state.panel = Panel.AgendaBin })
         }

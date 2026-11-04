@@ -10,6 +10,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,10 +53,11 @@ private val closeRed = Color(0xFFC42B1C)
 
 /**
  * The top of the window, drawn by the app: its mark and name at the left, a place to drag the window by (a double click
- * maximizes), and the window's own minimize, maximize and close at the right, as Windows 11 lays them.
+ * maximizes), [extras] such as the settings, and the window's own minimize, maximize and close at the right, as Windows 11
+ * lays them.
  */
 @Composable
-fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit) {
+fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit, extras: @Composable RowScope.() -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
     val icon = remember { appIconPainter() }
     Row(
@@ -75,6 +77,7 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit) {
                 SegmentText("planner", colors.onSurfaceVariant, Modifier.padding(start = Space.x3), scale = 0.8f)
             }
         }
+        extras()
         WindowButton(stringResource(Res.string.window_minimize), hoverColor = colors.secondaryContainer, onClick = { state.isMinimized = true }) { ink ->
             drawLine(ink, Offset(size.width * 0.28f, size.height * 0.5f), Offset(size.width * 0.72f, size.height * 0.5f), Space.strokeThin.toPx())
         }

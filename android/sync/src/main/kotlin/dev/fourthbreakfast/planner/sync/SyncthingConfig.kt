@@ -27,6 +27,8 @@ fun plannerConfig(xml: String, ports: Ports, anywhere: Boolean): String {
         "urAccepted" to "-1",
         "autoUpgradeIntervalH" to "0",
         "crashReportingEnabled" to "false",
+        // a device that was just paired is dialed again soon, not after the usual minute
+        "reconnectionIntervalS" to "10",
     )
     var out = xml
     for ((tag, value) in options) {

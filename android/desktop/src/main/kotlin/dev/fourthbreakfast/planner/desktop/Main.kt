@@ -231,16 +231,15 @@ fun main(args: Array<String>) {
                     CompositionLocalProvider(LocalContextMenuRepresentation provides menus) {
                         Box(Modifier.fillMaxSize().background(colors.background)) {
                             Column(Modifier.fillMaxSize()) {
-                                TitleBar(windowState, onClose = { visible = false })
+                                TitleBar(windowState, onClose = { visible = false }) {
+                                    TitleStatus(app.sync, app.updates, onUpdate = ::install, onSettings = { app.dashboard.panel = Panel.Settings })
+                                }
                                 Box(Modifier.weight(1f)) {
                                     Dashboard(
                                         app.dashboard,
                                         app.tasksViewModel,
                                         app.agendaViewModel,
                                         app.notesViewModel,
-                                        foot = {
-                                            StatusLine(app.sync, app.updates, onUpdate = ::install, onSettings = { app.dashboard.panel = Panel.Settings })
-                                        },
                                     ) { onClose ->
                                         DesktopSettings(app.tasksViewModel, app.sync, app.updates, app.version, onClose, install = ::install)
                                     }
