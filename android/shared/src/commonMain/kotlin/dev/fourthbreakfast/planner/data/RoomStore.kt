@@ -34,7 +34,8 @@ interface EntityDao<E> {
 
 /**
  * A core [Store] kept in one table of the database: [toModel] and [toEntity] turn its rows into the core's things and
- * back. Deleting for good also leaves the mark that keeps a thing gone on the other devices.
+ * back. Deleting for good also leaves the mark that keeps a thing gone on the other devices, stamped by [clock] like
+ * every other change, so a device whose own clock runs late still deletes after the last change it took in.
  */
 class RoomStore<T, E>(
     private val database: PlannerDatabase,
@@ -42,6 +43,7 @@ class RoomStore<T, E>(
     private val id: (T) -> String,
     private val toModel: (E) -> T,
     private val toEntity: (T) -> E,
+    private val clock: () -> Long,
 ) : Store<T> {
     override fun observeAll(): Flow<List<T>> = dao.observeAll().map { rows -> rows.map(toModel) }
 
@@ -51,26 +53,28 @@ class RoomStore<T, E>(
 
     override suspend fun update(items: List<T>) = dao.updateAll(items.map(toEntity))
 
-    override suspend fun delete(items: List<T>) = database.inTransaction {
-        dao.deleteAll(items.map(toEntity))
-        database.forget(items.map(id))
+    override suspend fun delete(items: List<T>) {
+        if (items.isEmpty()) return
+        database.inTransaction {
+            dao.deleteAll(items.map(toEntity))
+            database.forget(items.map(id), clock())
+        }
     }
 
     override suspend fun <R> transaction(block: suspend () -> R): R = database.inTransaction { block() }
 }
 
-fun roomTaskStore(database: PlannerDatabase): TaskStore = RoomStore(database, database.taskDao(), Task::id, TaskEntity::toTask, Task::toEntity)
+internal fun roomTaskStore(database: PlannerDatabase, clock: () -> Long): TaskStore =
+    RoomStore(database, database.taskDao(), Task::id, TaskEntity::toTask, Task::toEntity, clock)
 
-fun roomEventStore(database: PlannerDatabase): EventStore = RoomStore(database, database.eventDao(), Event::id, EventEntity::toEvent, Event::toEntity)
+internal fun roomEventStore(database: PlannerDatabase, clock: () -> Long): EventStore =
+    RoomStore(database, database.eventDao(), Event::id, EventEntity::toEvent, Event::toEntity, clock)
 
-fun roomNoteStore(database: PlannerDatabase): NoteStore = RoomStore(database, database.noteDao(), Note::id, NoteEntity::toNote, Note::toEntity)
+internal fun roomNoteStore(database: PlannerDatabase, clock: () -> Long): NoteStore =
+    RoomStore(database, database.noteDao(), Note::id, NoteEntity::toNote, Note::toEntity, clock)
 
 /** Every store deletes for good through here, so the mark that keeps it gone on other devices is never left out. */
-private suspend fun PlannerDatabase.forget(ids: List<String>) {
-    if (ids.isEmpty()) return
-    val now = System.currentTimeMillis()
-    syncDao().addGone(ids.map { GoneEntity(it, now) })
-}
+private suspend fun PlannerDatabase.forget(ids: List<String>, at: Long) = syncDao().addGone(ids.map { GoneEntity(it, at) })
 
 /** Runs [block] as one write, on a phone or a computer alike. A write inside another one joins it. */
 private suspend fun <T> PlannerDatabase.inTransaction(block: suspend () -> T): T = useWriterConnection { it.immediateTransaction { block() } }

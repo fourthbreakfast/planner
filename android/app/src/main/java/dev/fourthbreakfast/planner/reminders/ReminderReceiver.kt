@@ -47,7 +47,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val all = (context.applicationContext as PlannerApp).events.all.first()
+                val all = (context.applicationContext as PlannerApp).data.events.all.first()
                 val now = System.currentTimeMillis()
                 val due = all.firstOrNull { it.id == id }?.takeIf { !it.inBin }?.let { reminderAt(it, from = now - ON_TIME_MILLIS) }
                 val snoozed = intent.getBooleanExtra(SNOOZED, false)

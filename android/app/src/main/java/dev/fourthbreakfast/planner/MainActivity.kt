@@ -25,20 +25,20 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 val app = application as PlannerApp
-                TasksViewModel(app.tasks, app.backups)
+                TasksViewModel(app.data.tasks, app.data.backups)
             }
         }
     }
 
     private val agendaViewModel: AgendaViewModel by viewModels {
         viewModelFactory {
-            initializer { AgendaViewModel((application as PlannerApp).events) }
+            initializer { AgendaViewModel((application as PlannerApp).data.events) }
         }
     }
 
     private val notesViewModel: NotesViewModel by viewModels {
         viewModelFactory {
-            initializer { NotesViewModel((application as PlannerApp).notes, (application as PlannerApp).services.prefs) }
+            initializer { NotesViewModel((application as PlannerApp).data.notes, (application as PlannerApp).services.prefs) }
         }
     }
 

@@ -7,17 +7,6 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.room.Room
 import dev.fourthbreakfast.planner.backup.AutoBackup
-import dev.fourthbreakfast.planner.core.Backups
-import dev.fourthbreakfast.planner.core.Events
-import dev.fourthbreakfast.planner.core.LogicalClock
-import dev.fourthbreakfast.planner.core.Notes
-import dev.fourthbreakfast.planner.core.Sync
-import dev.fourthbreakfast.planner.core.Tasks
-import dev.fourthbreakfast.planner.core.newestChange
-import dev.fourthbreakfast.planner.data.RoomSyncLedger
-import dev.fourthbreakfast.planner.data.roomEventStore
-import dev.fourthbreakfast.planner.data.roomNoteStore
-import dev.fourthbreakfast.planner.data.roomTaskStore
 import dev.fourthbreakfast.planner.reminders.Reminders
 import dev.fourthbreakfast.planner.sync.SyncController
 import dev.fourthbreakfast.planner.ui.AndroidPrefs
@@ -31,7 +20,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 
 class PlannerApp : Application() {
@@ -41,10 +29,8 @@ class PlannerApp : Application() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val taskStore by lazy { roomTaskStore(database) }
-    private val eventStore by lazy { roomEventStore(database) }
-    private val noteStore by lazy { roomNoteStore(database) }
-    private val syncLedger by lazy { RoomSyncLedger(database) }
+    /** The tasks, the agenda, the notes, the backup and sync, over the database. */
+    val data by lazy { PlannerData(database) }
     private val reminders by lazy { Reminders(this) }
 
     private val prefs by lazy { AndroidPrefs(this, "view") }
@@ -64,31 +50,17 @@ class PlannerApp : Application() {
         scope.launch { updates.checkIfDue() }
     }
 
-    // one clock for every change, which never goes back past a time already seen here or from another device
-    private val clock = LogicalClock()
-
-    val tasks: Tasks by lazy { Tasks(taskStore, clock::now) }
-    val events: Events by lazy { Events(eventStore, clock::now) }
-    val notes: Notes by lazy { Notes(noteStore, clock::now) }
-    val backups: Backups by lazy { Backups(taskStore, eventStore, noteStore, syncLedger, clock::now) }
-    val syncController: SyncController by lazy {
-        SyncController(
-            this,
-            Sync(taskStore, eventStore, noteStore, syncLedger, clock::now, clock::saw),
-            merge(taskStore.observeAll(), eventStore.observeAll(), noteStore.observeAll()),
-            scope,
-        )
-    }
-    private val autoBackup by lazy { AutoBackup(this, backups, settings) }
+    val syncController: SyncController by lazy { SyncController(this, data.sync, data.changes, scope) }
+    private val autoBackup by lazy { AutoBackup(this, data.backups, settings) }
 
     override fun onCreate() {
         super.onCreate()
         setUpShortcuts()
-        scope.launch { clock.saw(newestChange(taskStore, eventStore, noteStore)) }
+        scope.launch { data.startClock() }
         // the alarms follow the agenda: every change to an event sets or takes away its alarm
-        scope.launch { events.all.collect { reminders.sync(it) } }
+        scope.launch { data.events.all.collect { reminders.sync(it) } }
         // and the widget on the home screen follows the events and the tasks
-        scope.launch { combine(events.all, tasks.all) { e, t -> e to t }.collect { (e, t) -> PlannerWidget.update(this@PlannerApp, e, t) } }
+        scope.launch { combine(data.events.all, data.tasks.all) { e, t -> e to t }.collect { (e, t) -> PlannerWidget.update(this@PlannerApp, e, t) } }
     }
 
     /** The launcher's long-press shortcuts: a new task, a new event, a new note. */
@@ -115,11 +87,11 @@ class PlannerApp : Application() {
 
     /** Draws the home screen widgets again, for when the widget is added or resized or the day changes. */
     fun refreshWidgets() {
-        scope.launch { PlannerWidget.update(this@PlannerApp, events.all.first(), tasks.all.first()) }
+        scope.launch { PlannerWidget.update(this@PlannerApp, data.events.all.first(), data.tasks.all.first()) }
     }
 
     /** Sets every alarm again, for after a restart or a change of the clock. */
     fun resyncReminders() {
-        scope.launch { reminders.sync(events.all.first()) }
+        scope.launch { reminders.sync(data.events.all.first()) }
     }
 }
