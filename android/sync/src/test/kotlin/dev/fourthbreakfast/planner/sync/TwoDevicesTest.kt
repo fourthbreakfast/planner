@@ -149,6 +149,13 @@ class TwoDevicesTest {
             assertEquals(phone.syncthing.myId, deviceIdAt("127.0.0.1", 22192))
             assertEquals(listOf("phone"), pc.syncthing.peers().map { it.name })
 
+            // a device is named on itself, and the others call it that
+            phone.files.carryNames(phone.syncthing, "kalypso")
+            until("the name arrives") {
+                pc.files.carryNames(pc.syncthing, "pc")
+                pc.syncthing.peers().map { it.name } == listOf("kalypso")
+            }
+
             pc.tasks.insert(listOf(Task(id = "t", title = "buy milk", createdAt = 1)))
             pc.files.publish()
             until("task arrived") {

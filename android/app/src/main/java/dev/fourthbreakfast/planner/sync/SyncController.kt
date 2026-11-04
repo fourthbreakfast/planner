@@ -98,17 +98,6 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         scope.launch { runCatching { if (syncthing.running) syncthing.rename(syncthing.myId, clean) } }
     }
 
-    override fun renamePeer(id: String, name: String) {
-        val clean = name.trim().take(40)
-        if (clean.isEmpty()) return
-        scope.launch {
-            runCatching {
-                syncthing.rename(id, clean)
-                refresh()
-            }
-        }
-    }
-
     /** The sync screen is open: it runs, and any device asking to pair is let in. */
     override fun openPairing() {
         pairing = true
@@ -161,6 +150,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
             files.publish()
             syncthing.rescan()
             files.takeIn()
+            files.carryNames(syncthing, deviceName)
             refresh()
         }
     }
@@ -240,6 +230,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
             while (scope.isActive) {
                 runCatching {
                     files.takeIn()
+                    files.carryNames(syncthing, deviceName)
                     refresh()
                 }
                 delay(TICK_MILLIS)
