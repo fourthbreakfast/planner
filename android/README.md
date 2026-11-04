@@ -48,7 +48,7 @@ agp 9.5.0
 gradle 9.6.0 (wrapper, with checksum)
 kotlin 2.4.21
 compose bom 2026.09.00
-core-ktx 1.19.1, lifecycle (runtime-ktx, runtime-compose, viewmodel-compose) 2.11.0, activity-compose 1.13.0
+core-ktx 1.19.1, lifecycle (viewmodel-compose, and the multiplatform runtime-compose in shared) 2.11.0, activity-compose 1.13.0
 room 2.8.5, ksp 2.3.13, kotlinx-coroutines 1.11.0
 ktlint gradle plugin 14.2.0
 syncthing v2.1.7 (submodule), built with go 1.26.2, kotlinx-serialization-json 1.8.1, work-runtime-ktx 2.12.0, zxing core 3.5.4, zxing-android-embedded 4.3.0
