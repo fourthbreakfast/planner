@@ -63,6 +63,7 @@ room {
 dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
+    add("desktopTestImplementation", testFixtures(project(":core")))
 }
 
 // the drawing tests write their pictures where PLANNER_RENDER says

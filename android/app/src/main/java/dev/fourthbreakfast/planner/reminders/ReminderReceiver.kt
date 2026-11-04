@@ -11,11 +11,19 @@ import android.text.format.DateFormat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.fourthbreakfast.planner.MainActivity
+import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
 import dev.fourthbreakfast.planner.agenda.timeText
+import dev.fourthbreakfast.planner.core.reminderAt
+import kotlin.math.abs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 private const val CHANNEL = "reminders"
 private const val SNOOZE_MINUTES = 10
+private const val ON_TIME_MILLIS = 30 * 60_000L
 
 /**
  * Rings when an alarm from [Reminders] goes off: puts the event up as a notification. Touching it opens the event,
@@ -34,6 +42,25 @@ class ReminderReceiver : BroadcastReceiver() {
             Reminders(context).snooze(intent, System.currentTimeMillis() + SNOOZE_MINUTES * 60_000L)
             return
         }
+        // sync may have moved or deleted the event since the alarm was set while the app was not running: it only rings
+        // for an event that is still there, at the time it is still meant to
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val all = (context.applicationContext as PlannerApp).data.events.all.first()
+                val now = System.currentTimeMillis()
+                val due = all.firstOrNull { it.id == id }?.takeIf { !it.inBin }?.let { reminderAt(it, from = now - ON_TIME_MILLIS) }
+                val snoozed = intent.getBooleanExtra(SNOOZED, false)
+                if (due != null && (snoozed || abs(due - now) < ON_TIME_MILLIS)) show(context, intent, id, manager)
+                // a repeating event's next time gets its alarm now that this one has rung
+                if (!snoozed) Reminders(context).sync(all, now + ON_TIME_MILLIS)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    private fun show(context: Context, intent: Intent, id: String, manager: NotificationManagerCompat) {
         val title = intent.getStringExtra(TITLE) ?: return
         val time = timeText(intent.getIntExtra(MINUTE, 0), DateFormat.is24HourFormat(context))
         val place = intent.getStringExtra(PLACE).orEmpty()
@@ -88,6 +115,7 @@ class ReminderReceiver : BroadcastReceiver() {
         const val MINUTE = "minute"
         const val PLACE = "place"
         const val SNOOZE = "snooze"
+        const val SNOOZED = "snoozed"
         const val DISMISS = "dismiss"
     }
 }

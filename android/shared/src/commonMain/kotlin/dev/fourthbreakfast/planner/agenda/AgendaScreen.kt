@@ -2,7 +2,6 @@ package dev.fourthbreakfast.planner.agenda
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -43,14 +42,13 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.core.sortedEvents
+import dev.fourthbreakfast.planner.core.occurrences
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_event
 import dev.fourthbreakfast.planner.resources.all_day
@@ -67,12 +65,15 @@ import dev.fourthbreakfast.planner.ui.AddButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.DiscreetMessage
+import dev.fourthbreakfast.planner.ui.DrawnIconButton
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.RowSwipe
+import dev.fourthbreakfast.planner.ui.SettingsButton
 import dev.fourthbreakfast.planner.ui.SwipeRow
 import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
+import dev.fourthbreakfast.planner.ui.listLines
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
@@ -91,6 +92,8 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
     // 0 means closed, 1 a new event, 2 an existing one
     var editorMode by rememberSaveable { mutableStateOf(0) }
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
+    // the day of the time that was opened, which matters for a repeating event
+    var editingDay by rememberSaveable { mutableStateOf<Long?>(null) }
     // the day a new event starts on, when it is added from a day of the month
     var newDay by rememberSaveable { mutableStateOf<Long?>(null) }
     var binOpen by rememberSaveable { mutableStateOf(false) }
@@ -113,6 +116,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 requests.clear()
                 binOpen = false
                 editingId = null
+                editingDay = null
                 newDay = null
                 editorMode = 1
             }
@@ -120,6 +124,8 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 requests.clear()
                 binOpen = false
                 editingId = request.id
+                // a reminder opens the event as a whole, not one time of it from an earlier visit
+                editingDay = null
                 editorMode = 2
             }
             else -> Unit
@@ -138,15 +144,16 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
         when {
             shown == 1 -> EventEditor(
                 initial = if (editorMode == 1) null else editing,
+                occurrence = editingDay.takeIf { editorMode == 2 },
                 newDay = newDay,
-                onSave = { draft ->
-                    if (editorMode == 1) viewModel.add(draft) else editingId?.let { viewModel.update(it, draft) }
+                onSave = { draft, onlyThisTime ->
+                    if (editorMode == 1) viewModel.add(draft) else editingId?.let { viewModel.save(it, editingDay, draft, onlyThisTime) }
                     editorMode = 0
                 },
                 onDelete = editing?.takeIf { editorMode == 2 }?.let { event ->
-                    {
+                    { onlyThisTime ->
                         editorMode = 0
-                        moveToBinWithUndo(event.id)
+                        if (onlyThisTime) viewModel.delete(event.id, editingDay, true) else moveToBinWithUndo(event.id)
                     }
                 },
                 onClose = { editorMode = 0 },
@@ -163,10 +170,12 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 onNew = { day ->
                     newDay = day
                     editingId = null
+                    editingDay = null
                     editorMode = 1
                 },
-                onOpen = { id ->
+                onOpen = { id, day ->
                     editingId = id
+                    editingDay = day
                     editorMode = 2
                 },
                 onRemove = ::moveToBinWithUndo,
@@ -185,7 +194,7 @@ private fun AgendaList(
     onOpenSettings: () -> Unit,
     onOpenBin: () -> Unit,
     onNew: (day: Long?) -> Unit,
-    onOpen: (String) -> Unit,
+    onOpen: (id: String, day: Long) -> Unit,
     onRemove: (String) -> Unit,
 ) {
     BackHandler(onBack = onShowTasks)
@@ -203,8 +212,8 @@ private fun AgendaList(
     var asMonth by remember { mutableStateOf(prefs.getBoolean(PREF_MONTH, false)) }
     var chosen by rememberSaveable { mutableLongStateOf(today) }
     var month by rememberSaveable { mutableLongStateOf(today) }
-    val busyDays = remember(events) { events.mapTo(HashSet()) { it.day } }
-    val dayEvents = remember(events, chosen) { sortedEvents(events.filter { it.day == chosen }) }
+    val busyDays = remember(events, month) { busyDays(events, monthOf(month).atDay(1).toEpochDay() - 7, monthOf(month).atEndOfMonth().toEpochDay() + 7) }
+    val dayEvents = remember(events, chosen) { occurrences(events, chosen, chosen) }
 
     Scaffold(
         modifier = Modifier
@@ -214,9 +223,12 @@ private fun AgendaList(
                 onSweepLeft = onShowNotes,
                 onSweepRight = onShowTasks,
                 // only events can be held, the day headings cannot
-                rowAt = { at -> list.rowKeyAt(at, listBounds)?.let { key -> events.firstOrNull { it.id == key }?.id } },
+                rowAt = { at ->
+                    // a row's key is the event and the day of that time of it
+                    (list.rowKeyAt(at, listBounds) as? String)?.takeIf { key -> events.any { it.id == key.substringBefore('@') } }
+                },
                 swipe = swipe,
-                onSwipedRight = onRemove,
+                onSwipedRight = { key -> onRemove(key.substringBefore('@')) },
             ),
         snackbarHost = {
             SnackbarHost(snackbarHost) { data ->
@@ -258,6 +270,7 @@ private fun AgendaList(
                         }
                     }
                     BinButton(binCount, onOpenBin)
+                    SettingsButton(onOpenSettings)
                 }
             }
         },
@@ -291,14 +304,17 @@ private fun AgendaList(
                         )
                     }
                 }
-                items(dayEvents, key = { it.id }) { event ->
+                items(dayEvents, key = { it.key }) { time ->
                     EventRow(
-                        event = event,
-                        earlier = event.day < today,
+                        event = time.event,
+                        start = time.start,
+                        key = time.key,
+                        today = today,
+                        earlier = time.end < today,
                         is24Hour = is24Hour,
-                        onOpen = { onOpen(event.id) },
+                        onOpen = { onOpen(time.event.id, time.start) },
                         swipe = swipe,
-                        onRemove = { onRemove(event.id) },
+                        onRemove = { onRemove(time.event.id) },
                         modifier = Modifier.animateItem(),
                     )
                 }
@@ -331,9 +347,12 @@ private fun AgendaList(
                         is EarlierRow -> DayHeading(stringResource(Res.string.earlier), earlier = true, big = true)
                         is EventItem -> EventRow(
                             event = row.event,
+                            start = row.day,
+                            key = row.key,
+                            today = today,
                             earlier = row.earlier,
                             is24Hour = is24Hour,
-                            onOpen = { onOpen(row.event.id) },
+                            onOpen = { onOpen(row.event.id, row.day) },
                             swipe = swipe,
                             onRemove = { onRemove(row.event.id) },
                             modifier = Modifier.animateItem(),
@@ -361,6 +380,9 @@ private fun DayHeading(text: String, earlier: Boolean, big: Boolean = false) {
 @Composable
 private fun EventRow(
     event: Event,
+    start: Long,
+    key: String,
+    today: Long,
     earlier: Boolean,
     is24Hour: Boolean,
     onOpen: () -> Unit,
@@ -372,7 +394,7 @@ private fun EventRow(
     val removeLabel = stringResource(Res.string.remove_task)
     val quiet = if (earlier) colors.onSurfaceVariant else colors.onBackground
     SwipeRow(
-        key = event.id,
+        key = key,
         swipe = swipe,
         removeLabel = removeLabel,
         renameLabel = "",
@@ -418,6 +440,8 @@ private fun EventRow(
                 if (event.location.isNotEmpty()) {
                     Text(text = event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
+                // how long it goes on, and how it comes back
+                EventSpanAndRepeat(event, start, today)
                 if (event.notes.isNotEmpty()) {
                     Text(text = event.notes, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
@@ -432,29 +456,18 @@ const val PREF_MONTH = "agenda_month"
 /** Switches the agenda between the list and the month: a little grid while it is a list, lines while it is a month. */
 @Composable
 fun ViewToggle(asMonth: Boolean, onClick: () -> Unit) {
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
-    val label = stringResource(if (asMonth) Res.string.show_list else Res.string.show_month)
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(Space.touch)
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-    ) {
-        Canvas(Modifier.size(Space.icon)) {
-            val w = size.width
-            val h = size.height
-            val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round)
-            if (asMonth) {
-                // three lines, a list
-                for (y in listOf(0.28f, 0.5f, 0.72f)) drawLine(ink, Offset(w * 0.18f, h * y), Offset(w * 0.82f, h * y), line.width, StrokeCap.Round)
-            } else {
-                // a page with a bar on top and a grid of days
-                drawRect(ink, Offset(w * 0.14f, h * 0.18f), Size(w * 0.72f, h * 0.68f), style = line)
-                drawLine(ink, Offset(w * 0.14f, h * 0.36f), Offset(w * 0.86f, h * 0.36f), line.width)
-                for (x in listOf(0.38f, 0.62f)) {
-                    for (y in listOf(0.52f, 0.70f)) drawCircle(ink, radius = line.width, center = Offset(w * x, h * y))
-                }
+    DrawnIconButton(stringResource(if (asMonth) Res.string.show_list else Res.string.show_month), onClick) { ink ->
+        val w = size.width
+        val h = size.height
+        val line = Stroke(Space.strokeThin.toPx(), cap = StrokeCap.Round)
+        if (asMonth) {
+            listLines(ink)
+        } else {
+            // a page with a bar on top and a grid of days
+            drawRect(ink, Offset(w * 0.14f, h * 0.18f), Size(w * 0.72f, h * 0.68f), style = line)
+            drawLine(ink, Offset(w * 0.14f, h * 0.36f), Offset(w * 0.86f, h * 0.36f), line.width)
+            for (x in listOf(0.38f, 0.62f)) {
+                for (y in listOf(0.52f, 0.70f)) drawCircle(ink, radius = line.width, center = Offset(w * x, h * y))
             }
         }
     }

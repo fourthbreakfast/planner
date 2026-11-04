@@ -31,7 +31,12 @@ import dev.fourthbreakfast.planner.resources.tasks_title
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
-enum class Tab { TASKS, AGENDA, NOTES }
+/** The three tabs, in their order along the top, each with the side of the bar its word sits at. */
+enum class Tab(val alignment: Alignment) {
+    TASKS(Alignment.CenterStart),
+    AGENDA(Alignment.Center),
+    NOTES(Alignment.CenterEnd),
+}
 
 /**
  * The three tabs along the top: tasks at the left, agenda in the middle, notes at the right. The one you are on is in
@@ -46,14 +51,15 @@ fun TabBar(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier
             .padding(horizontal = Space.rowPad)
             .selectableGroup(),
     ) {
-        Box(Modifier.weight(1f)) {
-            TabWord(stringResource(Res.string.tasks_title), selected == Tab.TASKS, Alignment.CenterStart, { onSelect(Tab.TASKS) }, onLongPress)
-        }
-        Box(Modifier.weight(1f)) {
-            TabWord(stringResource(Res.string.agenda_title), selected == Tab.AGENDA, Alignment.Center, { onSelect(Tab.AGENDA) }, onLongPress)
-        }
-        Box(Modifier.weight(1f)) {
-            TabWord(stringResource(Res.string.notes_title), selected == Tab.NOTES, Alignment.CenterEnd, { onSelect(Tab.NOTES) }, onLongPress)
+        for (tab in Tab.entries) {
+            val title = when (tab) {
+                Tab.TASKS -> Res.string.tasks_title
+                Tab.AGENDA -> Res.string.agenda_title
+                Tab.NOTES -> Res.string.notes_title
+            }
+            Box(Modifier.weight(1f)) {
+                TabWord(stringResource(title), selected == tab, tab.alignment, { onSelect(tab) }, onLongPress)
+            }
         }
     }
 }

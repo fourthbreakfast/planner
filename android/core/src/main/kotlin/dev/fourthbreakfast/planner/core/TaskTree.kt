@@ -33,12 +33,14 @@ fun binEntries(tasks: List<Task>): List<BinEntry> {
         .map { BinEntry(it, binBatch(tasks, it.id).size - 1) }
 }
 
-/** The task and everything inside it. */
+/** The task and everything inside it. A task is visited once, so a loop of parents, which sync can leave, ends. */
 fun subtree(tasks: List<Task>, rootId: String): List<Task> {
     val children = tasks.groupBy { it.parentId }
     val result = ArrayList<Task>()
+    val seen = HashSet<String>()
 
     fun visit(task: Task) {
+        if (!seen.add(task.id)) return
         result += task
         children[task.id].orEmpty().forEach(::visit)
     }
@@ -47,10 +49,34 @@ fun subtree(tasks: List<Task>, rootId: String): List<Task> {
     return result
 }
 
-/** The tasks above this one, nearest first. */
+/** The tasks above this one, nearest first, stopping where a loop of parents would start again. */
 fun ancestors(tasks: List<Task>, parentId: String?): List<Task> {
     val byId = tasks.associateBy { it.id }
-    return generateSequence(parentId?.let(byId::get)) { task -> task.parentId?.let(byId::get) }.toList()
+    val seen = HashSet<String>()
+    return generateSequence(parentId?.let(byId::get)) { task -> task.parentId?.let(byId::get) }
+        .takeWhile { seen.add(it.id) }
+        .toList()
+}
+
+/**
+ * The tasks to bring back to the top level so that no task is inside itself. Two devices can each move one task into
+ * the other before they sync, and both moves are kept; then each task is the other's parent and neither can be reached.
+ * In each such loop the task changed last made it, so that one is let go. Every device picks the same one.
+ */
+fun loopBreaks(tasks: List<Task>): List<Task> {
+    val byId = tasks.associateBy { it.id }
+    val breaks = LinkedHashMap<String, Task>()
+    for (start in tasks) {
+        val path = LinkedHashSet<String>()
+        var at: Task? = start
+        while (at != null && path.add(at.id)) at = at.parentId?.let(byId::get)
+        if (at == null) continue
+        // at is where the walk met itself: the loop is the part of the path from there on
+        val loop = path.dropWhile { it != at.id }.mapNotNull(byId::get)
+        val newest = loop.maxWith(compareBy<Task>({ it.updatedAt }, { it.id }))
+        breaks[newest.id] = newest
+    }
+    return breaks.values.toList()
 }
 
 /** Main task, subtask, sub-subtask, sub-sub-subtask: four levels, counted from zero. Nothing goes deeper. */
@@ -66,7 +92,8 @@ fun depthOf(tasks: List<Task>, id: String): Int {
 fun height(tasks: List<Task>, id: String): Int {
     val children = tasks.groupBy { it.parentId }
 
-    fun levels(taskId: String): Int = children[taskId].orEmpty().maxOfOrNull { 1 + levels(it.id) } ?: 0
+    fun levels(taskId: String, seen: Set<String>): Int =
+        children[taskId].orEmpty().filter { it.id !in seen }.maxOfOrNull { 1 + levels(it.id, seen + it.id) } ?: 0
 
-    return levels(id)
+    return levels(id, setOf(id))
 }

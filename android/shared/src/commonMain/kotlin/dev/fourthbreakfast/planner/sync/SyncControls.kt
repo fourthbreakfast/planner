@@ -6,8 +6,12 @@ import kotlinx.coroutines.flow.StateFlow
 data class SyncState(
     val running: Boolean = false,
     val myId: String = "",
+    /** Where this device can be dialed on its local networks. */
+    val addresses: List<String> = emptyList(),
     val peers: List<Peer> = emptyList(),
     val nearby: List<String> = emptyList(),
+    /** Devices asking to sync, waiting for a yes or a no. */
+    val asking: List<Peer> = emptyList(),
     val failed: Boolean = false,
 )
 
@@ -20,15 +24,30 @@ interface SyncControls {
 
     val anywhere: Boolean
 
-    /** The sync screen is open: sync runs, and any device asking to pair is let in. */
+    /** The name this device goes by, which every device paired with it shows it as. */
+    val deviceName: String
+
+    fun renameThisDevice(name: String)
+
+    /** The sync screen is open: sync runs, and devices asking to pair are shown, to be let in or turned down. */
     fun openPairing()
 
     fun closePairing()
 
     fun chooseAnywhere(on: Boolean)
 
-    /** Pairs with a device by its whole id, or by the short code it shows when it is on the same network. */
+    /**
+     * Pairs with a device by the code it shows: its whole id, with its addresses when scanned, or just the first letters
+     * of it when it is on the same network.
+     */
     suspend fun pairWith(code: String): Boolean
+
+    /** Sends what changed here and takes in what changed there, now rather than at the next turn. */
+    suspend fun syncNow()
+
+    fun letIn(id: String)
+
+    fun refuse(id: String)
 
     fun unpair(id: String)
 }

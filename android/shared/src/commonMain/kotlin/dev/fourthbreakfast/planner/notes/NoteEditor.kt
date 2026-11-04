@@ -26,8 +26,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,6 +63,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.fourthbreakfast.planner.core.BOLD
 import dev.fourthbreakfast.planner.core.ITALIC
 import dev.fourthbreakfast.planner.core.LineKind
+import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.NoteLine
 import dev.fourthbreakfast.planner.core.UNDERLINE
 import dev.fourthbreakfast.planner.core.numberLabels
@@ -92,37 +95,58 @@ import org.jetbrains.compose.resources.stringResource
 private const val AUTOSAVE_MILLIS = 400L
 private const val HISTORY_MILLIS = 700L
 
-/** Writing one note: a row of marks at the top, then lines of text, each of which can be a list item. */
+/**
+ * Writing one note: a row of marks at the top, then lines of text, each of which can be a list item. [note] is the note as
+ * it is stored now. The editor only saves what was typed in it, and when sync brings a newer version while nothing was
+ * typed, it shows that one instead. [onSave] gets the version the editor started from and reports the one it saved.
+ */
 @Composable
 fun NoteEditor(
-    initialTitle: String,
-    initialBody: String,
-    pinned: Boolean,
+    note: Note,
     onPin: () -> Unit,
     toolbarAbove: Boolean,
-    onSave: (String, String) -> Unit,
-    onClose: (String, String) -> Unit,
+    onSave: (title: String, body: String, base: Long, onSaved: (Long) -> Unit) -> Unit,
+    onClose: () -> Unit,
 ) {
-    val state = remember { NoteEditState(initialTitle, initialBody) }
-    BackHandler { onClose(state.title, state.body()) }
-    LaunchedEffect(state) {
-        var first = true
-        snapshotFlow { state.title to state.body() }.collectLatest { (title, body) ->
-            if (first) {
-                first = false
-                return@collectLatest
-            }
-            delay(AUTOSAVE_MILLIS)
-            onSave(title, body)
+    val state = remember { NoteEditState(note.title, note.body) }
+    var base by remember { mutableLongStateOf(note.updatedAt) }
+    var saved by remember { mutableStateOf(note.title to note.body) }
+
+    fun save() {
+        val now = state.title to state.body()
+        if (now == saved) return
+        onSave(now.first, now.second, base) { version ->
+            base = version
+            saved = now
         }
     }
+    BackHandler {
+        save()
+        onClose()
+    }
+    // nothing typed here, and a newer version came in: show it
+    LaunchedEffect(note.updatedAt) {
+        if (note.updatedAt > base && (state.title to state.body()) == saved) {
+            state.replaceWith(note.title, note.body)
+            base = note.updatedAt
+            saved = note.title to note.body
+        }
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.title to state.body() }.collectLatest {
+            delay(AUTOSAVE_MILLIS)
+            save()
+        }
+    }
+    // leaving the note any way at all, the last words are kept
+    DisposableEffect(state) { onDispose { save() } }
     LaunchedEffect(state) {
         snapshotFlow { state.title to state.body() }.collectLatest {
             delay(HISTORY_MILLIS)
             state.commit()
         }
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onSave(state.title, state.body()) }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { save() }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -136,10 +160,13 @@ fun NoteEditor(
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
                     SegmentTab(stringResource(Res.string.note_title), Modifier.weight(1f))
-                    QuietButton(stringResource(if (pinned) Res.string.unpin else Res.string.pin), onPin)
+                    QuietButton(stringResource(if (note.pinned) Res.string.unpin else Res.string.pin), onPin)
                     QuietButton(stringResource(Res.string.undo), state.canUndo) { state.undo() }
                     QuietButton(stringResource(Res.string.redo), state.canRedo) { state.redo() }
-                    BackButton { onClose(state.title, state.body()) }
+                    BackButton {
+                        save()
+                        onClose()
+                    }
                 }
                 if (!toolbarAbove) Toolbar(state)
             }

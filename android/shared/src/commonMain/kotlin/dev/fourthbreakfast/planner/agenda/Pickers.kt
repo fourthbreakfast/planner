@@ -27,16 +27,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.fourthbreakfast.planner.core.REMINDER_CHOICES
+import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.all_day
 import dev.fourthbreakfast.planner.resources.cancel
+import dev.fourthbreakfast.planner.resources.every_time
 import dev.fourthbreakfast.planner.resources.hour
 import dev.fourthbreakfast.planner.resources.minute
+import dev.fourthbreakfast.planner.resources.only_this_time
 import dev.fourthbreakfast.planner.resources.reminder_10
 import dev.fourthbreakfast.planner.resources.reminder_60
 import dev.fourthbreakfast.planner.resources.reminder_at
 import dev.fourthbreakfast.planner.resources.reminder_none
 import dev.fourthbreakfast.planner.resources.reminder_other
+import dev.fourthbreakfast.planner.resources.repeat_daily
+import dev.fourthbreakfast.planner.resources.repeat_monthly
+import dev.fourthbreakfast.planner.resources.repeat_never
+import dev.fourthbreakfast.planner.resources.repeat_weekly
+import dev.fourthbreakfast.planner.resources.repeat_yearly
 import dev.fourthbreakfast.planner.resources.set
 import dev.fourthbreakfast.planner.resources.time_start
 import dev.fourthbreakfast.planner.resources.time_start_end
@@ -46,7 +54,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.time.temporal.WeekFields
 import java.util.Locale
 import org.jetbrains.compose.resources.stringResource
 
@@ -145,6 +152,21 @@ private fun NumberGrid(values: List<Int>, columns: Int, selected: Int?, label: (
 }
 
 /**
+ * The start and end after an hour or a minute is touched in the time chooser, on the end when [editingEnd]: the other
+ * part of that time stays. An end always comes at least five minutes after the start, and a start that passes the end
+ * takes the end along to an hour after it, never past midnight.
+ */
+fun pickedTime(start: Int, end: Int, editingEnd: Boolean, hour: Int?, minute: Int?): Pair<Int, Int> {
+    val current = if (editingEnd) end else start
+    val next = (hour ?: (current / 60)) * 60 + (minute ?: (current % 60))
+    return if (editingEnd) {
+        start to maxOf(next, minOf(start + 5, LAST_MINUTE))
+    } else {
+        next to if (end <= next) minOf(next + 60, LAST_MINUTE) else end
+    }
+}
+
+/**
  * The time of an event: all day, a start, or a start and an end. The hours and the minutes are two grids of
  * numbers, the same size and look as everything else, and what is chosen is filled in.
  */
@@ -167,14 +189,9 @@ fun TimeChooser(initialStart: Int?, initialEnd: Int?, onSet: (start: Int?, end: 
     var editingEnd by remember { mutableStateOf(false) }
 
     fun pick(hour: Int?, minute: Int?) {
-        val current = if (editingEnd) end else start
-        val next = (hour ?: (current / 60)) * 60 + (minute ?: (current % 60))
-        if (editingEnd) {
-            end = maxOf(next, minOf(start + 5, LAST_MINUTE))
-        } else {
-            start = next
-            if (end <= start) end = minOf(start + 60, LAST_MINUTE)
-        }
+        val (newStart, newEnd) = pickedTime(start, end, editingEnd, hour, minute)
+        start = newStart
+        end = newEnd
     }
 
     ChooserPanel(onDismiss = onCancel) {
@@ -249,9 +266,8 @@ fun DayChooser(initialDay: Long?, today: Long, onSet: (Long) -> Unit, onCancel: 
     val locale = Locale.getDefault()
     var chosen by remember { mutableStateOf(initialDay ?: today) }
     var month by remember { mutableStateOf(YearMonth.from(LocalDate.ofEpochDay(initialDay ?: today))) }
-    val first = WeekFields.of(locale).firstDayOfWeek
-    val offset = (month.atDay(1).dayOfWeek.value - first.value + 7) % 7
-    val cells: List<Long?> = List(offset) { null } + (1..month.lengthOfMonth()).map { month.atDay(it).toEpochDay() }
+    val first = firstDayOfWeek(locale)
+    val cells = monthCells(month, first)
 
     ChooserPanel(onDismiss = onCancel) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -308,7 +324,6 @@ fun DayChooser(initialDay: Long?, today: Long, onSet: (Long) -> Unit, onCancel: 
                         }
                     }
                 }
-                repeat(7 - week.size) { Box(Modifier.weight(1f)) }
             }
         }
         Row(Modifier.fillMaxWidth().padding(top = Space.x2), horizontalArrangement = Arrangement.End) {
@@ -325,5 +340,59 @@ private fun ArrowWord(text: String, onClick: () -> Unit) {
         modifier = Modifier.size(Space.touch).clickable(onClick = onClick),
     ) {
         Text(text = text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** How an event repeats, in words: "every week". */
+@Composable
+fun repeatText(repeat: Repeat): String = stringResource(
+    when (repeat) {
+        Repeat.NONE -> Res.string.repeat_never
+        Repeat.DAILY -> Res.string.repeat_daily
+        Repeat.WEEKLY -> Res.string.repeat_weekly
+        Repeat.MONTHLY -> Res.string.repeat_monthly
+        Repeat.YEARLY -> Res.string.repeat_yearly
+    },
+)
+
+/** Never, or every day, week, month or year, one to a line like the reminders. */
+@Composable
+fun RepeatChooser(current: Repeat, onPick: (Repeat) -> Unit, onCancel: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    ChooserPanel(onDismiss = onCancel) {
+        Repeat.entries.forEach { choice ->
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Space.touch)
+                    .clickable { onPick(choice) },
+            ) {
+                Text(
+                    text = repeatText(choice),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (choice == current) colors.onBackground else colors.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** For a repeating event: whether a change or a delete is for this one time or for every time. */
+@Composable
+fun WhichTimesChooser(onPick: (onlyThisTime: Boolean) -> Unit, onCancel: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    ChooserPanel(onDismiss = onCancel) {
+        listOf(true to Res.string.only_this_time, false to Res.string.every_time).forEach { (only, label) ->
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Space.touch)
+                    .clickable { onPick(only) },
+            ) {
+                Text(text = stringResource(label), style = MaterialTheme.typography.bodyLarge, color = colors.onBackground)
+            }
+        }
     }
 }

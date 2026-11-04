@@ -1,0 +1,5 @@
+events can last several days and repeat, and can be imported from an .ics file
+devices carry names that follow them everywhere, and there is a sync now button
+pairing works on networks that block broadcasts, and the scanner opens upright
+sync is steadier, updates are checked against github's checksum
+reminders only ring for events still there

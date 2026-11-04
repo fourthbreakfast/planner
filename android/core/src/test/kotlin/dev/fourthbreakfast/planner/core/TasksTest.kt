@@ -1,7 +1,5 @@
 package dev.fourthbreakfast.planner.core
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -13,30 +11,6 @@ import org.junit.Test
 
 /** The rules, run against a store that lives in memory. */
 class TasksTest {
-    private class MemoryStore : TaskStore {
-        val state = MutableStateFlow<List<Task>>(emptyList())
-
-        override fun observeAll(): Flow<List<Task>> = state
-
-        override suspend fun all() = state.value
-
-        override suspend fun insert(tasks: List<Task>) {
-            state.value = state.value + tasks
-        }
-
-        override suspend fun update(tasks: List<Task>) {
-            val changed = tasks.associateBy { it.id }
-            state.value = state.value.map { changed[it.id] ?: it }
-        }
-
-        override suspend fun delete(tasks: List<Task>) {
-            val gone = tasks.mapTo(HashSet()) { it.id }
-            state.value = state.value.filterNot { it.id in gone }
-        }
-
-        override suspend fun <T> transaction(block: suspend () -> T): T = block()
-    }
-
     private fun order(parentId: String? = null) = siblings(store.state.value, parentId).map { it.title }
 
     private suspend fun abc() {
@@ -146,7 +120,7 @@ class TasksTest {
         assertTrue(get("done").done)
     }
 
-    private val store = MemoryStore()
+    private val store = MemoryTaskStore()
     private var now = 100L
     private val tasks = Tasks(store) { now++ }
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,11 +40,13 @@ import kotlinx.coroutines.launch
 private const val SWIPE_FRACTION = 4
 
 /** The key of the list row under a point of the screen, if there is one. */
-fun LazyListState.rowKeyAt(at: Offset, listBounds: Rect): Any? {
-    if (!listBounds.contains(at)) return null
-    val y = at.y - listBounds.top
-    return layoutInfo.visibleItemsInfo.firstOrNull { y >= it.offset && y < it.offset + it.size }?.key
-}
+fun LazyListState.rowKeyAt(at: Offset, listBounds: Rect): Any? = if (listBounds.contains(at)) itemAt(at.y - listBounds.top)?.key else null
+
+/** The row in view [y] pixels down from the top of the list, if there is one. */
+fun LazyListState.itemAt(y: Float): LazyListItemInfo? = layoutInfo.visibleItemsInfo.firstOrNull { y >= it.offset && y < it.offset + it.size }
+
+/** How far down the list the row [key] starts, or 0 when it is out of view. */
+fun LazyListState.offsetOf(key: Any?): Int = layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset ?: 0
 
 /** A row being swiped after a hold: which one, and how far it has gone. */
 @Stable
@@ -90,7 +93,8 @@ class RowSwipe(private val scope: CoroutineScope, private val canGoLeft: Boolean
                 offset.animateTo(0f)
                 if (x < -width / SWIPE_FRACTION) onLeft(swiped)
             }
-            key = null
+            // a row swiped meanwhile is its own swipe, and keeps going
+            if (key == swiped) key = null
         }
     }
 }

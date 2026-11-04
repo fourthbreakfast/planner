@@ -10,6 +10,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,30 +27,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
-import dev.fourthbreakfast.planner.ui.SegmentText
+import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.window_close
+import dev.fourthbreakfast.planner.resources.window_maximize
+import dev.fourthbreakfast.planner.resources.window_minimize
+import dev.fourthbreakfast.planner.resources.window_restore
 import dev.fourthbreakfast.planner.ui.theme.Space
 import java.awt.Cursor
 import java.awt.Frame
+import java.awt.MouseInfo
 import java.awt.Window
+import org.jetbrains.compose.resources.stringResource
 
 private val closeRed = Color(0xFFC42B1C)
 
 /**
  * The top of the window, drawn by the app: its mark and name at the left, a place to drag the window by (a double click
- * maximizes), and the window's own minimize, maximize and close at the right, as Windows 11 lays them.
+ * maximizes), [extras] such as the settings, and the window's own minimize, maximize and close at the right, as Windows 11
+ * lays them.
  */
 @Composable
-fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit) {
+fun WindowScope.TitleBar(state: WindowState, frame: NativeFrame, onClose: () -> Unit, extras: @Composable RowScope.() -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
     val icon = remember { appIconPainter() }
     Row(
@@ -60,21 +71,24 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit) {
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
+                .onGloballyPositioned { frame.dragArea = it.boundsInWindow() }
                 .pointerInput(Unit) {
                     detectTapGestures(onDoubleTap = { state.toggleMaximized() })
                 },
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = Space.x3)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = Space.gutter)) {
                 Image(icon, contentDescription = null, modifier = Modifier.size(Space.x5))
-                SegmentText("planner", colors.onSurfaceVariant, Modifier.padding(start = Space.x3), scale = 0.8f)
             }
         }
-        WindowButton("minimize", hoverColor = colors.secondaryContainer, onClick = { state.isMinimized = true }) { ink ->
+        extras()
+        WindowButton(stringResource(Res.string.window_minimize), hoverColor = colors.secondaryContainer, onClick = { state.isMinimized = true }) { ink ->
             drawLine(ink, Offset(size.width * 0.28f, size.height * 0.5f), Offset(size.width * 0.72f, size.height * 0.5f), Space.strokeThin.toPx())
         }
         WindowButton(
-            if (state.placement == WindowPlacement.Maximized) "restore" else "maximize",
+            stringResource(if (state.placement == WindowPlacement.Maximized) Res.string.window_restore else Res.string.window_maximize),
             hoverColor = colors.secondaryContainer,
+            modifier = Modifier.onGloballyPositioned { frame.maximizeButton = it.boundsInWindow() },
+            forceHover = frame.maximizeHovered,
             onClick = { state.toggleMaximized() },
         ) { ink ->
             val line = Stroke(Space.strokeThin.toPx())
@@ -86,7 +100,7 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit) {
                 drawRect(ink, Offset(size.width * 0.28f, size.height * 0.28f), Size(size.width * 0.44f, size.height * 0.44f), style = line)
             }
         }
-        WindowButton("close", hoverColor = closeRed, hoverInk = Color.White, onClick = onClose) { ink ->
+        WindowButton(stringResource(Res.string.window_close), hoverColor = closeRed, hoverInk = Color.White, onClick = onClose) { ink ->
             val line = Space.strokeThin.toPx()
             drawLine(ink, Offset(size.width * 0.3f, size.height * 0.3f), Offset(size.width * 0.7f, size.height * 0.7f), line)
             drawLine(ink, Offset(size.width * 0.7f, size.height * 0.3f), Offset(size.width * 0.3f, size.height * 0.7f), line)
@@ -99,18 +113,21 @@ private fun WindowState.toggleMaximized() {
 }
 
 @Composable
-private fun WindowButton(
+internal fun WindowButton(
     label: String,
     hoverColor: Color,
     hoverInk: Color? = null,
     onClick: () -> Unit,
-    draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit,
+    modifier: Modifier = Modifier,
+    forceHover: Boolean = false,
+    draw: DrawScope.(Color) -> Unit,
 ) {
-    val (hover, hovered) = rememberHover()
+    val (hover, pointerOver) = rememberHover()
+    val hovered = pointerOver || forceHover
     val ink = if (hovered && hoverInk != null) hoverInk else MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
+        modifier = modifier
             .width(46.dp)
             .fillMaxHeight()
             .background(if (hovered) hoverColor else Color.Transparent)
@@ -157,7 +174,7 @@ private fun Edge(
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     change.consume()
-                    val mouse = java.awt.MouseInfo.getPointerInfo().location
+                    val mouse = MouseInfo.getPointerInfo().location
                     val b = window.bounds
                     val min = window.minimumSize
                     var x = b.x

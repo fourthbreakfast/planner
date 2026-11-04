@@ -67,11 +67,14 @@ actual fun BackHandler(enabled: Boolean, onBack: () -> Unit) {
     }
 }
 
-@Composable
-actual fun rememberIs24Hour(): Boolean = remember {
+/** Whether this computer writes times as 19:30 rather than 7:30 pm, from its language and region. */
+fun is24HourClock(): Boolean {
     val pattern = (DateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault()) as? SimpleDateFormat)?.toPattern().orEmpty()
-    'a' !in pattern
+    return 'a' !in pattern
 }
+
+@Composable
+actual fun rememberIs24Hour(): Boolean = remember { is24HourClock() }
 
 @Composable
 actual fun rememberAnimationsOn(): Boolean = true

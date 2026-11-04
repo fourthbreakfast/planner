@@ -6,6 +6,9 @@ param([Parameter(Mandatory)][string]$Version)
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path $PSScriptRoot -Parent
+# the version comes from androidgradle.properties: the one asked for here has to be the same
+$declared = (Select-String -Path "$rootndroidgradle.properties" -Pattern '^plannerVersion=(.+)$').Matches[0].Groups[1].Value
+if ($declared -ne $Version) { throw "androidgradle.properties says $declared, not $Version" }
 $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 $keystore = "$env:USERPROFILE\.planner\release.jks"
@@ -57,7 +60,3 @@ wsl -d NixOS -- gh release create "v$Version" $linuxApk $linuxMsi --repo fourthb
 if ($LASTEXITCODE) { throw 'publishing failed' }
 Write-Host "published v$Version"
 
-# windows users can also get it with winget: the manifest is written now, and offered to winget-pkgs if you say so
-& "$PSScriptRoot\winget.ps1" $Version
-$answer = Read-Host 'offer this version to winget now? (y/n)'
-if ($answer -eq 'y') { & "$PSScriptRoot\winget.ps1" $Version -Submit }

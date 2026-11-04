@@ -19,7 +19,7 @@ import dev.fourthbreakfast.planner.data.TaskDao
 import dev.fourthbreakfast.planner.data.TaskEntity
 
 object PlannerDatabaseVersion {
-    const val LATEST = 12
+    const val LATEST = 13
 }
 
 @ConstructedBy(PlannerDatabaseConstructor::class)
@@ -44,6 +44,8 @@ object PlannerDatabaseVersion {
         AutoMigration(from = 10, to = 11),
         // sync: what was deleted for good, and the versions devices agreed on. two new tables
         AutoMigration(from = 11, to = 12),
+        // repeating events and events over several days: four new columns on events
+        AutoMigration(from = 12, to = 13),
     ],
 )
 abstract class PlannerDatabase : RoomDatabase() {

@@ -2,6 +2,22 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.0
+
+- events can last several days and repeat by day, week, month or year, with a last day; deleting or changing one time of a repeating event asks whether it is this time or every time
+- events from other calendars can be imported from an .ics file, in the settings on the phone and on windows. reading the same file again adds nothing
+- devices are named on themselves and are called the same everywhere; there is a sync now button on the sync screen
+- pairing works without broadcasts, so it also works on networks that block them, and the phone asks for the local network permission android 17 requires. the scanner opens upright
+- windows: the window snaps like any other, by dragging the title bar to an edge, with the windows and arrow keys, and from the maximize button. the settings sit in the title bar, and the columns, add lines and icons are laid out on one grid
+- sync is steadier: a clock that never goes back, equal times settle the same way on every device, a delete keeps its time when it travels, and a device asking to sync waits for a yes
+- updates download in the background and are checked against the checksum github publishes
+- reminders only ring for events still there, and late ones show when the phone wakes
+- a restored backup stays restored, and phone backups stay out of the cloud
+- a delete could come back between devices when one device's clock ran behind; deletes now keep the time they were made. a cancelled time of a repeating event in an imported calendar no longer shows, a later time of a long repeating event shows the right last day, and dragging one on the computer keeps its length
+- pairing while sync was not running no longer crashes the phone, a failed background sync no longer leaves syncthing running, and a syncthing left behind by a killed app is stopped before the next one starts
+- on the computer, removing a repeating event asks whether it is this time or every time, notes drag as on the phone and can be dropped last, the tray menu and the title bar are plainer, and Enter accepts a device name
+- winget and obtainium are no longer used; the release is the apk and the msi
+
 ## 0.8.0
 
 - both apps look for a newer release once a day and offer it in the settings; one touch downloads it and starts the installer. the daily look can be turned off

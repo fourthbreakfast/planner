@@ -18,7 +18,7 @@ it started as a quick standalone trial and turned out to be useful on its own, s
 
 **tasks.** subtasks up to four levels deep, a priority on every task (none, low, medium, high), a bin for anything you remove, and every level ranked by priority. checking a task covers everything inside it, and tasks with subtasks start closed.
 
-**agenda.** your events soonest first, grouped by day, with the time, the place and the notes in view. an event can be all day, have a start, or have a start and an end, and it can remind you: at the time, 10 minutes before or an hour before. the agenda can also show a month, with a dot on every day that has something on it.
+**agenda.** your events soonest first, grouped by day, with the time, the place and the notes in view. an event can be all day, have a start, or have a start and an end, last several days, repeat by day, week, month or year, and remind you: at the time, 10 minutes before or an hour before. events from other calendars come in from an .ics file. the agenda can also show a month, with a dot on every day that has something on it.
 
 **notes.** a title, then plain text you can mark up: bulleted and numbered lists, checkboxes, indent, bold, italic and underline, with undo and redo. notes are kept in the order you put them, can be pinned, and have a bin of their own.
 
@@ -32,13 +32,13 @@ the [latest release](https://github.com/fourthbreakfast/planner/releases/latest)
 
 **phone.** download the apk and open it on your phone. you need android 8 or newer, and your phone will ask you to allow installing it. updates install over the top and keep your data.
 
-**updates.** both apps look for a newer release once a day and offer it in the settings (and on windows in the bar at the bottom); one touch downloads it and starts the installer. the daily look can be turned off. on the phone, [obtainium](https://github.com/ImranR98/Obtainium) can also keep planner up to date from this repository's releases, and on windows `winget install fourthbreakfast.planner` and `winget upgrade` work once the package is listed.
+**updates.** both apps look for a newer release once a day and offer it in the settings (and on windows beside the settings cog in the title bar); one touch downloads it and starts the installer. the daily look can be turned off.
 
 **windows.** download the msi and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
 
 ### use
 
-everything a row can do starts with holding it for a moment, so sweeping across the screen never removes anything by accident. the settings (hold any of the three tabs) have a "how it works" list of every gesture.
+everything a row can do starts with holding it for a moment, so sweeping across the screen never removes anything by accident. the settings (the cog at the top right, or hold any of the three tabs) have a "how it works" list of every gesture.
 
 <table>
   <tr><th colspan="2">tasks</th></tr>
@@ -61,7 +61,7 @@ everything a row can do starts with holding it for a moment, so sweeping across 
   <tr><td>hold a note, then swipe right</td><td>move it to the notes bin, with undo</td></tr>
   <tr><th colspan="2">everywhere</th></tr>
   <tr><td>sweep sideways</td><td>go to the next tab: tasks, agenda, notes. it stops at the ends</td></tr>
-  <tr><td>hold any tab</td><td>open the settings: export and import, theme, a daily backup to a folder, where the notes toolbar sits, a link to the latest release, the widget, sync, and the list of gestures</td></tr>
+  <tr><td>the cog at the top right, or hold any tab</td><td>open the settings: export and import, theme, a daily backup to a folder, where the notes toolbar sits, a link to the latest release, the widget, sync, and the list of gestures</td></tr>
   <tr><td>the magnifying glass beside the bin, on the notes tab</td><td>search the notes by title and text</td></tr>
   <tr><td>hold the app icon</td><td>new task, new event or new note, straight away</td></tr>
   <tr><td>a reminder notification</td><td>touch it to open the event, snooze it for 10 minutes or dismiss it</td></tr>

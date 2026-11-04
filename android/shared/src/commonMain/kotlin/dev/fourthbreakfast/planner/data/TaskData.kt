@@ -1,11 +1,14 @@
 package dev.fourthbreakfast.planner.data
 
 import androidx.room.ColumnInfo
+import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.Query
 import dev.fourthbreakfast.planner.core.Priority
 import dev.fourthbreakfast.planner.core.Task
+import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "tasks", indices = [Index("parentId")])
 data class TaskEntity(
@@ -43,3 +46,12 @@ fun Task.toEntity() = TaskEntity(
     deletedAt = deletedAt,
     position = position,
 )
+
+@Dao
+interface TaskDao : EntityDao<TaskEntity> {
+    @Query("SELECT * FROM tasks")
+    override fun observeAll(): Flow<List<TaskEntity>>
+
+    @Query("SELECT * FROM tasks")
+    override suspend fun getAll(): List<TaskEntity>
+}

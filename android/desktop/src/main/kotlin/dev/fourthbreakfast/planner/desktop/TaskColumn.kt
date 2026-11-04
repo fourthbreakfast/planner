@@ -1,14 +1,17 @@
 package dev.fourthbreakfast.planner.desktop
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,7 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -43,7 +49,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import dev.fourthbreakfast.planner.core.Priority
@@ -53,9 +61,12 @@ import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_inside_hint
 import dev.fourthbreakfast.planner.resources.add_subtask
 import dev.fourthbreakfast.planner.resources.add_task_hint
+import dev.fourthbreakfast.planner.resources.bin
+import dev.fourthbreakfast.planner.resources.close_task
 import dev.fourthbreakfast.planner.resources.collapse_all
 import dev.fourthbreakfast.planner.resources.expand_all
 import dev.fourthbreakfast.planner.resources.nothing_to_do
+import dev.fourthbreakfast.planner.resources.open_task
 import dev.fourthbreakfast.planner.resources.priority_high
 import dev.fourthbreakfast.planner.resources.priority_low
 import dev.fourthbreakfast.planner.resources.priority_medium
@@ -69,9 +80,14 @@ import dev.fourthbreakfast.planner.tasks.TaskCheck
 import dev.fourthbreakfast.planner.tasks.TaskNode
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.arrange
+import dev.fourthbreakfast.planner.tasks.dropZoneAt
 import dev.fourthbreakfast.planner.tasks.rankedDestination
 import dev.fourthbreakfast.planner.tasks.resolveDrop
-import dev.fourthbreakfast.planner.ui.BinButton
+import dev.fourthbreakfast.planner.ui.binIcon
+import dev.fourthbreakfast.planner.ui.itemAt
+import dev.fourthbreakfast.planner.ui.offsetOf
+import dev.fourthbreakfast.planner.ui.openAllTriangle
+import dev.fourthbreakfast.planner.ui.plus
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
@@ -84,6 +100,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewModel: TasksViewModel) {
     val renameLabel = stringResource(Res.string.rename)
+    val openLabel = stringResource(Res.string.open_task)
+    val closeLabel = stringResource(Res.string.close_task)
     val addSubtaskLabel = stringResource(Res.string.add_subtask)
     val priorityHighLabel = stringResource(Res.string.priority_high)
     val priorityMediumLabel = stringResource(Res.string.priority_medium)
@@ -103,13 +121,8 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
     var drop by remember { mutableStateOf<Pair<String, DropZone>?>(null) }
 
     fun targetAt(y: Float): Pair<String, DropZone>? {
-        val item = list.layoutInfo.visibleItemsInfo.firstOrNull { y >= it.offset && y < it.offset + it.size } ?: return null
-        val fraction = (y - item.offset) / item.size
-        val zone = when {
-            fraction < 0.28f -> DropZone.BEFORE
-            fraction > 0.72f -> DropZone.AFTER
-            else -> DropZone.INTO
-        }
+        val item = list.itemAt(y) ?: return null
+        val zone = dropZoneAt((y - item.offset) / item.size)
         return (item.key as? String)?.let { it to zone }
     }
 
@@ -119,24 +132,12 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
             if (parentIds.isNotEmpty()) {
                 HeaderButton(stringResource(if (anyClosed) Res.string.expand_all else Res.string.collapse_all), {
                     state.openTasks = if (anyClosed) parentIds else emptySet()
-                }) { ink ->
-                    val tip = if (anyClosed) 0.66f else 0.34f
-                    val base = if (anyClosed) 0.36f else 0.64f
-                    drawPath(
-                        androidx.compose.ui.graphics.Path().apply {
-                            moveTo(size.width * 0.24f, size.height * base)
-                            lineTo(size.width * 0.76f, size.height * base)
-                            lineTo(size.width * 0.5f, size.height * tip)
-                            close()
-                        },
-                        ink,
-                    )
-                }
+                }) { openAllTriangle(it, opens = anyClosed) }
             }
-            BinButton(binCount, { state.panel = Panel.TaskBin })
+            DeskBin(binCount, { state.panel = Panel.TaskBin })
         }
         if (rows.isEmpty()) Quiet(stringResource(Res.string.nothing_to_do))
-        LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth()) {
+        LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(top = Space.x2)) {
             items(rows, key = { it.task.id }) { node ->
                 val task = node.task
                 val (hover, hovered) = rememberHover()
@@ -188,9 +189,8 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                             .pointerInput(task.id) {
                                 detectDragGestures(
                                     onDragStart = { at ->
-                                        val item = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == task.id }
                                         dragging = task.id
-                                        dragY = (item?.offset ?: 0) + at.y
+                                        dragY = list.offsetOf(task.id) + at.y
                                     },
                                     onDrag = { change, amount ->
                                         change.consume()
@@ -215,15 +215,18 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                                     },
                                 )
                             }
-                            .padding(start = Space.x2 + Space.indent * node.depth, end = Space.x1),
+                            .padding(start = Space.x2 + Space.indent * node.depth, end = Desk.inset),
                     ) {
                         // the triangle opens and closes a task with something inside
                         Box(Modifier.size(Space.x5), contentAlignment = Alignment.Center) {
                             if (node.childCount > 0) {
-                                HeaderButton("", { state.openTasks = if (node.collapsed) state.openTasks + task.id else state.openTasks - task.id }) { ink ->
+                                HeaderButton(if (node.collapsed) openLabel else closeLabel, {
+                                    state.openTasks =
+                                        if (node.collapsed) state.openTasks + task.id else state.openTasks - task.id
+                                }) { ink ->
                                     val open = !node.collapsed
                                     drawPath(
-                                        androidx.compose.ui.graphics.Path().apply {
+                                        Path().apply {
                                             if (open) {
                                                 moveTo(size.width * 0.3f, size.height * 0.38f)
                                                 lineTo(size.width * 0.7f, size.height * 0.38f)
@@ -268,8 +271,10 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                                 modifier = Modifier.padding(horizontal = Space.x1),
                             )
                         }
-                        if (hovered) BinButton(0, { viewModel.moveToBin(task) })
-                        TaskCheck(task.done, colors.onBackground) { viewModel.setDone(task, it) }
+                        if (hovered) HeaderButton(stringResource(Res.string.bin), { viewModel.moveToBin(task) }) { binIcon(it) }
+                        Box(Modifier.size(Desk.button), contentAlignment = Alignment.Center) {
+                            TaskCheck(task.done, colors.onBackground) { viewModel.setDone(task, it) }
+                        }
                     }
                 }
             }
@@ -286,52 +291,74 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
     val focus = remember { FocusRequester() }
     val aimed = tasks.firstOrNull { it.id == state.aimedTask }
     LaunchedEffect(state.focusAdd) { if (state.focusAdd > 0) focus.requestFocus() }
-    Column(Modifier.fillMaxWidth().padding(horizontal = Space.gutter, vertical = Space.x2)) {
+    Column(Modifier.fillMaxWidth().padding(end = Desk.inset)) {
         if (aimed != null) {
             Text(
                 stringResource(Res.string.add_inside_hint, aimed.title),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant,
-                modifier = Modifier.combinedClickableCompat { state.aimedTask = null },
+                modifier = Modifier.padding(start = Space.x2 + Space.x5 + Space.x6 + Space.x2, top = Space.x2).clickable { state.aimedTask = null },
             )
         }
-        Box(Modifier.fillMaxWidth().height(Desk.row), contentAlignment = Alignment.CenterStart) {
-            if (text.isEmpty()) Text(stringResource(Res.string.add_task_hint), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-            BasicTextField(
-                value = text,
-                onValueChange = { text = it.replace("\n", "") },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
-                cursorBrush = SolidColor(colors.onBackground),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    if (text.isNotBlank()) viewModel.add(text.trim(), aimed?.id)
-                    aimed?.let { state.openTasks = state.openTasks + it.id }
-                    text = ""
-                }),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focus)
-                    .onPreviewKeyEvent { event ->
-                        if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && (text.isNotEmpty() || aimed != null)) {
-                            text = ""
-                            state.aimedTask = null
-                            true
-                        } else {
-                            false
-                        }
-                    },
-            )
+        var typing by remember { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.x2 + Space.x5), verticalAlignment = Alignment.CenterVertically) {
+            // the + is an invitation, the › says the line is in use, as on the phone. it sits where the priority dots
+            // are, and the words start where the task names do
+            Box(Modifier.size(Space.x6), contentAlignment = Alignment.Center) {
+                val ink = colors.onSurfaceVariant
+                val inUse = typing || text.isNotEmpty()
+                Canvas(Modifier.size(Space.x3)) { if (inUse) chevron(ink) else plus(ink) }
+            }
+            Box(Modifier.weight(1f).padding(start = Space.x2), contentAlignment = Alignment.CenterStart) {
+                if (text.isEmpty()) Text(stringResource(Res.string.add_task_hint), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it.replace("\n", "") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
+                    cursorBrush = SolidColor(colors.onBackground),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (text.isNotBlank()) viewModel.add(text.trim(), aimed?.id)
+                        aimed?.let { state.openTasks = state.openTasks + it.id }
+                        text = ""
+                    }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focus)
+                        .onFocusChanged { typing = it.isFocused }
+                        .onPreviewKeyEvent { event ->
+                            if (event.key == Key.Escape && event.type == KeyEventType.KeyDown && (text.isNotEmpty() || aimed != null)) {
+                                text = ""
+                                state.aimedTask = null
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                )
+            }
         }
     }
 }
 
-/** A text field in place of a title: enter keeps the new words, escape the old ones. */
+/**
+ * A text field in place of a title: enter or clicking elsewhere keeps the new words, escape the old ones, as renaming does
+ * on the phone. [onDone] hears once, with the words or null for none.
+ */
 @Composable
-fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?) -> Unit) {
+private fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?) -> Unit) {
     val colors = MaterialTheme.colorScheme
-    var text by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(initial, androidx.compose.ui.text.TextRange(0, initial.length))) }
+    var text by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
     val focus = remember { FocusRequester() }
+    var hadFocus by remember { mutableStateOf(false) }
+    var finished by remember { mutableStateOf(false) }
+
+    fun finish(words: String?) {
+        if (finished) return
+        finished = true
+        onDone(words)
+    }
     LaunchedEffect(Unit) { focus.requestFocus() }
     BasicTextField(
         value = text,
@@ -340,13 +367,17 @@ fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onBackground),
         cursorBrush = SolidColor(colors.onBackground),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onDone(text.text.trim()) }),
+        keyboardActions = KeyboardActions(onDone = { finish(text.text.trim()) }),
         modifier = modifier
             .padding(start = Space.x2)
             .focusRequester(focus)
+            .onFocusChanged {
+                if (hadFocus && !it.isFocused) finish(text.text.trim())
+                hadFocus = it.isFocused
+            }
             .onPreviewKeyEvent { event ->
                 if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
-                    onDone(null)
+                    finish(null)
                     true
                 } else {
                     false
@@ -354,6 +385,3 @@ fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: (String?
             },
     )
 }
-
-@OptIn(ExperimentalFoundationApi::class)
-private fun Modifier.combinedClickableCompat(onClick: () -> Unit): Modifier = this.combinedClickable(onClick = onClick)

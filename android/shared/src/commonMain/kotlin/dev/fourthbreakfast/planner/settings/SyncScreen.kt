@@ -29,10 +29,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -42,22 +49,26 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import dev.fourthbreakfast.planner.resources.Res
-import dev.fourthbreakfast.planner.resources.backup_off
 import dev.fourthbreakfast.planner.resources.sync_anywhere
-import dev.fourthbreakfast.planner.resources.sync_blocked
+import dev.fourthbreakfast.planner.resources.sync_asks
 import dev.fourthbreakfast.planner.resources.sync_connected
 import dev.fourthbreakfast.planner.resources.sync_credit
+import dev.fourthbreakfast.planner.resources.sync_let_in
+import dev.fourthbreakfast.planner.resources.sync_name
 import dev.fourthbreakfast.planner.resources.sync_not_found
-import dev.fourthbreakfast.planner.resources.sync_on
+import dev.fourthbreakfast.planner.resources.sync_now
 import dev.fourthbreakfast.planner.resources.sync_pair
+import dev.fourthbreakfast.planner.resources.sync_refuse
 import dev.fourthbreakfast.planner.resources.sync_remove
 import dev.fourthbreakfast.planner.resources.sync_scan
+import dev.fourthbreakfast.planner.resources.sync_syncing
 import dev.fourthbreakfast.planner.resources.sync_this_device
 import dev.fourthbreakfast.planner.resources.sync_title
 import dev.fourthbreakfast.planner.resources.sync_type_code
 import dev.fourthbreakfast.planner.resources.sync_unavailable
 import dev.fourthbreakfast.planner.resources.sync_waiting
 import dev.fourthbreakfast.planner.sync.SyncControls
+import dev.fourthbreakfast.planner.sync.pairText
 import dev.fourthbreakfast.planner.sync.shortId
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.QuietButton
@@ -68,12 +79,13 @@ import org.jetbrains.compose.resources.stringResource
 private const val SYNCTHING = "https://syncthing.net"
 
 /**
- * Pairing and the devices this one syncs with. While it is open the app's Syncthing runs and lets in any device that
- * asks, so pairing takes this screen open on both devices: one scans or types the other's code. A device without a
+ * Pairing and the devices this one syncs with. While it is open the app's Syncthing runs and shows any device asking to
+ * sync, to be let in or turned down, so pairing takes this screen open on both devices: one scans or types the other's
+ * code, and the other says yes. [failed] says why sync could not start, in the device's own terms. A device without a
  * camera to [scan] with only offers typing.
  */
 @Composable
-fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Unit)?, onClose: () -> Unit) {
+fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Unit)?, failed: String, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val links = LocalUriHandler.current
     DisposableEffect(controller) {
@@ -84,6 +96,7 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
     val scope = rememberCoroutineScope()
     var code by rememberSaveable { mutableStateOf("") }
     var notFound by remember { mutableStateOf(false) }
+    var syncing by remember { mutableStateOf(false) }
     var anywhere by remember { mutableStateOf(controller.anywhere) }
     val colors = MaterialTheme.colorScheme
 
@@ -105,12 +118,13 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                 .verticalScroll(rememberScrollState()),
         ) {
             if (!controller.available || state.failed) {
-                Line(stringResource(if (controller.available) Res.string.sync_blocked else Res.string.sync_unavailable), null)
+                Line(if (controller.available) failed else stringResource(Res.string.sync_unavailable), null)
                 return@Column
             }
             Line(stringResource(Res.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))
+            NameLine(stringResource(Res.string.sync_name), controller.deviceName, controller::renameThisDevice)
             if (state.myId.isNotEmpty()) {
-                QrCode(state.myId, Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
+                QrCode(pairText(state.myId, state.addresses), Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
             }
             if (scan != null) Setting(stringResource(Res.string.sync_scan), null) { scan(::pair) }
             Row(
@@ -137,6 +151,21 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                 }
                 QuietButton(stringResource(if (notFound) Res.string.sync_not_found else Res.string.sync_pair), code.isNotBlank()) { pair(code) }
             }
+            for (asking in state.asking) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(start = Space.gutter, end = Space.rowPad),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.sync_asks, asking.name.ifBlank { shortId(asking.id) }),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.onBackground,
+                        modifier = Modifier.weight(1f),
+                    )
+                    QuietButton(stringResource(Res.string.sync_let_in)) { controller.letIn(asking.id) }
+                    QuietButton(stringResource(Res.string.sync_refuse)) { controller.refuse(asking.id) }
+                }
+            }
             for (peer in state.peers) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -156,9 +185,20 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                     QuietButton(stringResource(Res.string.sync_remove)) { controller.unpair(peer.id) }
                 }
             }
+            if (state.peers.isNotEmpty()) {
+                Setting(stringResource(Res.string.sync_now), if (syncing) stringResource(Res.string.sync_syncing) else null) {
+                    if (!syncing) {
+                        syncing = true
+                        scope.launch {
+                            controller.syncNow()
+                            syncing = false
+                        }
+                    }
+                }
+            }
             Setting(
                 stringResource(Res.string.sync_anywhere),
-                stringResource(if (anywhere) Res.string.sync_on else Res.string.backup_off),
+                onOff(anywhere),
             ) {
                 anywhere = !anywhere
                 controller.chooseAnywhere(anywhere)
@@ -199,4 +239,53 @@ private fun QrCode(text: String, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/** A line that names this device: the name is written in place, kept when the keyboard is done or the line is left. */
+@Composable
+private fun NameLine(label: String, name: String, onRename: (String) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(horizontal = Space.gutter),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+        NameField(name, Modifier.weight(1f).padding(start = Space.x4), endAligned = true, onRename = onRename)
+    }
+}
+
+/** A name that can be changed where it stands. */
+@Composable
+private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: Boolean = false, onRename: (String) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    var text by remember(name) { mutableStateOf(name) }
+    val focus = LocalFocusManager.current
+    fun accept() {
+        if (text != name) onRename(text)
+        focus.clearFocus()
+    }
+    BasicTextField(
+        value = text,
+        onValueChange = { text = it.replace("\n", "") },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = colors.onBackground,
+            textAlign = if (endAligned) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+        ),
+        cursorBrush = SolidColor(colors.onBackground),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { accept() }),
+        modifier = modifier
+            .onPreviewKeyEvent { event ->
+                when {
+                    event.type != KeyEventType.KeyDown -> false
+                    event.key == Key.Enter || event.key == Key.NumPadEnter -> true.also { accept() }
+                    event.key == Key.Escape -> true.also {
+                        text = name
+                        focus.clearFocus()
+                    }
+                    else -> false
+                }
+            }
+            .onFocusChanged { if (!it.isFocused && text != name) onRename(text) },
+    )
 }

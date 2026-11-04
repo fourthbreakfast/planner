@@ -66,6 +66,13 @@ internal class NoteEditState(initialTitle: String, body: String) {
         value = TextFieldValue(GUARD + joined, TextRange(joined.length + 1))
     }
 
+    /** Shows another version of the note, one sync brought, in place of what is here. */
+    fun replaceWith(newTitle: String, body: String) {
+        title = newTitle
+        load(body)
+        commit()
+    }
+
     /** The lines as they are saved. */
     fun lines(): List<NoteLine> {
         var start = 0
@@ -77,6 +84,7 @@ internal class NoteEditState(initialTitle: String, body: String) {
         }
     }
 
+    /** The note's text as it is saved. */
     fun body(): String = formatBody(lines())
 
     // the steps back and forward: a snapshot each time writing pauses, and before every mark or look is changed
@@ -88,10 +96,13 @@ internal class NoteEditState(initialTitle: String, body: String) {
 
     private fun current() = Snap(title, body())
 
+    /** Whether there is a step back: an earlier snapshot, or writing since the last one. */
     val canUndo: Boolean get() = at > 0 || current() != history[at]
 
+    /** Whether there is a step forward, which writing anything takes away. */
     val canRedo: Boolean get() = at < count - 1 && current() == history[at]
 
+    /** Keeps what is written now as a step to come back to, unless it is the same as the last one. */
     fun commit() {
         val now = current()
         if (now == history[at]) return
@@ -102,6 +113,7 @@ internal class NoteEditState(initialTitle: String, body: String) {
         count = history.size
     }
 
+    /** Goes one step back, keeping what was written since the last step first so redo can bring it back. */
     fun undo() {
         commit()
         if (at == 0) return
@@ -109,6 +121,7 @@ internal class NoteEditState(initialTitle: String, body: String) {
         restore(history[at])
     }
 
+    /** Goes one step forward again after an undo. */
     fun redo() {
         if (!canRedo) return
         at += 1
@@ -136,11 +149,13 @@ internal class NoteEditState(initialTitle: String, body: String) {
         return true
     }
 
+    /** Puts the cursor after the last letter. */
     fun focusEnd() {
         value = value.copy(selection = TextRange(value.text.length))
         focusRequest++
     }
 
+    /** Puts the cursor before the first letter. */
     fun focusStart() {
         value = value.copy(selection = TextRange(1))
         focusRequest++
@@ -264,6 +279,7 @@ internal class NoteEditState(initialTitle: String, body: String) {
     /** The kind of the line the selection starts in. */
     val kind: LineKind get() = marks[selectedLines().first].kind
 
+    /** Makes the selected lines [kind], or plain again when they all are already. */
     fun setKind(kind: LineKind) {
         commit()
         val lines = selectedLines()
@@ -273,12 +289,14 @@ internal class NoteEditState(initialTitle: String, body: String) {
         }
     }
 
+    /** Pushes the selected lines in, or pulls them out with a negative [by], within the depths a line can have. */
     fun push(by: Int) {
         commit()
         val lines = selectedLines()
         marks = marks.mapIndexed { i, mark -> if (i in lines) mark.copy(indent = (mark.indent + by).coerceIn(0, MAX_INDENT)) else mark }
     }
 
+    /** Ticks or unticks the checkbox of [line]. */
     fun toggleChecked(line: Int) {
         commit()
         setMark(line, marks[line].copy(checked = !marks[line].checked))
@@ -292,6 +310,7 @@ internal class NoteEditState(initialTitle: String, body: String) {
         return (maxOf(from, 0) until to).filter { it < text.length && text[it] != '\n' }
     }
 
+    /** Switches the look [bit] over the selection, or for what is typed next when nothing is selected. */
     fun toggle(bit: Int) {
         commit()
         val letters = selectedLetters()
@@ -310,6 +329,7 @@ internal class NoteEditState(initialTitle: String, body: String) {
         }
     }
 
+    /** Whether the look [bit] is on for all of the selection, or for what is typed next. */
     fun isOn(bit: Int): Boolean {
         val letters = selectedLetters()
         return if (letters.isEmpty()) typing and bit != 0 else letters.all { looks[it] and bit != 0 }

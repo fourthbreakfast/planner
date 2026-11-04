@@ -8,18 +8,8 @@ plugins {
 }
 
 // its own syncthing, built from the pinned source and shipped in the app's resource folder
-val syncthingSource = rootProject.layout.projectDirectory.dir("../third_party/syncthing")
-val syncthingWindows = tasks.register<SyncthingBinary>("syncthingWindows") {
-    source.set(syncthingSource)
-    version.set(
-        providers.exec { commandLine("git", "-C", syncthingSource.asFile.path, "describe", "--tags", "--always") }
-            .standardOutput.asText.map { it.trim() },
-    )
-    goos.set("windows")
-    goarch.set("amd64")
-    fileName.set("windows/syncthing.exe")
-    output.set(layout.buildDirectory.dir("syncthing/resources"))
-}
+val syncthingWindows =
+    syncthingBinary("syncthingWindows", goos = "windows", goarch = "amd64", fileName = "windows/syncthing.exe", outputDir = "syncthing/resources")
 
 // built for the java 21 runtime the installer carries
 kotlin {
@@ -32,6 +22,8 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(libs.androidx.sqlite.bundled)
     implementation(libs.kotlinx.coroutines.swing)
+    // tells Windows where the drawn title bar and edges are, so the window snaps as any other (NativeFrame)
+    implementation(libs.jna)
     testImplementation(libs.junit)
 }
 

@@ -47,7 +47,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun PlannerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun PlannerTheme(darkTheme: Boolean = isSystemInDarkTheme(), textScale: Float = 1f, content: @Composable () -> Unit) {
     val colors = if (darkTheme) DarkColorScheme else LightColorScheme
     // the text cursor handle and selection follow the page colors, not the red accent
     val selection = TextSelectionColors(
@@ -56,7 +56,7 @@ fun PlannerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composabl
     )
     MaterialTheme(
         colorScheme = colors,
-        typography = plannerTypography(),
+        typography = plannerTypography(textScale),
     ) {
         CompositionLocalProvider(LocalTextSelectionColors provides selection, content = content)
     }

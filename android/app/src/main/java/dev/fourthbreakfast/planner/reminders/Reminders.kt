@@ -40,13 +40,7 @@ class Reminders(private val context: Context) {
             .putExtra(ReminderReceiver.TITLE, event.title)
             .putExtra(ReminderReceiver.MINUTE, event.minute ?: 0)
             .putExtra(ReminderReceiver.PLACE, event.location)
-        val pending = pending(event.id, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-        // exact when the phone allows it, otherwise as close as it will go
-        if (alarms.canScheduleExactAlarms()) {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
-        } else {
-            alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
-        }
+        ring(at, pending(event.id, intent, PendingIntent.FLAG_UPDATE_CURRENT))
     }
 
     /** Rings the same reminder again later, from the alarm that just went off. */
@@ -55,7 +49,12 @@ class Reminders(private val context: Context) {
         val intent = Intent(context, ReminderReceiver::class.java)
             .setData(Uri.parse("planner://event/$id/snooze"))
             .putExtras(source.extras ?: return)
-        val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            .putExtra(ReminderReceiver.SNOOZED, true)
+        ring(at, PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
+    }
+
+    /** Sets an alarm: exact when the phone allows it, otherwise as close as it will go. */
+    private fun ring(at: Long, pending: PendingIntent) {
         if (alarms.canScheduleExactAlarms()) {
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
         } else {
@@ -64,6 +63,8 @@ class Reminders(private val context: Context) {
     }
 
     private fun cancel(id: String) {
-        alarms.cancel(pending(id, flags = PendingIntent.FLAG_NO_CREATE).let { it ?: return })
+        val pending = pending(id, flags = PendingIntent.FLAG_NO_CREATE) ?: return
+        alarms.cancel(pending)
+        pending.cancel()
     }
 }

@@ -33,58 +33,65 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.fourthbreakfast.planner.agenda.DayRow
 import dev.fourthbreakfast.planner.agenda.EarlierRow
 import dev.fourthbreakfast.planner.agenda.EventItem
+import dev.fourthbreakfast.planner.agenda.EventSpanAndRepeat
 import dev.fourthbreakfast.planner.agenda.MonthGrid
 import dev.fourthbreakfast.planner.agenda.PREF_MONTH
-import dev.fourthbreakfast.planner.agenda.ViewToggle
 import dev.fourthbreakfast.planner.agenda.agendaRows
+import dev.fourthbreakfast.planner.agenda.busyDays
 import dev.fourthbreakfast.planner.agenda.dayText
 import dev.fourthbreakfast.planner.agenda.monthOf
 import dev.fourthbreakfast.planner.agenda.rememberToday
 import dev.fourthbreakfast.planner.agenda.timeText
 import dev.fourthbreakfast.planner.agenda.upcomingCount
 import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.core.sortedEvents
+import dev.fourthbreakfast.planner.core.occurrences
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_event
 import dev.fourthbreakfast.planner.resources.all_day
+import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.earlier
 import dev.fourthbreakfast.planner.resources.nothing_planned
 import dev.fourthbreakfast.planner.resources.open_event
 import dev.fourthbreakfast.planner.resources.remove_task
-import dev.fourthbreakfast.planner.ui.BinButton
+import dev.fourthbreakfast.planner.resources.show_list
+import dev.fourthbreakfast.planner.resources.show_month
 import dev.fourthbreakfast.planner.ui.LocalServices
+import dev.fourthbreakfast.planner.ui.binIcon
+import dev.fourthbreakfast.planner.ui.listLines
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.theme.Space
+import java.time.YearMonth
 import org.jetbrains.compose.resources.stringResource
 
 /** The agenda, as a list of days or as a month with the chosen day's events under it. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRemove: (String) -> Unit, onMove: (Event, Long) -> Unit) {
+fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRemove: (String) -> Unit, onMove: (event: Event, from: Long, to: Long) -> Unit) {
     val today = rememberToday()
     val prefs = LocalServices.current.prefs
     var asMonth by remember { mutableStateOf(prefs.getBoolean(PREF_MONTH, false)) }
     var month by remember { mutableStateOf(today) }
     val is24Hour = rememberIs24Hour()
     val rows = remember(events, today) { agendaRows(events, today) }
-    val busyDays = remember(events) { events.mapTo(HashSet()) { it.day } }
-    val dayEvents = remember(events, state.chosenDay) { sortedEvents(events.filter { it.day == state.chosenDay }) }
-    state.visibleEvents = if (asMonth) dayEvents.map { it.id } else rows.filterIsInstance<EventItem>().map { it.event.id }
+    val busyDays = remember(events, month) { busyDays(events, monthOf(month).atDay(1).toEpochDay() - 7, monthOf(month).atEndOfMonth().toEpochDay() + 7) }
+    val dayEvents = remember(events, state.chosenDay) { occurrences(events, state.chosenDay, state.chosenDay) }
+    // a selected event is a key of its id and the day of that time of it, as a repeating one shows more than once
+    state.visibleEvents = if (asMonth) dayEvents.map { it.key } else rows.filterIsInstance<EventItem>().map { it.key }
     // an event dragged out of the day under the month lands on whichever day it is let go over
     val drag = remember { EventDrag() }
+    drag.month = monthOf(month)
 
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("agenda", upcomingCount(events, today), state.focused == Section.AGENDA) {
-            ViewToggle(asMonth) {
+            HeaderButton(stringResource(if (asMonth) Res.string.show_list else Res.string.show_month), {
                 asMonth = !asMonth
                 prefs.putBoolean(PREF_MONTH, asMonth)
                 if (asMonth) {
                     state.chosenDay = today
                     month = today
                 }
-            }
-            HeaderButton(stringResource(Res.string.add_event), { state.newEvent(if (asMonth) state.chosenDay else null) }) { plus(it) }
-            BinButton(binCount, { state.panel = Panel.AgendaBin })
+            }) { if (asMonth) listLines(it) else calendar(it) }
+            DeskBin(binCount, { state.panel = Panel.AgendaBin })
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
             if (asMonth) {
@@ -105,18 +112,21 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
                 }
                 item(key = "day") { Heading(dayText(state.chosenDay, today)) }
                 if (dayEvents.isEmpty()) item(key = "none") { Quiet(stringResource(Res.string.nothing_planned)) }
-                items(dayEvents, key = { it.id }) { event -> EventLine(event, event.day < today, is24Hour, state, onRemove, drag, onMove) }
+                items(dayEvents, key = {
+                    it.key
+                }) { time -> EventLine(time.event, time.start, time.end < today, today, is24Hour, state, onRemove, drag, onMove) }
             } else {
                 if (rows.isEmpty()) item(key = "none") { Quiet(stringResource(Res.string.nothing_planned)) }
                 items(rows, key = { it.key }) { row ->
                     when (row) {
                         is DayRow -> Heading(dayText(row.day, today))
                         is EarlierRow -> Heading(stringResource(Res.string.earlier))
-                        is EventItem -> EventLine(row.event, row.earlier, is24Hour, state, onRemove)
+                        is EventItem -> EventLine(row.event, row.day, row.earlier, today, is24Hour, state, onRemove)
                     }
                 }
             }
         }
+        FootAdd(stringResource(Res.string.add_event)) { state.newEvent(if (asMonth) state.chosenDay else null) }
     }
 }
 
@@ -135,23 +145,26 @@ private fun Heading(text: String) {
 @Composable
 private fun EventLine(
     event: Event,
+    day: Long,
     earlier: Boolean,
+    today: Long,
     is24Hour: Boolean,
     state: DashboardState,
     onRemove: (String) -> Unit,
     drag: EventDrag? = null,
-    onMove: (Event, Long) -> Unit = { _, _ -> },
+    onMove: (event: Event, from: Long, to: Long) -> Unit = { _, _, _ -> },
 ) {
+    val key = "${event.id}@$day"
     val openLabel = stringResource(Res.string.open_event)
     val binLabel = stringResource(Res.string.remove_task)
     var rowCorner by remember { mutableStateOf(Offset.Zero) }
     val colors = MaterialTheme.colorScheme
     val (hover, hovered) = rememberHover()
-    val selected = state.focused == Section.AGENDA && state.selectedEvent == event.id
+    val selected = state.focused == Section.AGENDA && state.selectedEvent == key
     ContextMenuArea(items = {
         listOf(
-            ContextMenuItem(openLabel) { state.openEvent(event.id) },
-            ContextMenuItem(binLabel) { onRemove(event.id) },
+            ContextMenuItem(openLabel) { state.openEvent(key) },
+            ContextMenuItem(binLabel) { onRemove(key) },
         )
     }) {
         Row(
@@ -169,16 +182,16 @@ private fun EventLine(
                 .combinedClickable(
                     onClick = {
                         state.focused = Section.AGENDA
-                        state.selectedEvent = event.id
+                        state.selectedEvent = key
                     },
-                    onDoubleClick = { state.openEvent(event.id) },
+                    onDoubleClick = { state.openEvent(key) },
                 )
                 .onGloballyPositioned { rowCorner = it.positionInRoot() }
                 .then(
                     if (drag == null) {
                         Modifier
                     } else {
-                        Modifier.pointerInput(event.id) {
+                        Modifier.pointerInput(key) {
                             var at = Offset.Zero
                             detectDragGestures(
                                 onDragStart = { at = rowCorner + it },
@@ -188,7 +201,7 @@ private fun EventLine(
                                     drag.over = drag.dayAt(at)
                                 },
                                 onDragEnd = {
-                                    drag.over?.takeIf { it != event.day }?.let { onMove(event, it) }
+                                    drag.over?.takeIf { it != day }?.let { onMove(event, day, it) }
                                     drag.over = null
                                 },
                                 onDragCancel = { drag.over = null },
@@ -196,7 +209,7 @@ private fun EventLine(
                         }
                     },
                 )
-                .padding(start = Space.gutter, end = Space.x1, top = Space.x2, bottom = Space.x2),
+                .padding(start = Space.gutter, end = Desk.inset, top = Space.x2, bottom = Space.x2),
         ) {
             val ink = if (earlier) colors.onSurfaceVariant else colors.onBackground
             Column(Modifier.width(if (is24Hour) Space.timeColumn else Space.timeColumn12)) {
@@ -211,16 +224,23 @@ private fun EventLine(
             Column(Modifier.weight(1f)) {
                 Text(event.title, style = MaterialTheme.typography.bodyLarge, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (event.location.isNotEmpty()) Text(event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                EventSpanAndRepeat(event, day, today)
             }
-            if (hovered) BinButton(0, { onRemove(event.id) })
+            if (hovered) HeaderButton(stringResource(Res.string.bin), { onRemove(key) }) { binIcon(it) }
         }
     }
 }
 
-/** Where the days of the month sit on screen, and which one a dragged event is over. */
+/**
+ * Where the days of the month sit on screen, and which one a dragged event is over. A day of a month shown earlier keeps
+ * the place it had, where a day of this month may sit now, so only the days of the month on show count.
+ */
 class EventDrag {
     val days = HashMap<Long, Rect>()
     var over by mutableStateOf<Long?>(null)
 
-    fun dayAt(point: Offset): Long? = days.entries.firstOrNull { it.value.contains(point) }?.key
+    /** The month on show. */
+    var month: YearMonth = YearMonth.now()
+
+    fun dayAt(point: Offset): Long? = days.entries.firstOrNull { (day, place) -> monthOf(day) == month && place.contains(point) }?.key
 }

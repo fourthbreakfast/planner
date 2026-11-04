@@ -8,18 +8,8 @@ val releaseKeystore = providers.environmentVariable("PLANNER_KEYSTORE").orNull
 val releasePassword = providers.environmentVariable("PLANNER_KEYSTORE_PASSWORD").orNull
 
 // the app's own Syncthing, built from the pinned source. Android only runs a program it unpacked itself, as a library
-val syncthingSource = rootProject.layout.projectDirectory.dir("../third_party/syncthing")
-val syncthingAndroid = tasks.register<SyncthingBinary>("syncthingAndroid") {
-    source.set(syncthingSource)
-    version.set(
-        providers.exec { commandLine("git", "-C", syncthingSource.asFile.path, "describe", "--tags", "--always") }
-            .standardOutput.asText.map { it.trim() },
-    )
-    goos.set("android")
-    goarch.set("arm64")
-    fileName.set("arm64-v8a/libsyncthing.so")
-    output.set(layout.buildDirectory.dir("syncthing/jniLibs"))
-}
+val syncthingAndroid =
+    syncthingBinary("syncthingAndroid", goos = "android", goarch = "arm64", fileName = "arm64-v8a/libsyncthing.so", outputDir = "syncthing/jniLibs")
 
 androidComponents {
     onVariants { variant -> variant.sources.jniLibs?.addGeneratedSourceDirectory(syncthingAndroid, SyncthingBinary::output) }
@@ -93,21 +83,15 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime)
-    implementation(libs.zxing.core)
     implementation(libs.zxing.android.embedded)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.room.testing)
-    debugImplementation(libs.androidx.compose.ui.tooling)
     // the upgrade tests read the saved schemas with a newer one than the app pulls in by itself
     debugImplementation(libs.kotlinx.serialization.core)
 }

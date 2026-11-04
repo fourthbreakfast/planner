@@ -15,16 +15,15 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,9 +37,12 @@ import androidx.compose.ui.unit.min
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.agenda.AgendaBin
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
-import dev.fourthbreakfast.planner.agenda.EventDraft
 import dev.fourthbreakfast.planner.agenda.EventEditor
+import dev.fourthbreakfast.planner.agenda.WhichTimesChooser
+import dev.fourthbreakfast.planner.agenda.movedDraft
 import dev.fourthbreakfast.planner.agenda.today
+import dev.fourthbreakfast.planner.core.Repeat
+import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.binEntries
 import dev.fourthbreakfast.planner.notes.NoteEditor
 import dev.fourthbreakfast.planner.notes.NotesBin
@@ -48,10 +50,8 @@ import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.search.SearchScreen
 import dev.fourthbreakfast.planner.tasks.BinScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
-import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.theme.Space
-import kotlinx.coroutines.launch
 
 /** The three parts of the dashboard, which one the keyboard is in. */
 enum class Section { TASKS, AGENDA, NOTES }
@@ -60,7 +60,8 @@ enum class Section { TASKS, AGENDA, NOTES }
 sealed interface Panel {
     data class NoteOpen(val id: String) : Panel
 
-    data class EventOpen(val id: String?, val day: Long?) : Panel
+    // [occurrence] is the day of the time of a repeating event that was opened
+    data class EventOpen(val id: String?, val day: Long?, val occurrence: Long? = null) : Panel
 
     data object TaskBin : Panel
 
@@ -79,6 +80,9 @@ class DashboardState {
     var panel by mutableStateOf<Panel?>(null)
     var selectedTask by mutableStateOf<String?>(null)
     var selectedEvent by mutableStateOf<String?>(null)
+
+    /** An event time asked to be removed, as its id and day, until it is known whether that is one time or every time. */
+    var eventToRemove by mutableStateOf<String?>(null)
     var selectedNote by mutableStateOf<String?>(null)
     var renamingTask by mutableStateOf<String?>(null)
     var aimedTask by mutableStateOf<String?>(null)
@@ -97,8 +101,9 @@ class DashboardState {
         panel = Panel.NoteOpen(id)
     }
 
-    fun openEvent(id: String) {
-        panel = Panel.EventOpen(id, null)
+    /** Opens an event by its id, or one time of it by a key of the id and its day. */
+    fun openEvent(key: String) {
+        panel = Panel.EventOpen(key.substringBefore('@'), null, key.substringAfter('@', "").toLongOrNull())
     }
 
     fun newEvent(day: Long?) {
@@ -106,17 +111,23 @@ class DashboardState {
     }
 }
 
-/** What the keyboard can do anywhere on the dashboard. Returns whether the key was used. */
+/**
+ * What the keyboard can do on the dashboard. Returns whether the key was used. The control shortcuts are taken before
+ * anything else sees them ([plainKeys] false); the plain keys, arrows, enter, space, delete and f2, only once a text
+ * field had its turn and left them ([plainKeys] true), so typing in a field never moves or bins a task.
+ */
 fun handleDashboardKey(
     event: KeyEvent,
+    plainKeys: Boolean,
     state: DashboardState,
     tasks: TasksViewModel,
     agenda: AgendaViewModel,
     notes: NotesViewModel,
-    allTasks: () -> List<dev.fourthbreakfast.planner.core.Task>,
+    allTasks: () -> List<Task>,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val ctrl = event.isCtrlPressed
+    if (ctrl == plainKeys) return false
     when {
         ctrl && event.key == Key.One -> state.focused = Section.TASKS
         ctrl && event.key == Key.Two -> state.focused = Section.AGENDA
@@ -148,7 +159,7 @@ fun handleDashboardKey(
             allTasks().firstOrNull { it.id == state.selectedTask }?.let { tasks.setDone(it, !it.done) }
         event.key == Key.Delete -> when (state.focused) {
             Section.TASKS -> allTasks().firstOrNull { it.id == state.selectedTask }?.let { tasks.moveToBin(it) }
-            Section.AGENDA -> state.selectedEvent?.let { agenda.moveToBin(it) }
+            Section.AGENDA -> state.eventToRemove = state.selectedEvent
             Section.NOTES -> state.selectedNote?.let { notes.moveToBin(it) }
         }
         else -> return false
@@ -172,15 +183,33 @@ fun Dashboard(
     val allTasks by tasksViewModel.all.collectAsState(initial = emptyList())
     val allEvents by agendaViewModel.all.collectAsState(initial = emptyList())
     val allNotes by notesViewModel.all.collectAsState(initial = emptyList())
+    val taskBin = remember(allTasks) { binEntries(allTasks) }
     val toolbarAbove = LocalServices.current.settings.toolbarAbove
     val requests = LocalServices.current.requests
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
+    state.eventToRemove?.let { key ->
+        val id = key.substringBefore('@')
+        val day = key.substringAfter('@', "").toLongOrNull()
+        val event = allEvents.firstOrNull { it.id == id }
+        if (event == null || event.repeat == Repeat.NONE || day == null) {
+            LaunchedEffect(key) {
+                agendaViewModel.moveToBin(id)
+                state.eventToRemove = null
+            }
+        } else {
+            WhichTimesChooser(
+                onPick = { onlyThisTime ->
+                    agendaViewModel.delete(id, day, onlyThisTime)
+                    state.eventToRemove = null
+                },
+                onCancel = { state.eventToRemove = null },
+            )
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
         Row(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
-                TaskColumn(allTasks, binEntries(allTasks).size, state, tasksViewModel)
+                TaskColumn(allTasks, taskBin.size, state, tasksViewModel)
             }
             Divider()
             Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -189,12 +218,10 @@ fun Dashboard(
                     events,
                     allEvents.count { it.inBin },
                     state,
-                    onRemove = { agendaViewModel.moveToBin(it) },
-                    onMove = { event, day ->
-                        agendaViewModel.update(
-                            event.id,
-                            EventDraft(event.title, day, event.minute, event.endMinute, event.location, event.notes, event.reminder),
-                        )
+                    onRemove = { state.eventToRemove = it },
+                    onMove = { event, from, day ->
+                        // a repeating event moves only the time that was dragged; the others stay
+                        agendaViewModel.save(event.id, from, movedDraft(event, from, day), onlyThisTime = event.repeat != Repeat.NONE)
                         state.chosenDay = day
                     },
                 )
@@ -205,6 +232,14 @@ fun Dashboard(
             }
         }
 
+        // leaving a note, however the panel changes: an empty one made here goes, and the app starts with none left over
+        var lastNote by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(Unit) { notesViewModel.dropLeftDrafts(null) }
+        LaunchedEffect(state.panel) {
+            val now = (state.panel as? Panel.NoteOpen)?.id
+            lastNote?.takeIf { it != now }?.let(notesViewModel::closed)
+            lastNote = now
+        }
         val panel = state.panel
         // a dim layer over the dashboard, a click on it closes the panel
         AnimatedVisibility(panel != null, enter = fadeIn(), exit = fadeOut()) {
@@ -225,34 +260,30 @@ fun Dashboard(
                 val close = { state.panel = null }
                 when (panel) {
                     is Panel.NoteOpen -> allNotes.firstOrNull { it.id == panel.id }?.let { note ->
-                        androidx.compose.runtime.key(note.id) {
+                        key(note.id) {
                             NoteEditor(
-                                initialTitle = note.title,
-                                initialBody = note.body,
-                                pinned = note.pinned,
+                                note = note,
                                 onPin = { notesViewModel.setPinned(note.id, !note.pinned) },
                                 toolbarAbove = toolbarAbove,
-                                onSave = { title, body -> notesViewModel.save(note.id, title, body) },
-                                onClose = { title, body ->
-                                    notesViewModel.close(note.id, title, body)
-                                    close()
-                                },
+                                onSave = { title, body, base, onSaved -> notesViewModel.save(note.id, title, body, base, onSaved) },
+                                onClose = close,
                             )
                         }
                     }
                     is Panel.EventOpen -> {
                         val editing = panel.id?.let { id -> allEvents.firstOrNull { it.id == id } }
-                        androidx.compose.runtime.key(panel) {
+                        key(panel) {
                             EventEditor(
                                 initial = editing,
+                                occurrence = panel.occurrence,
                                 newDay = panel.day,
-                                onSave = { draft ->
-                                    if (editing == null) agendaViewModel.add(draft) else agendaViewModel.update(editing.id, draft)
+                                onSave = { draft, onlyThisTime ->
+                                    if (editing == null) agendaViewModel.add(draft) else agendaViewModel.save(editing.id, panel.occurrence, draft, onlyThisTime)
                                     close()
                                 },
                                 onDelete = editing?.let { event ->
-                                    {
-                                        agendaViewModel.moveToBin(event.id)
+                                    { onlyThisTime ->
+                                        agendaViewModel.delete(event.id, panel.occurrence, onlyThisTime)
                                         close()
                                     }
                                 },
@@ -260,7 +291,7 @@ fun Dashboard(
                             )
                         }
                     }
-                    Panel.TaskBin -> BinScreen(binEntries(allTasks), tasksViewModel, onClose = close)
+                    Panel.TaskBin -> BinScreen(taskBin, tasksViewModel, onClose = close)
                     Panel.AgendaBin -> AgendaBin(allEvents.filter { it.inBin }.sortedByDescending { it.deletedAt }, agendaViewModel, onClose = close)
                     Panel.NoteBin -> NotesBin(allNotes.filter { it.inBin }.sortedByDescending { it.deletedAt }, notesViewModel, onClose = close)
                     Panel.Search -> SearchScreen(notesViewModel, onOpen = { launch ->
@@ -274,13 +305,13 @@ fun Dashboard(
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter)) { data ->
-            DiscreetMessage(data.visuals.message, data.visuals.actionLabel, data::performAction)
-        }
         // a share or a tray action asks for something: the dashboard acts on it
-        androidx.compose.runtime.LaunchedEffect(requests.pending) {
+        LaunchedEffect(requests.pending) {
             when (val request = requests.pending) {
-                Launch.NewTask -> state.focused = Section.TASKS.also { state.focusAdd++ }
+                Launch.NewTask -> {
+                    state.focused = Section.TASKS
+                    state.focusAdd++
+                }
                 Launch.NewEvent -> state.newEvent(null)
                 Launch.NewNote -> notesViewModel.add { state.openNote(it) }
                 is Launch.OpenEvent -> state.openEvent(request.id)
@@ -288,7 +319,6 @@ fun Dashboard(
                 else -> Unit
             }
             if (requests.pending != null) requests.clear()
-            scope.launch { }
         }
     }
 }

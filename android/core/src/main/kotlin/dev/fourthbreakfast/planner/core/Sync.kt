@@ -14,6 +14,9 @@ interface SyncLedger {
 
     suspend fun addGone(items: List<Gone>)
 
+    /** Takes away the marks of things brought back from a backup. */
+    suspend fun forgetGone(ids: List<String>)
+
     /** For each id, the updatedAt that this device and another last agreed on. */
     suspend fun agreed(): Map<String, Long>
 
@@ -32,49 +35,50 @@ class Sync(
     private val notes: NoteStore,
     private val ledger: SyncLedger,
     private val clock: () -> Long = System::currentTimeMillis,
+    // every time in another device's file is told to the clock, so this device's next change lands after it
+    private val saw: (Long) -> Unit = {},
 ) {
     suspend fun snapshot(): String = tasks.transaction { encodeBackup(tasks.all(), events.all(), notes.all(), ledger.gone()) }
 
     /** Takes in another device's snapshot and returns how many things changed here. */
     suspend fun merge(text: String): Int {
-        val other = decodeBackup(text)
+        // a file from a newer version of the app is still read: what this version does not know of is left alone
+        val other = decodeBackup(text, acceptNewer = true)
+        (other.tasks.map { it.updatedAt } + other.events.map { it.updatedAt } + other.notes.map { it.updatedAt } + other.gone.map { it.at })
+            .maxOrNull()?.let(saw)
         return tasks.transaction {
             val known = ledger.gone().associate { it.id to it.at }
             val incomingGone = other.gone.groupBy { it.id }.mapValues { (_, marks) -> marks.maxOf { it.at } }
             val newGone = incomingGone.filter { (id, at) -> (known[id] ?: Long.MIN_VALUE) < at }
-            if (newGone.isNotEmpty()) ledger.addGone(newGone.map { (id, at) -> Gone(id, at) })
             val gone = known + newGone
             val agreed = ledger.agreed()
             val nowAgreed = HashMap<String, Long>()
             val conflicts = ArrayList<Note>()
 
             val changed = mergeKind(
-                local = tasks.all(),
+                store = tasks,
                 incoming = other.tasks,
                 id = Task::id,
                 updatedAt = Task::updatedAt,
                 gone = gone,
                 incomingGone = incomingGone,
                 agreed = nowAgreed,
-                store = Writer(tasks::insert, tasks::update, tasks::delete),
             ) + mergeKind(
-                local = events.all(),
+                store = events,
                 incoming = other.events,
                 id = Event::id,
                 updatedAt = Event::updatedAt,
                 gone = gone,
                 incomingGone = incomingGone,
                 agreed = nowAgreed,
-                store = Writer(events::insert, events::update, events::delete),
             ) + mergeKind(
-                local = notes.all(),
+                store = notes,
                 incoming = other.notes,
                 id = Note::id,
                 updatedAt = Note::updatedAt,
                 gone = gone,
                 incomingGone = incomingGone,
                 agreed = nowAgreed,
-                store = Writer(notes::insert, notes::update, notes::delete),
                 beforeReplacing = { mine, theirs ->
                     val base = agreed[mine.id]
                     val bothChanged = base == null || (mine.updatedAt > base && theirs.updatedAt > base)
@@ -85,25 +89,42 @@ class Sync(
                 },
             )
             if (conflicts.isNotEmpty()) notes.insert(conflicts)
+            // the marks keep the time things were deleted on the device that deleted them. deleting them here wrote this
+            // device's time over them, which would make a later change on a third device look older than the delete
+            if (newGone.isNotEmpty()) ledger.addGone(newGone.map { (id, at) -> Gone(id, at) })
+            // two moves made apart can put two tasks inside each other: one is let go to the top
+            val loose = loopBreaks(tasks.all())
+            if (loose.isNotEmpty()) {
+                val now = clock()
+                tasks.update(loose.map { it.copy(parentId = null, updatedAt = now) })
+            }
             val moved = nowAgreed.filter { (id, at) -> agreed[id] != at }
             if (moved.isNotEmpty()) ledger.setAgreed(moved)
-            changed + conflicts.size
+            changed + conflicts.size + loose.size
         }
     }
 
-    private class Writer<T>(val insert: suspend (List<T>) -> Unit, val update: suspend (List<T>) -> Unit, val delete: suspend (List<T>) -> Unit)
+    /**
+     * Whether [theirs] should replace [mine]: the later change wins. Two different versions changed at the very same
+     * moment would otherwise each stay on its own device, so the tie goes the same way everywhere, by the text of each.
+     */
+    private fun <T> isNewer(theirs: T, mine: T, updatedAt: (T) -> Long): Boolean {
+        val a = updatedAt(theirs)
+        val b = updatedAt(mine)
+        return a > b || (a == b && theirs != mine && theirs.toString() > mine.toString())
+    }
 
     private suspend fun <T> mergeKind(
-        local: List<T>,
+        store: Store<T>,
         incoming: List<T>,
         id: (T) -> String,
         updatedAt: (T) -> Long,
         gone: Map<String, Long>,
         incomingGone: Map<String, Long>,
         agreed: MutableMap<String, Long>,
-        store: Writer<T>,
         beforeReplacing: (mine: T, theirs: T) -> Unit = { _, _ -> },
     ): Int {
+        val local = store.all()
         // deleted for good elsewhere, and not changed here since
         val removed = local.filter { item -> incomingGone[id(item)]?.let { updatedAt(item) <= it } == true }
         val removedIds = removed.mapTo(HashSet(), id)
@@ -119,7 +140,7 @@ class Sync(
             if (!wanted) continue
             when {
                 here == null -> added += theirs
-                updatedAt(theirs) > updatedAt(here) -> {
+                isNewer(theirs, here, updatedAt) -> {
                     beforeReplacing(here, theirs)
                     replaced += theirs
                 }

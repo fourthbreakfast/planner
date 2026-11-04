@@ -2,6 +2,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    // the in-memory stores the tests of core, sync and shared all run the rules against
+    `java-test-fixtures`
     alias(libs.plugins.ktlint)
 }
 
