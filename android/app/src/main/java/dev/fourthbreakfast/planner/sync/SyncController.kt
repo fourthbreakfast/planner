@@ -32,6 +32,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 private const val PREFS = "sync"
 private const val PREF_ANYWHERE = "anywhere"
+private const val PREF_NAME = "sync_name"
 private const val PREF_PAIRED = "paired"
 private const val WORK = "sync"
 private const val TICK_MILLIS = 2_000L
@@ -85,6 +86,26 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         linger = scope.launch {
             delay(LINGER_MILLIS)
             if (!inSight && !pairing) stop()
+        }
+    }
+
+    override val deviceName: String get() = prefs.getString(PREF_NAME, null) ?: defaultName()
+
+    override fun renameThisDevice(name: String) {
+        val clean = name.trim().take(40)
+        if (clean.isEmpty()) return
+        prefs.edit().putString(PREF_NAME, clean).apply()
+        scope.launch { runCatching { if (syncthing.running) syncthing.rename(syncthing.myId, clean) } }
+    }
+
+    override fun renamePeer(id: String, name: String) {
+        val clean = name.trim().take(40)
+        if (clean.isEmpty()) return
+        scope.launch {
+            runCatching {
+                syncthing.rename(id, clean)
+                refresh()
+            }
         }
     }
 
@@ -193,7 +214,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         lock.withLock {
             if (syncthing.running) return
             try {
-                syncthing.start(anywhere, deviceName())
+                syncthing.start(anywhere, deviceName)
             } catch (e: Exception) {
                 // a program of its own that would not start is no reason for the app to stop
                 Log.w("planner", "syncthing did not start", e)
@@ -262,7 +283,7 @@ class SyncController(private val context: Context, private val sync: Sync, priva
         work.enqueueUniquePeriodicWork(WORK, if (replace) ExistingPeriodicWorkPolicy.UPDATE else ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
-    private fun deviceName(): String = Build.MODEL.orEmpty().ifBlank { "phone" }.lowercase()
+    private fun defaultName(): String = Build.MODEL.orEmpty().ifBlank { "phone" }.lowercase()
 }
 
 /** The run between uses, whenever Android allows it. */

@@ -218,6 +218,11 @@ class Syncthing(
         }
     }
 
+    /** Changes the name this device shows for the device [id], this device's own or another's. */
+    suspend fun rename(id: String, name: String) {
+        api().patch("/rest/config/devices/${encoded(id)}", buildJsonObject { put("name", name) })
+    }
+
     /** Stops syncing with a device. */
     suspend fun unpair(id: String) {
         api().delete("/rest/config/devices/${encoded(id)}")
