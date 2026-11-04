@@ -8,13 +8,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -53,6 +51,7 @@ import dev.fourthbreakfast.planner.search.SearchScreen
 import dev.fourthbreakfast.planner.tasks.BinScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.ui.LocalServices
+import dev.fourthbreakfast.planner.ui.theme.Space
 
 /** The three parts of the dashboard, which one the keyboard is in. */
 enum class Section { TASKS, AGENDA, NOTES }
@@ -207,12 +206,13 @@ fun Dashboard(
             )
         }
     }
-    BoxWithConstraints(Modifier.fillMaxSize().background(deskGround())) {
-        Row(Modifier.fillMaxSize().padding(Desk.gap), horizontalArrangement = Arrangement.spacedBy(Desk.gap)) {
-            Box(Modifier.weight(1f).fillMaxHeight().deskPanel()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxHeight()) {
                 TaskColumn(allTasks, taskBin.size, state, tasksViewModel)
             }
-            Box(Modifier.weight(1f).fillMaxHeight().deskPanel()) {
+            Divider()
+            Box(Modifier.weight(1f).fillMaxHeight()) {
                 val events = allEvents.filterNot { it.inBin }
                 AgendaColumn(
                     events,
@@ -226,7 +226,8 @@ fun Dashboard(
                     },
                 )
             }
-            Box(Modifier.weight(1f).fillMaxHeight().deskPanel()) {
+            Divider()
+            Box(Modifier.weight(1f).fillMaxHeight()) {
                 NoteColumn(allNotes.filterNot { it.inBin }, allNotes.count { it.inBin }, state, notesViewModel)
             }
         }
@@ -320,4 +321,9 @@ fun Dashboard(
             if (requests.pending != null) requests.clear()
         }
     }
+}
+
+@Composable
+private fun Divider() {
+    Box(Modifier.width(Space.strokeThin).fillMaxHeight().background(MaterialTheme.colorScheme.outline))
 }

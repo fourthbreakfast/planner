@@ -5,7 +5,6 @@ import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -293,26 +291,17 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
     val focus = remember { FocusRequester() }
     val aimed = tasks.firstOrNull { it.id == state.aimedTask }
     LaunchedEffect(state.focusAdd) { if (state.focusAdd > 0) focus.requestFocus() }
-    Column(Modifier.fillMaxWidth().deskStrip(top = false).padding(horizontal = Space.x3, vertical = Space.x2)) {
+    Column(Modifier.fillMaxWidth().padding(end = Desk.inset)) {
         if (aimed != null) {
             Text(
                 stringResource(Res.string.add_inside_hint, aimed.title),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant,
-                modifier = Modifier.padding(start = Space.x2, bottom = Space.x2).clickable { state.aimedTask = null },
+                modifier = Modifier.padding(start = Space.x2 + Space.x5 + Space.x6 + Space.x2, top = Space.x2).clickable { state.aimedTask = null },
             )
         }
         var typing by remember { mutableStateOf(false) }
-        val shape = RoundedCornerShape(Desk.corner)
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(Desk.field)
-                .background(deskGround(), shape)
-                .border(Space.strokeThin, if (typing) colors.onBackground else colors.outline, shape)
-                .padding(start = Space.x2),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.x2 + Space.x5), verticalAlignment = Alignment.CenterVertically) {
             // the + is an invitation, the › says the line is in use, as on the phone. it sits where the priority dots
             // are, and the words start where the task names do
             Box(Modifier.size(Space.x6), contentAlignment = Alignment.Center) {
