@@ -47,7 +47,6 @@ object Desk {
     val button = 32.dp
     val icon = 16.dp
     val inset = 12.dp
-    val columnMin = 280.dp
     val panel = 560.dp
     val edge = 6.dp
 }

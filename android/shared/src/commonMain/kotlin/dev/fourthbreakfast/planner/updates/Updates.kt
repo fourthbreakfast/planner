@@ -48,8 +48,10 @@ fun parseRelease(json: String): Release? {
 
     fun asset(ending: String): Asset? {
         val found = assets.firstOrNull { it.text("name").endsWith(ending) } ?: return null
+        // only ever fetched over https: anything else is no file to download
+        val url = found.text("browser_download_url").takeIf { it.startsWith("https://") } ?: return null
         val digest = found.text("digest").takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:")
-        return Asset(found.text("browser_download_url"), digest)
+        return Asset(url, digest)
     }
     return Release(tag.removePrefix("v"), asset(".apk"), asset(".msi"))
 }

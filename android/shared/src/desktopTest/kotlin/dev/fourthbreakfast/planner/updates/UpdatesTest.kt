@@ -34,6 +34,12 @@ class UpdatesTest {
     }
 
     @Test
+    fun aFileNotOfferedOverHttpsIsLeftOut() {
+        val json = """{"tag_name": "v0.9.0", "assets": [{"name": "planner.apk", "browser_download_url": "file:///somewhere/planner.apk"}]}"""
+        assertNull(parseRelease(json)!!.apk)
+    }
+
+    @Test
     fun somethingElseIsNoRelease() {
         assertNull(parseRelease("""{"message": "Not Found"}"""))
         assertNull(parseRelease("not json"))

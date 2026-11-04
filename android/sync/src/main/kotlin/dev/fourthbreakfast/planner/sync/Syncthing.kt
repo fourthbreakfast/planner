@@ -243,9 +243,6 @@ class Syncthing(
         }
     }
 
-    /** What its REST interface says at [path], for tests to look into. */
-    internal suspend fun inspect(path: String): String = api().get(path).toString()
-
     /** Asks it to look at the folder now rather than when it next would. */
     suspend fun rescan() {
         api().post("/rest/db/scan?folder=$FOLDER")
