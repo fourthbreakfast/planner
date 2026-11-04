@@ -1,5 +1,7 @@
 package dev.fourthbreakfast.planner
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -48,4 +50,12 @@ class UiSettings(private val prefs: Prefs) {
     fun markBackedUp(at: Long) {
         prefs.putLong(LAST_BACKUP, at)
     }
+}
+
+/** Whether the screens are drawn dark: as chosen, or as the device is set when the choice is the system's. */
+@Composable
+fun ThemeChoice.isDark(): Boolean = when (this) {
+    ThemeChoice.LIGHT -> false
+    ThemeChoice.DARK -> true
+    ThemeChoice.SYSTEM -> isSystemInDarkTheme()
 }

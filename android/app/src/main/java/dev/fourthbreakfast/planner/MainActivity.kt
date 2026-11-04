@@ -8,7 +8,6 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.initializer
@@ -21,24 +20,23 @@ import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 
 class MainActivity : ComponentActivity() {
+    private val app: PlannerApp get() = application as PlannerApp
+
     private val tasksViewModel: TasksViewModel by viewModels {
         viewModelFactory {
-            initializer {
-                val app = application as PlannerApp
-                TasksViewModel(app.data.tasks, app.data.backups)
-            }
+            initializer { TasksViewModel(app.data.tasks) }
         }
     }
 
     private val agendaViewModel: AgendaViewModel by viewModels {
         viewModelFactory {
-            initializer { AgendaViewModel((application as PlannerApp).data.events) }
+            initializer { AgendaViewModel(app.data.events) }
         }
     }
 
     private val notesViewModel: NotesViewModel by viewModels {
         viewModelFactory {
-            initializer { NotesViewModel((application as PlannerApp).data.notes, (application as PlannerApp).services.prefs) }
+            initializer { NotesViewModel(app.data.notes, app.services.prefs) }
         }
     }
 
@@ -46,21 +44,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // a turn of the screen keeps the same intent, and it must not act twice
         if (savedInstanceState == null) route(intent)
-        val settings = (application as PlannerApp).settings
+        val settings = app.settings
         setContent {
-            val dark = when (settings.theme) {
-                ThemeChoice.LIGHT -> false
-                ThemeChoice.DARK -> true
-                ThemeChoice.SYSTEM -> isSystemInDarkTheme()
-            }
+            val dark = settings.theme.isDark()
             // the bars at the top and bottom follow the chosen theme, not only the phone's
             LaunchedEffect(dark) {
                 val bars = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark }
                 enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
             }
-            CompositionLocalProvider(LocalServices provides (application as PlannerApp).services) {
+            CompositionLocalProvider(LocalServices provides app.services) {
                 PlannerTheme(darkTheme = dark) {
-                    PlannerScreen(tasksViewModel, agendaViewModel, notesViewModel) { onClose -> SettingsScreen(tasksViewModel, onClose) }
+                    PlannerScreen(tasksViewModel, agendaViewModel, notesViewModel) { onClose -> SettingsScreen(onClose) }
                 }
             }
         }
@@ -73,7 +67,7 @@ class MainActivity : ComponentActivity() {
 
     /** What a shortcut, a notification or a share is asking for. */
     private fun route(intent: Intent?) {
-        val requests = (application as PlannerApp).requests
+        val requests = app.requests
         val event = intent?.getStringExtra(OPEN_EVENT)
         val shared = intent?.getStringExtra(Intent.EXTRA_TEXT)
         when {
@@ -88,14 +82,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        (application as PlannerApp).syncController.onInSight()
-        (application as PlannerApp).checkForUpdatesIfDue()
+        app.syncController.onInSight()
+        app.checkForUpdatesIfDue()
     }
 
     override fun onStop() {
         super.onStop()
-        (application as PlannerApp).syncController.onOutOfSight()
-        (application as PlannerApp).backUpIfDue()
+        app.syncController.onOutOfSight()
+        app.backUpIfDue()
     }
 
     companion object {
