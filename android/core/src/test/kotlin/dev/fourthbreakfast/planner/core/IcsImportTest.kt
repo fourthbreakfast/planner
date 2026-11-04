@@ -79,6 +79,15 @@ class IcsImportTest {
     }
 
     @Test
+    fun aCancelledTimeOfARepeatIsLeftOutOfTheSeries() {
+        val events = read(
+            "UID:s\r\nSUMMARY:Class\r\nDTSTART:20261102T100000\r\nRRULE:FREQ=WEEKLY",
+            "UID:s\r\nRECURRENCE-ID:20261116T100000\r\nSTATUS:CANCELLED\r\nSUMMARY:Class\r\nDTSTART:20261116T100000",
+        )
+        assertEquals(setOf(day(2026, 11, 16)), events.single().skipDays)
+    }
+
+    @Test
     fun remindersCountMinutesBefore() {
         val e = read("UID:m\r\nSUMMARY:Meet\r\nDTSTART:20261110T100000\r\nBEGIN:VALARM\r\nTRIGGER:-PT1H30M\r\nACTION:DISPLAY\r\nEND:VALARM").single()
         assertEquals(90, e.reminder)
