@@ -150,7 +150,7 @@ fun main(args: Array<String>) {
                 DesktopReminders(app.data.events.all, app.scope, is24Hour = is24HourClock()) { title, text -> tray.say(title, text) }
             }
         LaunchedEffect(Unit) {
-            app.sync.begin()
+            app.sync.startIfPaired()
             reminders.begin()
             app.updates.checkIfDue()
         }
