@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -57,7 +59,7 @@ private val closeRed = Color(0xFFC42B1C)
  * lays them.
  */
 @Composable
-fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit, extras: @Composable RowScope.() -> Unit = {}) {
+fun WindowScope.TitleBar(state: WindowState, frame: NativeFrame, onClose: () -> Unit, extras: @Composable RowScope.() -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
     val icon = remember { appIconPainter() }
     Row(
@@ -68,6 +70,7 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit, extras: @Compo
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
+                .onGloballyPositioned { frame.dragArea = it.boundsInWindow() }
                 .pointerInput(Unit) {
                     detectTapGestures(onDoubleTap = { state.toggleMaximized() })
                 },
@@ -84,6 +87,8 @@ fun WindowScope.TitleBar(state: WindowState, onClose: () -> Unit, extras: @Compo
         WindowButton(
             stringResource(if (state.placement == WindowPlacement.Maximized) Res.string.window_restore else Res.string.window_maximize),
             hoverColor = colors.secondaryContainer,
+            modifier = Modifier.onGloballyPositioned { frame.maximizeButton = it.boundsInWindow() },
+            forceHover = frame.maximizeHovered,
             onClick = { state.toggleMaximized() },
         ) { ink ->
             val line = Stroke(Space.strokeThin.toPx())
@@ -113,13 +118,16 @@ internal fun WindowButton(
     hoverColor: Color,
     hoverInk: Color? = null,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    forceHover: Boolean = false,
     draw: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit,
 ) {
-    val (hover, hovered) = rememberHover()
+    val (hover, pointerOver) = rememberHover()
+    val hovered = pointerOver || forceHover
     val ink = if (hovered && hoverInk != null) hoverInk else MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
+        modifier = modifier
             .width(46.dp)
             .fillMaxHeight()
             .background(if (hovered) hoverColor else Color.Transparent)

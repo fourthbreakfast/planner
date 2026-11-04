@@ -212,6 +212,8 @@ fun main(args: Array<String>) {
             },
         ) {
             window.minimumSize = java.awt.Dimension(900, 560)
+            val frame = remember { NativeFrame() }
+            LaunchedEffect(Unit) { frame.install(window, Desk.edge.value.toInt()) }
             val dark = when (app.settings.theme) {
                 ThemeChoice.LIGHT -> false
                 ThemeChoice.DARK -> true
@@ -231,7 +233,7 @@ fun main(args: Array<String>) {
                     CompositionLocalProvider(LocalContextMenuRepresentation provides menus) {
                         Box(Modifier.fillMaxSize().background(colors.background)) {
                             Column(Modifier.fillMaxSize()) {
-                                TitleBar(windowState, onClose = { visible = false }) {
+                                TitleBar(windowState, frame, onClose = { visible = false }) {
                                     TitleStatus(app.sync, app.updates, onUpdate = ::install, onSettings = { app.dashboard.panel = Panel.Settings })
                                 }
                                 Box(Modifier.weight(1f)) {
@@ -245,7 +247,7 @@ fun main(args: Array<String>) {
                                     }
                                 }
                             }
-                            ResizeEdges(window)
+                            if (!frame.installed) ResizeEdges(window)
                         }
                     }
                 }

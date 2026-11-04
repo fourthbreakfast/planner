@@ -32,6 +32,8 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(libs.androidx.sqlite.bundled)
     implementation(libs.kotlinx.coroutines.swing)
+    // tells Windows where the drawn title bar and edges are, so the window snaps as any other (NativeFrame)
+    implementation(libs.jna)
     testImplementation(libs.junit)
 }
 
