@@ -44,6 +44,7 @@ class NativeFrame {
 
     // kept as a field: the native side holds only an address, and a callback collected away would crash the window
     private var handler: Callback? = null
+    private val children = mutableListOf<Callback>()
 
     fun install(window: Window, edgeDp: Int) {
         if (!System.getProperty("os.name").orEmpty().startsWith("Windows") || installed) return
@@ -68,6 +69,7 @@ class NativeFrame {
             user32.SetWindowLongPtrW(hwnd, GWL_STYLE, style or WS_CAPTION or WS_THICKFRAME or WS_MINIMIZEBOX or WS_MAXIMIZEBOX or WS_SYSMENU)
             // the new frame takes effect once Windows is asked to measure the window again
             user32.SetWindowPos(hwnd, null, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE or SWP_FRAMECHANGED)
+            passUp(user32, hwnd, edgeDp)
             installed = true
         } catch (_: Throwable) {
             installed = false
@@ -97,11 +99,7 @@ class NativeFrame {
             }
 
             WM_NCHITTEST -> {
-                val box = Box()
-                user32.GetWindowRect(hwnd, box)
-                val x = (lParam and 0xFFFF).toShort().toInt() - box.left
-                val y = ((lParam shr 16) and 0xFFFF).toShort().toInt() - box.top
-                return hit(user32, hwnd, x, y, box.right - box.left, box.bottom - box.top, edgeDp).toLong()
+                return hitAt(user32, hwnd, lParam, edgeDp).toLong()
             }
 
             WM_NCMOUSEMOVE -> {
@@ -131,6 +129,42 @@ class NativeFrame {
             }
         }
         return null
+    }
+
+    /** What is at the screen position in a hit test message's [lParam], for the window [hwnd]. */
+    private fun hitAt(user32: User32X, hwnd: Pointer, lParam: Long, edgeDp: Int): Int {
+        val box = Box()
+        user32.GetWindowRect(hwnd, box)
+        val x = (lParam and 0xFFFF).toShort().toInt() - box.left
+        val y = ((lParam shr 16) and 0xFFFF).toShort().toInt() - box.top
+        return hit(user32, hwnd, x, y, box.right - box.left, box.bottom - box.top, edgeDp)
+    }
+
+    /**
+     * The drawing lives in a window of its own that covers the whole frame, so Windows asks that one where the pointer
+     * is, not the frame. Wherever the frame has an answer other than the drawing, the child passes the question up.
+     */
+    private fun passUp(user32: User32X, frame: Pointer, edgeDp: Int) {
+        var child = user32.GetWindow(frame, GW_CHILD)
+        while (child != null) {
+            val target = child
+            var before = 0L
+            val proc = object : WindowProc {
+                override fun callback(hwnd: Pointer, message: Int, wParam: Long, lParam: Long): Long = try {
+                    if (message == WM_NCHITTEST && hitAt(user32, frame, lParam, edgeDp) != HTCLIENT) {
+                        HTTRANSPARENT.toLong()
+                    } else {
+                        user32.CallWindowProcW(Pointer(before), hwnd, message, wParam, lParam)
+                    }
+                } catch (e: Throwable) {
+                    trace("child failed: $e")
+                    user32.CallWindowProcW(Pointer(before), hwnd, message, wParam, lParam)
+                }
+            }
+            before = user32.SetWindowLongPtrW(target, GWLP_WNDPROC, Pointer.nativeValue(CallbackReference.getFunctionPointer(proc)))
+            if (before != 0L) children += proc
+            child = user32.GetWindow(target, GW_HWNDNEXT)
+        }
     }
 
     private fun hit(user32: User32X, hwnd: Pointer, x: Int, y: Int, width: Int, height: Int, edgeDp: Int): Int {
@@ -201,6 +235,8 @@ class NativeFrame {
 
         fun IsZoomed(window: Pointer): Int
 
+        fun GetWindow(window: Pointer, relation: Int): Pointer?
+
         fun GetSystemMetrics(index: Int): Int
 
         fun GetDpiForWindow(window: Pointer): Int
@@ -240,6 +276,9 @@ class NativeFrame {
         const val SM_CXPADDEDBORDER = 92
         const val TME_LEAVE = 0x2
         const val TME_NONCLIENT = 0x10
+        const val GW_HWNDNEXT = 2
+        const val GW_CHILD = 5
+        const val HTTRANSPARENT = -1
         const val HTCLIENT = 1
         const val HTCAPTION = 2
         const val HTMAXBUTTON = 9
