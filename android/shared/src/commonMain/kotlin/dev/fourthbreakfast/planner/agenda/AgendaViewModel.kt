@@ -76,3 +76,20 @@ data class EventDraft(
     val repeat: Repeat = Repeat.NONE,
     val repeatUntil: Long? = null,
 )
+
+/**
+ * The time of [event] that starts on [from], moved to start on [to], as the editor would hand it back: it keeps its
+ * length in days, and everything else about it.
+ */
+fun movedDraft(event: Event, from: Long, to: Long): EventDraft = EventDraft(
+    title = event.title,
+    day = to,
+    minute = event.minute,
+    endMinute = event.endMinute,
+    location = event.location,
+    notes = event.notes,
+    reminder = event.reminder,
+    endDay = event.endDay?.let { to + (it - event.day) },
+    repeat = event.repeat,
+    repeatUntil = event.repeatUntil,
+)

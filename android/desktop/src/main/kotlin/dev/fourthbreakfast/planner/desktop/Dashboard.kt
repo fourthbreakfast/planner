@@ -36,8 +36,8 @@ import androidx.compose.ui.unit.min
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.agenda.AgendaBin
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
-import dev.fourthbreakfast.planner.agenda.EventDraft
 import dev.fourthbreakfast.planner.agenda.EventEditor
+import dev.fourthbreakfast.planner.agenda.movedDraft
 import dev.fourthbreakfast.planner.agenda.today
 import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.core.binEntries
@@ -195,11 +195,7 @@ fun Dashboard(
                     onRemove = { agendaViewModel.moveToBin(it) },
                     onMove = { event, from, day ->
                         // a repeating event moves only the time that was dragged; the others stay
-                        val draft = EventDraft(
-                            event.title, day, event.minute, event.endMinute, event.location, event.notes, event.reminder,
-                            event.endDay?.let { it - from + day }, event.repeat, event.repeatUntil,
-                        )
-                        agendaViewModel.save(event.id, from, draft, onlyThisTime = event.repeat != Repeat.NONE)
+                        agendaViewModel.save(event.id, from, movedDraft(event, from, day), onlyThisTime = event.repeat != Repeat.NONE)
                         state.chosenDay = day
                     },
                 )
