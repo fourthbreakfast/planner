@@ -32,6 +32,8 @@ the [latest release](https://github.com/fourthbreakfast/planner/releases/latest)
 
 **phone.** download the apk and open it on your phone. you need android 8 or newer, and your phone will ask you to allow installing it. updates install over the top and keep your data.
 
+**verify.** the apk is signed with one key for every release, whose SHA-256 certificate digest is `619dc72c00a929a10ec1da3e81ecec0062437f8a28e4263610655e4190d670db`. check it with `apksigner verify --print-certs planner-1.0.0.apk`.
+
 **updates.** both apps look for a newer release once a day and offer it in the settings (and on windows beside the settings cog in the title bar); one touch downloads it and starts the installer. the daily look can be turned off.
 
 **windows.** download the msi and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
