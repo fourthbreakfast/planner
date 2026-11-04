@@ -23,23 +23,20 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
     ) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
-        store.insert(
-            listOf(
-                Event(
-                    title = trimmed,
-                    day = day,
-                    minute = minute?.let(::clampMinute),
-                    endMinute = validEnd(minute, endMinute),
-                    reminder = validReminder(minute, reminder),
-                    location = location.trim(),
-                    notes = notes.trim(),
-                    createdAt = clock(),
-                    endDay = validEndDay(day, endDay),
-                    repeat = repeat,
-                    repeatUntil = validUntil(day, repeat, repeatUntil),
-                ),
-            ),
+        val event = Event(
+            title = trimmed,
+            day = day,
+            minute = minute,
+            endMinute = endMinute,
+            reminder = reminder,
+            location = location,
+            notes = notes,
+            createdAt = clock(),
+            endDay = endDay,
+            repeat = repeat,
+            repeatUntil = repeatUntil,
         )
+        store.insert(listOf(event.checked()))
     }
 
     /** A blank title leaves the event as it was. Only events outside the bin can change. */
@@ -63,15 +60,15 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
             val changed = event.copy(
                 title = trimmed,
                 day = day,
-                minute = minute?.let(::clampMinute),
-                endMinute = validEnd(minute, endMinute),
-                reminder = validReminder(minute, reminder),
-                location = location.trim(),
-                notes = notes.trim(),
-                endDay = validEndDay(day, endDay),
+                minute = minute,
+                endMinute = endMinute,
+                reminder = reminder,
+                location = location,
+                notes = notes,
+                endDay = endDay,
                 repeat = repeat,
-                repeatUntil = validUntil(day, repeat, repeatUntil),
-            )
+                repeatUntil = repeatUntil,
+            ).checked()
             if (changed != event) store.update(listOf(changed.copy(updatedAt = clock())))
         }
     }
@@ -134,6 +131,17 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
     suspend fun emptyBin() {
         store.transaction { store.delete(store.all().filter { it.inBin }) }
     }
+
+    /** The event as the rules let it be kept: times within the day, and only the details that mean something. */
+    private fun Event.checked(): Event = copy(
+        minute = minute?.let(::clampMinute),
+        endMinute = validEnd(minute, endMinute),
+        reminder = validReminder(minute, reminder),
+        location = location.trim(),
+        notes = notes.trim(),
+        endDay = validEndDay(day, endDay),
+        repeatUntil = validUntil(day, repeat, repeatUntil),
+    )
 
     private fun clampMinute(minute: Int) = minute.coerceIn(0, 24 * 60 - 1)
 

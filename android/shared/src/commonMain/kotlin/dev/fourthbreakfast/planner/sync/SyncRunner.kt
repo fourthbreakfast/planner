@@ -127,7 +127,7 @@ abstract class SyncRunner(
         val found = if (parsed.id.replace("-", "").length >= 52) {
             parsed.id to parsed.addresses
         } else {
-            val short = parsed.id.replace("-", "").take(7)
+            val short = shortId(parsed.id)
             // seen on the network already, or asked for door to door when the broadcasts do not get through
             syncthing.nearby().firstOrNull { shortId(it) == short }?.let { it to emptyList() }
                 ?: findOnLan(short, syncthing.listenPort, log)?.let { (id, address) -> id to listOf(address) }

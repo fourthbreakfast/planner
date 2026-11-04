@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.sync
 
 import java.net.Inet4Address
+import java.net.InterfaceAddress
 import java.net.NetworkInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -13,7 +14,7 @@ import kotlinx.coroutines.withContext
 /** This device's addresses on its local networks, as Syncthing addresses on [port]: what another device can dial. */
 fun lanAddresses(port: Int): List<String> = lanInterfaces().map { "tcp://${it.address.hostAddress}:$port" }
 
-private fun lanInterfaces() = runCatching {
+private fun lanInterfaces(): List<InterfaceAddress> = runCatching {
     NetworkInterface.getNetworkInterfaces().toList()
         .filter { it.isUp && !it.isLoopback && !it.isVirtual }
         .flatMap { it.interfaceAddresses }
@@ -26,10 +27,9 @@ private fun lanInterfaces() = runCatching {
  * and address, or null. Only networks of up to 256 addresses are tried.
  */
 suspend fun findOnLan(shortCode: String, port: Int, log: (String) -> Unit = {}): Pair<String, String>? = withContext(Dispatchers.IO) {
-    val wanted = shortCode.replace("-", "").take(7).uppercase()
+    val wanted = shortId(shortCode)
     val hosts = lanInterfaces().filter { it.networkPrefixLength >= 24 }.flatMap { own ->
-        val mine = own.address.address
-        val base = mine.copyOf()
+        val base = own.address.address.copyOf()
         (1..254).mapNotNull { last ->
             base[3] = last.toByte()
             Inet4Address.getByAddress(base).hostAddress.takeIf { it != own.address.hostAddress }
@@ -41,10 +41,9 @@ suspend fun findOnLan(shortCode: String, port: Int, log: (String) -> Unit = {}):
         hosts.map { host ->
             async {
                 atOnce.withPermit {
-                    deviceIdAt(host, port, timeoutMillis = 2_000, log = log)?.also { log("$host is ${shortId(it)}") }?.takeIf { shortId(it) == wanted }?.let {
-                        it to
-                            "tcp://$host:$port"
-                    }
+                    val id = deviceIdAt(host, port, timeoutMillis = 2_000, log = log) ?: return@withPermit null
+                    log("$host is ${shortId(id)}")
+                    if (shortId(id) == wanted) id to "tcp://$host:$port" else null
                 }
             }
         }.awaitAll().firstOrNull { it != null }
