@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import dev.fourthbreakfast.planner.PlannerApp
@@ -107,17 +108,9 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
         ) {
             val sync = (context.applicationContext as PlannerApp).syncController
             if (sync.available) {
-                val peers = sync.state.value.peers.size
-                Setting(
-                    stringResource(R.string.sync_title),
-                    if (peers ==
-                        0
-                    ) {
-                        null
-                    } else {
-                        pluralStringResource(R.plurals.sync_devices, peers, peers)
-                    },
-                ) { syncOpen = true }
+                val peers = sync.state.collectAsStateWithLifecycle().value.peers.size
+                val count = if (peers == 0) null else pluralStringResource(R.plurals.sync_devices, peers, peers)
+                Setting(stringResource(R.string.sync_title), count) { syncOpen = true }
             }
             Setting(stringResource(R.string.export_tasks), null, backup.export)
             Setting(stringResource(R.string.import_tasks), null, backup.import)

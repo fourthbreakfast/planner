@@ -131,7 +131,11 @@ class Syncthing(
             .redirectErrorStream(true)
             .redirectOutput(ProcessBuilder.Redirect.to(File(home, "output.txt")))
             .start()
-        if (!done.waitFor(60, TimeUnit.SECONDS) || done.exitValue() != 0) throw IOException("syncthing ${command.first()} failed")
+        if (!done.waitFor(60, TimeUnit.SECONDS)) {
+            done.destroyForcibly()
+            throw IOException("syncthing ${command.first()} did not finish")
+        }
+        if (done.exitValue() != 0) throw IOException("syncthing ${command.first()} failed")
     }
 
     private suspend fun ensureFolder(api: SyncthingApi) {

@@ -5,21 +5,24 @@ import dev.fourthbreakfast.planner.core.Sync
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
  * The files in the shared folder: one for each device, named by its id and written only by that device, so Syncthing
  * never has two versions of one file to choose between. This device writes its own with [publish] and takes in the
- * others with [takeIn].
+ * others with [takeIn]. A sync now and the regular turn can ask at the same moment, so one of those runs at a time.
  */
 class DeviceFiles(private val folder: File, private val myId: String, private val sync: Sync) {
     private val seen = HashMap<String, Pair<Long, Long>>()
     private var written: String? = null
+    private val lock = Mutex()
 
     /** Writes this device's file when what it holds has changed. */
-    suspend fun publish() {
+    suspend fun publish() = lock.withLock {
         val text = sync.snapshot()
-        if (text == written) return
+        if (text == written) return@withLock
         withContext(Dispatchers.IO) {
             folder.mkdirs()
             val temporary = File(folder, "$myId.json.tmp")
@@ -55,7 +58,7 @@ class DeviceFiles(private val folder: File, private val myId: String, private va
     }
 
     /** Merges every other device's file that changed since it was last read, and returns how many things changed here. */
-    suspend fun takeIn(): Int {
+    suspend fun takeIn(): Int = lock.withLock {
         val files = withContext(Dispatchers.IO) {
             folder.listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".json") && it.name != "$myId.json" }
         }
@@ -72,6 +75,6 @@ class DeviceFiles(private val folder: File, private val myId: String, private va
             }
             seen[file.name] = stamp
         }
-        return changed
+        changed
     }
 }

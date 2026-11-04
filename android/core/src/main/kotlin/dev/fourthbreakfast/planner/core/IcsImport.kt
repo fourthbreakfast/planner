@@ -21,17 +21,19 @@ fun parseIcs(text: String, now: Long, zone: ZoneId = ZoneId.systemDefault()): Li
     if (!text.contains("BEGIN:VCALENDAR", ignoreCase = true)) throw BackupException("not a calendar")
     val blocks = eventBlocks(unfold(text))
     val parsed = blocks.mapNotNull { readEvent(it, now, zone) }
-    // a changed time of a repeating event is an event of its own, and the series leaves that day out
+    // a changed or cancelled time of a repeating event is left out of the series; a changed one is an event of its own
     val overridden = parsed.filter { it.recurrenceDay != null }.groupBy({ it.uid }, { it.recurrenceDay!! })
-    return parsed.map { entry ->
+    return parsed.mapNotNull { entry ->
+        val event = entry.event ?: return@mapNotNull null
         val skips = if (entry.recurrenceDay == null) overridden[entry.uid].orEmpty() else emptyList()
-        if (skips.isEmpty()) entry.event else entry.event.copy(skipDays = entry.event.skipDays + skips)
+        if (skips.isEmpty()) event else event.copy(skipDays = event.skipDays + skips)
     }
 }
 
 private class Line(val name: String, val params: Map<String, String>, val value: String)
 
-private class Entry(val uid: String, val recurrenceDay: Long?, val event: Event)
+/** One VEVENT: the series it belongs to, the day of the series it stands in for, and the event, or null when cancelled. */
+private class Entry(val uid: String, val recurrenceDay: Long?, val event: Event?)
 
 /** Lines carried on from the line before, which starts with a space or a tab, are put back together. */
 private fun unfold(text: String): List<String> {
@@ -147,7 +149,12 @@ private fun readTrigger(value: String): Int? {
 
 private fun readEvent(lines: List<Line>, now: Long, zone: ZoneId): Entry? {
     fun first(name: String) = lines.firstOrNull { it.name == name }
-    if (first("STATUS")?.value.equals("CANCELLED", true)) return null
+    val uid = first("UID")?.value?.trim().orEmpty()
+    if (first("STATUS")?.value.equals("CANCELLED", true)) {
+        // one cancelled time of a repeating event takes that day out of the series; a cancelled event is left out
+        val day = first("RECURRENCE-ID")?.let { readWhen(it, zone) }?.day ?: return null
+        return if (uid.isEmpty()) null else Entry(uid, day, null)
+    }
     val title = unescape(first("SUMMARY")?.value.orEmpty()).trim()
     if (title.isEmpty()) return null
     val start = first("DTSTART")?.let { readWhen(it, zone) } ?: return null
@@ -201,7 +208,6 @@ private fun readEvent(lines: List<Line>, now: Long, zone: ZoneId): Entry? {
     val trigger = lines.firstOrNull { it.name == "ALARM:TRIGGER" && it.params["RELATED"]?.uppercase() != "END" }
     val reminder = trigger?.let { readTrigger(it.value) }?.takeIf { start.minute != null }
 
-    val uid = first("UID")?.value?.trim().orEmpty()
     val recurrence = first("RECURRENCE-ID")?.let { readWhen(it, zone) }
     val key = when {
         uid.isNotEmpty() -> "$uid|${first("RECURRENCE-ID")?.value.orEmpty()}"

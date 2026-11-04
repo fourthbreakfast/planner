@@ -6,8 +6,8 @@ class BackupException(message: String) : Exception(message)
 private const val BACKUP_VERSION = 5
 
 /**
- * What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes, and only version 4 has [gone]:
- * what was deleted for good, which sync needs and an import ignores.
+ * What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes, and only versions 4 and later
+ * have [gone]: what was deleted for good, which sync files carry and an import ignores.
  */
 data class Backup(val tasks: List<Task>, val events: List<Event>, val notes: List<Note> = emptyList(), val gone: List<Gone> = emptyList())
 
