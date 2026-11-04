@@ -1,0 +1,2 @@
+windows: the columns are panels with header and foot strips, and the add line is a proper field
+no changes on the phone

@@ -2,6 +2,11 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.1
+
+- windows: the three columns are panels on a darker ground, each with a header strip and a foot strip, and the add-a-task line is a bordered field in line with everything else
+- nothing changes on the phone
+
 ## 1.0.0
 
 - events can last several days and repeat by day, week, month or year, with a last day; deleting or changing one time of a repeating event asks whether it is this time or every time
