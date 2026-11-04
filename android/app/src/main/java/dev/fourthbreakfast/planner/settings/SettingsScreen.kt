@@ -3,6 +3,7 @@ package dev.fourthbreakfast.planner.settings
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -18,6 +19,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +54,12 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
     }
     if (syncOpen) {
         val controller = (LocalContext.current.applicationContext as PlannerApp).syncController
+        // Android 17 asks before an app may use the home network; sync cannot reach the other device without it
+        val context = LocalContext.current
+        val allowNetwork = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+        LaunchedEffect(Unit) {
+            if (context.checkSelfPermission(LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) allowNetwork.launch(LOCAL_NETWORK)
+        }
         var onCode by remember { mutableStateOf<((String) -> Unit)?>(null) }
         val camera = rememberLauncherForActivityResult(ScanContract()) { result -> result.contents?.let { onCode?.invoke(it) } }
         SyncScreen(controller, scan = { then ->
@@ -151,3 +159,4 @@ fun SettingsScreen(viewModel: TasksViewModel, onClose: () -> Unit) {
         }
     }
 }
+private const val LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"

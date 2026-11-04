@@ -25,7 +25,7 @@ private fun lanInterfaces() = runCatching {
  * the broadcasts devices normally find each other with do not get through, as on some wifi. Returns the device's id
  * and address, or null. Only networks of up to 256 addresses are tried.
  */
-suspend fun findOnLan(shortCode: String, port: Int): Pair<String, String>? = withContext(Dispatchers.IO) {
+suspend fun findOnLan(shortCode: String, port: Int, log: (String) -> Unit = {}): Pair<String, String>? = withContext(Dispatchers.IO) {
     val wanted = shortCode.replace("-", "").take(7).uppercase()
     val hosts = lanInterfaces().filter { it.networkPrefixLength >= 24 }.flatMap { own ->
         val mine = own.address.address
@@ -35,12 +35,16 @@ suspend fun findOnLan(shortCode: String, port: Int): Pair<String, String>? = wit
             Inet4Address.getByAddress(base).hostAddress.takeIf { it != own.address.hostAddress }
         }
     }.distinct()
+    log("asking ${hosts.size} addresses for $wanted")
     coroutineScope {
-        val atOnce = Semaphore(48)
+        val atOnce = Semaphore(32)
         hosts.map { host ->
             async {
                 atOnce.withPermit {
-                    deviceIdAt(host, port)?.takeIf { shortId(it) == wanted }?.let { it to "tcp://$host:$port" }
+                    deviceIdAt(host, port, timeoutMillis = 2_000, log = log)?.also { log("$host is ${shortId(it)}") }?.takeIf { shortId(it) == wanted }?.let {
+                        it to
+                            "tcp://$host:$port"
+                    }
                 }
             }
         }.awaitAll().firstOrNull { it != null }

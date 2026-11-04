@@ -105,7 +105,7 @@ class DesktopSync(
             val short = code.id.replace("-", "").take(7)
             // seen on the network already, or asked for door to door when the broadcasts do not get through
             syncthing.nearby().firstOrNull { shortId(it) == short }?.let { it to emptyList() }
-                ?: findOnLan(short, syncthing.listenPort)?.let { (id, address) -> id to listOf(address) }
+                ?: findOnLan(short, syncthing.listenPort) { note(it) }?.let { (id, address) -> id to listOf(address) }
                 ?: return false
         }
         return try {
