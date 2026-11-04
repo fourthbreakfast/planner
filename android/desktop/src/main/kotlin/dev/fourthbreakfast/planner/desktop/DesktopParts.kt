@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -137,4 +138,16 @@ fun rememberHover(): Pair<MutableInteractionSource, Boolean> {
     val source = remember { MutableInteractionSource() }
     val hovered by source.collectIsHoveredAsState()
     return source to hovered
+}
+
+/** The + at the bottom right of a column, level with the line that adds a task, as on the phone. */
+@Composable
+fun FootAdd(label: String, onClick: () -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(start = Space.gutter, end = Space.x1, top = Space.x2, bottom = Space.x2).height(Desk.row),
+    ) {
+        HeaderButton(label, onClick) { plus(it) }
+    }
 }

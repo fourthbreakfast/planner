@@ -91,7 +91,6 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
                     month = today
                 }
             }) { if (asMonth) listLines(it) else calendar(it) }
-            HeaderButton(stringResource(Res.string.add_event), { state.newEvent(if (asMonth) state.chosenDay else null) }) { plus(it) }
             BinButton(binCount, { state.panel = Panel.AgendaBin })
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
@@ -127,6 +126,7 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
                 }
             }
         }
+        FootAdd(stringResource(Res.string.add_event)) { state.newEvent(if (asMonth) state.chosenDay else null) }
     }
 }
 
