@@ -18,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.fourthbreakfast.planner.core.Backups
 import dev.fourthbreakfast.planner.resources.Res
-import dev.fourthbreakfast.planner.resources.backup_off
 import dev.fourthbreakfast.planner.resources.desktop_guide
 import dev.fourthbreakfast.planner.resources.export_tasks
 import dev.fourthbreakfast.planner.resources.guide_title
@@ -27,7 +26,6 @@ import dev.fourthbreakfast.planner.resources.import_tasks
 import dev.fourthbreakfast.planner.resources.settings_title
 import dev.fourthbreakfast.planner.resources.start_with_windows
 import dev.fourthbreakfast.planner.resources.sync_failed_desktop
-import dev.fourthbreakfast.planner.resources.sync_on
 import dev.fourthbreakfast.planner.settings.BACKUP_FILE_NAME
 import dev.fourthbreakfast.planner.settings.Guide
 import dev.fourthbreakfast.planner.settings.Setting
@@ -38,6 +36,7 @@ import dev.fourthbreakfast.planner.settings.ThemeSetting
 import dev.fourthbreakfast.planner.settings.VersionLine
 import dev.fourthbreakfast.planner.settings.exportBackup
 import dev.fourthbreakfast.planner.settings.importFile
+import dev.fourthbreakfast.planner.settings.onOff
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.DiscreetMessage
 import dev.fourthbreakfast.planner.ui.LocalServices
@@ -101,7 +100,7 @@ fun DesktopSettings(backups: Backups, sync: DesktopSync, updates: Updates, versi
             ThemeSetting(settings)
             if (StartWithWindows.possible) {
                 var startOn by remember { mutableStateOf(StartWithWindows.on) }
-                Setting(stringResource(Res.string.start_with_windows), stringResource(if (startOn) Res.string.sync_on else Res.string.backup_off)) {
+                Setting(stringResource(Res.string.start_with_windows), onOff(startOn)) {
                     StartWithWindows.set(!startOn)
                     startOn = StartWithWindows.on
                 }

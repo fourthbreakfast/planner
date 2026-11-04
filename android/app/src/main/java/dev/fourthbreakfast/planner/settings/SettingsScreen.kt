@@ -30,11 +30,11 @@ import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.backup.folderName
 import dev.fourthbreakfast.planner.backup.rememberBackupFiles
 import dev.fourthbreakfast.planner.resources.Res
-import dev.fourthbreakfast.planner.resources.backup_off
 import dev.fourthbreakfast.planner.resources.export_tasks
 import dev.fourthbreakfast.planner.resources.guide_title
 import dev.fourthbreakfast.planner.resources.import_calendar
 import dev.fourthbreakfast.planner.resources.import_tasks
+import dev.fourthbreakfast.planner.resources.off
 import dev.fourthbreakfast.planner.resources.setting_backup
 import dev.fourthbreakfast.planner.resources.setting_toolbar
 import dev.fourthbreakfast.planner.resources.setting_widget
@@ -104,7 +104,7 @@ fun SettingsScreen(onClose: () -> Unit) {
             ThemeSetting(settings)
             Setting(
                 label = stringResource(Res.string.setting_backup),
-                value = settings.backupFolder?.let { folderName(it) } ?: stringResource(Res.string.backup_off),
+                value = settings.backupFolder?.let { folderName(it) } ?: stringResource(Res.string.off),
             ) {
                 if (settings.backupFolder != null) settings.chooseBackupFolder(null) else pickFolder.launch(null)
             }
