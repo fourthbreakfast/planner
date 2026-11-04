@@ -2,6 +2,7 @@ package dev.fourthbreakfast.planner.desktop
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,12 +23,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -54,6 +59,36 @@ object Desk {
     val inset = 12.dp
     val panel = 560.dp
     val edge = 6.dp
+
+    // the columns are panels on a darker ground, each with a header strip above its list and a foot strip below
+    val gap = 10.dp
+    val corner = 6.dp
+    val strip = 40.dp
+    val field = 32.dp
+}
+
+/** The ground the column panels sit on: darker than the panels in the dark theme, a little deeper than the page in the light one. */
+@Composable
+fun deskGround(): Color {
+    val colors = MaterialTheme.colorScheme
+    return if (colors.background.luminance() < 0.5f) Color(0xFF111111) else colors.surfaceVariant
+}
+
+/** A column's panel: the page colour, a thin edge and rounded corners. */
+@Composable
+fun Modifier.deskPanel(): Modifier {
+    val shape = RoundedCornerShape(Desk.corner)
+    return clip(shape).background(MaterialTheme.colorScheme.background).border(Space.strokeThin, MaterialTheme.colorScheme.outline, shape)
+}
+
+/** A strip above or below a list: a little lighter than the panel, with a line on the side facing the list. */
+@Composable
+fun Modifier.deskStrip(top: Boolean): Modifier {
+    val colors = MaterialTheme.colorScheme
+    return background(colors.surfaceVariant).drawBehind {
+        val y = if (top) size.height else 0f
+        drawLine(colors.outline, Offset(0f, y), Offset(size.width, y), Space.strokeThin.toPx())
+    }
 }
 
 /** The top of a column: its name in the calculator lettering, a count, then its buttons at the right. */
@@ -62,7 +97,7 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.gutter, end = Desk.inset),
+        modifier = Modifier.fillMaxWidth().height(Desk.strip).deskStrip(top = true).padding(start = Space.gutter, end = Desk.inset),
     ) {
         SegmentText(name, if (focused) colors.onBackground else colors.onSurfaceVariant)
         if (count != null) SegmentNumber(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
@@ -142,7 +177,7 @@ fun FootAdd(label: String, onClick: () -> Unit) {
     Row(
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.gutter, end = Desk.inset),
+        modifier = Modifier.fillMaxWidth().height(Desk.field + Space.x2 * 2).deskStrip(top = false).padding(start = Space.gutter, end = Desk.inset),
     ) {
         HeaderButton(label, onClick) { plus(it) }
     }
