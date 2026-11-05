@@ -292,7 +292,7 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
     val focus = remember { FocusRequester() }
     val aimed = tasks.firstOrNull { it.id == state.aimedTask }
     LaunchedEffect(state.focusAdd) { if (state.focusAdd > 0) focus.requestFocus() }
-    Column(Modifier.fillMaxWidth().padding(end = Desk.inset)) {
+    Column(Modifier.fillMaxWidth().padding(end = Desk.inset, bottom = Desk.inset)) {
         if (aimed != null) {
             Text(
                 stringResource(Res.string.add_inside_hint, aimed.title),

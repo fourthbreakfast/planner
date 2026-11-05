@@ -2,6 +2,10 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.9
+
+- windows: the add lines at the foot of the columns sit higher, with as much room under them as beside them
+
 ## 1.0.8
 
 - notes: a pin icon replaces the word. on the phone it is at the top right of an open note; on windows it sits beside the bin on each note (shown on hover, always there and filled when pinned)
