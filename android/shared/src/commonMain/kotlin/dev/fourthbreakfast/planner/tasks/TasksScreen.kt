@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
 import dev.fourthbreakfast.planner.core.SortOrder
@@ -120,7 +121,8 @@ internal fun TaskList(
     val parentIds = remember(tasks) { tasks.mapNotNull { it.parentId }.toSet() }
     val anyCollapsed = parentIds.any { it !in openIds }
     // siblings are always ranked by priority, and a task with subtasks starts closed
-    val rows = remember(tasks, parentIds, openIds) { arrange(tasks, SortOrder.PRIORITY, parentIds - openIds.toSet()) }
+    val held by viewModel.heldPriorities.collectAsStateWithLifecycle()
+    val rows = remember(tasks, parentIds, openIds, held) { arrangeHolding(tasks, held, SortOrder.PRIORITY, parentIds - openIds.toSet()) }
     val display = remember(rows) { rows + EndRow }
 
     val list = rememberLazyListState()
@@ -314,6 +316,7 @@ internal fun TaskList(
                 },
                 binCount = binCount,
                 onOpenBin = onOpenBin,
+                onEmptyBin = viewModel::emptyBin,
                 onSelectTab = onSelectTab,
                 onOpenSettings = onOpenSettings,
             )
@@ -426,6 +429,7 @@ private fun Header(
     onToggleAll: () -> Unit,
     binCount: Int,
     onOpenBin: () -> Unit,
+    onEmptyBin: () -> Unit,
     onSelectTab: (Tab) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -449,7 +453,7 @@ private fun Header(
                 modifier = Modifier.weight(1f),
             )
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
-            BinButton(binCount, onOpenBin)
+            BinButton(binCount, onOpenBin, onEmpty = onEmptyBin)
             SettingsButton(onOpenSettings)
         }
     }

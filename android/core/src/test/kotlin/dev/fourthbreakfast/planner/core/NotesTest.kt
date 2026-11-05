@@ -193,4 +193,23 @@ class NoteTitleTest {
         notes.setPinned(c, false)
         assertEquals(listOf(b, a, c), sortedNotes(store.state.value).map { it.id })
     }
+
+    @Test
+    fun aNoteCopiesAsTheTextItReadsAs() {
+        val body = formatBody(
+            listOf(
+                NoteLine(text = "intro"),
+                NoteLine(kind = LineKind.NUMBER, text = "one"),
+                NoteLine(kind = LineKind.NUMBER, text = "two"),
+                NoteLine(kind = LineKind.BULLET, indent = 1, text = "inner"),
+                NoteLine(kind = LineKind.CHECK, checked = true, text = "done"),
+                NoteLine(kind = LineKind.CHECK, text = "open"),
+                NoteLine(),
+            ),
+        )
+        val titled = Note(title = "Trip", body = body, createdAt = 1)
+        assertEquals("Trip\nintro\n1. one\n2. two\n  • inner\n[x] done\n[ ] open", noteAsText(titled))
+        // without a title the first line of words is the title, and is not said twice
+        assertEquals("intro\n1. one\n2. two\n  • inner\n[x] done\n[ ] open", noteAsText(titled.copy(title = "")))
+    }
 }

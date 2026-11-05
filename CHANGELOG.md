@@ -2,6 +2,13 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.7
+
+- hold the bin button to empty that bin; it asks once before deleting for good
+- notes: hold a note, then swipe left to copy all of it as text (title, lists and boxes as they read), without opening it. on windows, right-click a note and choose copy
+- tasks: a task whose priority you change stays where it was for about a second and then moves, so it can be changed again without chasing it
+- windows: the type is smaller, and nothing shifts when the pointer is over a row (the bin button's room is always kept)
+
 ## 1.0.6
 
 - the sync name is selected when you touch it, so typing replaces it without deleting first

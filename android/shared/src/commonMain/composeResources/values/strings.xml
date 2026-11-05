@@ -12,6 +12,8 @@
     <string name="note_name">name of the note</string>
     <string name="setting_widget">add the widget to the home screen</string>
     <string name="pin">pin</string>
+    <string name="copy_note">copy</string>
+    <string name="note_copied">note copied</string>
     <string name="unpin">unpin</string>
     <string name="pinned">pinned</string>
     <string name="search">search</string>

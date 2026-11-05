@@ -38,18 +38,23 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.linesUnderTitle
+import dev.fourthbreakfast.planner.core.noteAsText
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_note
+import dev.fourthbreakfast.planner.resources.copy_note
+import dev.fourthbreakfast.planner.resources.note_copied
 import dev.fourthbreakfast.planner.resources.notes_count
 import dev.fourthbreakfast.planner.resources.nothing_written
 import dev.fourthbreakfast.planner.resources.open_note
@@ -94,6 +99,18 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
     val scope = rememberCoroutineScope()
     val binnedMessage = stringResource(Res.string.task_removed)
     val undoLabel = stringResource(Res.string.undo)
+
+    val clipboard = LocalClipboardManager.current
+    val copiedMessage = stringResource(Res.string.note_copied)
+
+    fun copyNote(id: String) {
+        val note = everything.firstOrNull { it.id == id } ?: return
+        clipboard.setText(AnnotatedString(noteAsText(note)))
+        scope.launch {
+            snackbarHost.currentSnackbarData?.dismiss()
+            snackbarHost.showSnackbar(copiedMessage)
+        }
+    }
 
     fun moveToBinWithUndo(id: String) {
         viewModel.moveToBin(id)
@@ -159,9 +176,11 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
                 onOpenBin = { binOpen = true },
+                onEmptyBin = viewModel::emptyBin,
                 onNew = { viewModel.add { openId = it } },
                 onOpen = { openId = it },
                 onRemove = ::moveToBinWithUndo,
+                onCopy = ::copyNote,
                 onMove = viewModel::move,
             )
         }
@@ -178,16 +197,18 @@ private fun NotesList(
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenBin: () -> Unit,
+    onEmptyBin: () -> Unit,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
     onRemove: (String) -> Unit,
+    onCopy: (String) -> Unit,
     onMove: (String, String?) -> Unit,
 ) {
     BackHandler(onBack = onShowTasks)
     val list = rememberLazyListState()
     val endSpace = Space.listEnd()
     val scope = rememberCoroutineScope()
-    val swipe = remember(scope) { RowSwipe(scope, canGoLeft = false) }
+    val swipe = remember(scope) { RowSwipe(scope, canGoLeft = true) }
     var listBounds by remember { mutableStateOf(Rect.Zero) }
     val colors = MaterialTheme.colorScheme
     // the note held by a long press, where the finger is, and the note it would go in front of (the end key for last)
@@ -223,6 +244,7 @@ private fun NotesList(
                 rowAt = { at -> (list.rowKeyAt(at, listBounds) as? String)?.takeIf { it != END_KEY } },
                 swipe = swipe,
                 onSwipedRight = onRemove,
+                onSwipedLeft = onCopy,
                 onHold = { key, at ->
                     dragKey = key
                     dragY = at.y - listBounds.top
@@ -270,7 +292,7 @@ private fun NotesList(
                         modifier = Modifier.weight(1f),
                     )
                     SearchButton(onOpenSearch)
-                    BinButton(binCount, onOpenBin)
+                    BinButton(binCount, onOpenBin, onEmpty = onEmptyBin)
                     SettingsButton(onOpenSettings)
                 }
             }
@@ -317,6 +339,7 @@ private fun NotesList(
                         swipe = swipe,
                         onOpen = { onOpen(note.id) },
                         onRemove = { onRemove(note.id) },
+                        onCopy = { onCopy(note.id) },
                     )
                 }
                 // a third of the screen left empty under the last note, so the list can always be pulled up
@@ -344,16 +367,25 @@ private fun NotesList(
 
 /** One note as it will read: its first lines, marked and pushed in as written. A touch opens it, a swipe right bins it. */
 @Composable
-private fun NoteRow(note: Note, dropAbove: Boolean, swipe: RowSwipe, onOpen: () -> Unit, onRemove: () -> Unit, modifier: Modifier = Modifier) {
+private fun NoteRow(
+    note: Note,
+    dropAbove: Boolean,
+    swipe: RowSwipe,
+    onOpen: () -> Unit,
+    onRemove: () -> Unit,
+    onCopy: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = MaterialTheme.colorScheme
     val removeLabel = stringResource(Res.string.remove_task)
+    val copyLabel = stringResource(Res.string.copy_note)
     val title = noteTitle(note)
     val preview = remember(note.title, note.body) { previewOf(linesUnderTitle(note), PREVIEW_LINES - 1) }
     SwipeRow(
         key = note.id,
         swipe = swipe,
         removeLabel = removeLabel,
-        renameLabel = "",
+        renameLabel = stringResource(Res.string.copy_note),
         modifier = modifier
             .drawBehind {
                 if (dropAbove) {
@@ -362,6 +394,10 @@ private fun NoteRow(note: Note, dropAbove: Boolean, swipe: RowSwipe, onOpen: () 
             }
             .semantics {
                 customActions = listOf(
+                    CustomAccessibilityAction(copyLabel) {
+                        onCopy()
+                        true
+                    },
                     CustomAccessibilityAction(removeLabel) {
                         onRemove()
                         true

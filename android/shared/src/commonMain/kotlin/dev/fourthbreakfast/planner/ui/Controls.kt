@@ -1,7 +1,9 @@
 package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -10,11 +12,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +31,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +41,9 @@ import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.back
 import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.bin_with_count
+import dev.fourthbreakfast.planner.resources.cancel
+import dev.fourthbreakfast.planner.resources.confirm_empty_bin
+import dev.fourthbreakfast.planner.resources.delete_forever
 import dev.fourthbreakfast.planner.resources.search
 import dev.fourthbreakfast.planner.resources.settings_title
 import dev.fourthbreakfast.planner.ui.theme.Space
@@ -52,8 +62,11 @@ fun SearchButton(onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier, onEmpty: (() -> Unit)? = null) {
+    var asking by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
     val label = if (binCount > 0) stringResource(Res.string.bin_with_count, binCount) else stringResource(Res.string.bin)
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
@@ -62,7 +75,17 @@ fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
         modifier = modifier
             .heightIn(min = Space.touch)
             .widthIn(min = Space.touch)
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = if (onEmpty != null && binCount > 0) {
+                    {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        asking = true
+                    }
+                } else {
+                    null
+                },
+            )
             .semantics(mergeDescendants = true) { contentDescription = label },
     ) {
         Canvas(Modifier.size(Space.icon)) { binIcon(ink) }
@@ -74,6 +97,19 @@ fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
                 modifier = Modifier.padding(start = Space.x1),
             )
         }
+    }
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            text = { Text(stringResource(Res.string.confirm_empty_bin)) },
+            confirmButton = {
+                QuietButton(stringResource(Res.string.delete_forever)) {
+                    asking = false
+                    onEmpty?.invoke()
+                }
+            },
+            dismissButton = { QuietButton(stringResource(Res.string.cancel)) { asking = false } },
+        )
     }
 }
 

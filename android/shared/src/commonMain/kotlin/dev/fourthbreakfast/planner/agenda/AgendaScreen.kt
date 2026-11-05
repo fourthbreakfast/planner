@@ -167,6 +167,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 onShowNotes = onShowNotes,
                 onOpenSettings = onOpenSettings,
                 onOpenBin = { binOpen = true },
+                onEmptyBin = viewModel::emptyBin,
                 onNew = { day ->
                     newDay = day
                     editingId = null
@@ -193,6 +194,7 @@ private fun AgendaList(
     onShowNotes: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenBin: () -> Unit,
+    onEmptyBin: () -> Unit,
     onNew: (day: Long?) -> Unit,
     onOpen: (id: String, day: Long) -> Unit,
     onRemove: (String) -> Unit,
@@ -269,7 +271,7 @@ private fun AgendaList(
                             month = today
                         }
                     }
-                    BinButton(binCount, onOpenBin)
+                    BinButton(binCount, onOpenBin, onEmpty = onEmptyBin)
                     SettingsButton(onOpenSettings)
                 }
             }

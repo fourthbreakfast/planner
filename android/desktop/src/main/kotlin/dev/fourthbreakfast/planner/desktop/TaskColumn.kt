@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,11 +80,10 @@ import dev.fourthbreakfast.planner.tasks.PriorityDot
 import dev.fourthbreakfast.planner.tasks.TaskCheck
 import dev.fourthbreakfast.planner.tasks.TaskNode
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
-import dev.fourthbreakfast.planner.tasks.arrange
+import dev.fourthbreakfast.planner.tasks.arrangeHolding
 import dev.fourthbreakfast.planner.tasks.dropZoneAt
 import dev.fourthbreakfast.planner.tasks.rankedDestination
 import dev.fourthbreakfast.planner.tasks.resolveDrop
-import dev.fourthbreakfast.planner.ui.binIcon
 import dev.fourthbreakfast.planner.ui.itemAt
 import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.openAllTriangle
@@ -111,8 +111,9 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
     val colors = MaterialTheme.colorScheme
     val active = remember(tasks) { tasks.filterNot { it.inBin } }
     val parentIds = remember(active) { active.mapNotNull { it.parentId }.toSet() }
-    val rows = remember(active, state.openTasks) {
-        arrange(active, SortOrder.PRIORITY, parentIds - state.openTasks).filterIsInstance<TaskNode>()
+    val held by viewModel.heldPriorities.collectAsState()
+    val rows = remember(active, state.openTasks, held) {
+        arrangeHolding(active, held, SortOrder.PRIORITY, parentIds - state.openTasks).filterIsInstance<TaskNode>()
     }
     state.visibleTasks = rows.map { it.task.id }
     val list = rememberLazyListState()
@@ -134,7 +135,7 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                     state.openTasks = if (anyClosed) parentIds else emptySet()
                 }) { openAllTriangle(it, opens = anyClosed) }
             }
-            DeskBin(binCount, { state.panel = Panel.TaskBin })
+            DeskBin(binCount, { state.panel = Panel.TaskBin }, viewModel::emptyBin)
         }
         if (rows.isEmpty()) Quiet(stringResource(Res.string.nothing_to_do))
         LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(top = Space.x2)) {
@@ -271,7 +272,7 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                                 modifier = Modifier.padding(horizontal = Space.x1),
                             )
                         }
-                        if (hovered) HeaderButton(stringResource(Res.string.bin), { viewModel.moveToBin(task) }) { binIcon(it) }
+                        HoverBin(hovered, stringResource(Res.string.bin)) { viewModel.moveToBin(task) }
                         Box(Modifier.size(Desk.button), contentAlignment = Alignment.Center) {
                             TaskCheck(task.done, colors.onBackground) { viewModel.setDone(task, it) }
                         }

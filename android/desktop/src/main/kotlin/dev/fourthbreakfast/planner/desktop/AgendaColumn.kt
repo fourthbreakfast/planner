@@ -56,7 +56,6 @@ import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.show_list
 import dev.fourthbreakfast.planner.resources.show_month
 import dev.fourthbreakfast.planner.ui.LocalServices
-import dev.fourthbreakfast.planner.ui.binIcon
 import dev.fourthbreakfast.planner.ui.listLines
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.theme.Space
@@ -66,7 +65,14 @@ import org.jetbrains.compose.resources.stringResource
 /** The agenda, as a list of days or as a month with the chosen day's events under it. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRemove: (String) -> Unit, onMove: (event: Event, from: Long, to: Long) -> Unit) {
+fun AgendaColumn(
+    events: List<Event>,
+    binCount: Int,
+    state: DashboardState,
+    onRemove: (String) -> Unit,
+    onEmptyBin: () -> Unit,
+    onMove: (event: Event, from: Long, to: Long) -> Unit,
+) {
     val today = rememberToday()
     val prefs = LocalServices.current.prefs
     var asMonth by remember { mutableStateOf(prefs.getBoolean(PREF_MONTH, false)) }
@@ -91,7 +97,7 @@ fun AgendaColumn(events: List<Event>, binCount: Int, state: DashboardState, onRe
                     month = today
                 }
             }) { if (asMonth) listLines(it) else calendar(it) }
-            DeskBin(binCount, { state.panel = Panel.AgendaBin })
+            DeskBin(binCount, { state.panel = Panel.AgendaBin }, onEmptyBin)
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
             if (asMonth) {
@@ -226,7 +232,7 @@ private fun EventLine(
                 if (event.location.isNotEmpty()) Text(event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 EventSpanAndRepeat(event, day, today)
             }
-            if (hovered) HeaderButton(stringResource(Res.string.bin), { onRemove(key) }) { binIcon(it) }
+            HoverBin(hovered, stringResource(Res.string.bin)) { onRemove(key) }
         }
     }
 }
