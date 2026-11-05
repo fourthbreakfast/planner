@@ -2,6 +2,12 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.8
+
+- notes: a pin icon replaces the word. on the phone it is at the top right of an open note; on windows it sits beside the bin on each note (shown on hover, always there and filled when pinned)
+- notes: pressing Enter in a bulleted, numbered or check list now shows the marker on the new line straight away
+- check boxes: checked shows a bold tick instead of a solid square
+
 ## 1.0.7
 
 - hold the bin button to empty that bin; it asks once before deleting for good
