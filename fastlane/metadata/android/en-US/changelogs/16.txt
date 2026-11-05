@@ -1,0 +1,2 @@
+sync that cannot start says why in the log, and the sync screen blames the network permission only when it is the cause
+no changes on windows
