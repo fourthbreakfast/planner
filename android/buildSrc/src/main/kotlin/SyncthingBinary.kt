@@ -81,7 +81,14 @@ fun Project.syncthingBinary(name: String, goos: String, goarch: String, fileName
         source.set(pinned)
         version.set(
             providers.exec { commandLine("git", "-C", pinned.asFile.path, "describe", "--tags", "--always") }
-                .standardOutput.asText.map { it.trim() },
+                .standardOutput.asText.map {
+                    // syncthing refuses to start on a version that is not vN.N.N, which is what a checkout without tags gives
+                    it.trim().also { described ->
+                        check(Regex("^v\\d+\\.\\d+\\.\\d+").containsMatchIn(described)) {
+                            "the syncthing submodule describes itself as \"$described\"; fetch its tags first"
+                        }
+                    }
+                },
         )
         this.goos.set(goos)
         this.goarch.set(goarch)

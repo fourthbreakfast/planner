@@ -107,7 +107,7 @@ internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: St
     // the tasks as they are now, for the keys that act on the selected one
     val tasks = tasksViewModel.all.stateIn(scope, SharingStarted.Eagerly, emptyList())
     val version: String = System.getProperty("jpackage.app-version") ?: "dev"
-    val updates = Updates(prefs, version, File(folder, "updates"), pick = { it.msi })
+    val updates = Updates(prefs, version, File(folder, "updates"), pick = { it.setup })
 }
 
 /**
@@ -165,12 +165,10 @@ fun main(args: Array<String>) {
         }
 
         // restart to update: this app goes first, so nothing the installer replaces is in use; the installer runs on its
-        // own with only its progress showing, then planner starts again
+        // own with only its progress showing, and starts planner again when it is done
         fun install(ready: UpdateState.Ready) {
-            val exe = System.getProperty("jpackage.app-path")
-            val then = if (exe != null) " && start \"\" \"$exe\"" else ""
             try {
-                ProcessBuilder("cmd", "/c", "msiexec /i \"${ready.file.path}\" /passive /norestart$then").start()
+                ProcessBuilder(ready.file.path, "/SILENT", "/NORESTART", "/SUPPRESSMSGBOXES").start()
             } catch (_: IOException) {
                 // the installer could not be started: the app stays, and the update is still offered
                 return

@@ -36,7 +36,7 @@ the [latest release](https://github.com/fourthbreakfast/planner/releases/latest)
 
 **updates.** both apps look for a newer release once a day and offer it in the settings (and on windows beside the settings cog in the title bar); one touch downloads it and starts the installer. the daily look can be turned off.
 
-**windows.** download the msi and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
+**windows.** download the setup and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
 
 ### use
 
@@ -101,7 +101,7 @@ planner is written in kotlin with compose multiplatform, and stores its data wit
 
 `gradlew installDebug -Pdemo` installs a second copy called "planner dev" with its own empty data, so a change can be tried without touching the real app.
 
-the windows app runs with `gradlew :desktop:run`, and `gradlew :desktop:packageMsi` builds its installer. set `PLANNER_DATA` to a folder to try it on data other than your own.
+the windows app runs with `gradlew :desktop:run`, and `gradlew :desktop:packageSetup` builds its installer (it needs [inno setup 6](https://jrsoftware.org/isinfo.php)). set `PLANNER_DATA` to a folder to try it on data other than your own.
 
 ### credits
 
