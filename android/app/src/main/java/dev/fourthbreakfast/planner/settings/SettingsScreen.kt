@@ -40,6 +40,7 @@ import dev.fourthbreakfast.planner.resources.setting_toolbar
 import dev.fourthbreakfast.planner.resources.setting_widget
 import dev.fourthbreakfast.planner.resources.settings_title
 import dev.fourthbreakfast.planner.resources.sync_blocked
+import dev.fourthbreakfast.planner.resources.sync_failed_phone
 import dev.fourthbreakfast.planner.resources.toolbar_keyboard
 import dev.fourthbreakfast.planner.resources.toolbar_top
 import dev.fourthbreakfast.planner.ui.BackHandler
@@ -126,10 +127,9 @@ fun SettingsScreen(onClose: () -> Unit) {
 private fun PhoneSyncScreen(app: PlannerApp, onClose: () -> Unit) {
     val context = LocalContext.current
     // Android 17 asks before an app may use the home network; sync cannot reach the other device without it
-    val allowNetwork = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    LaunchedEffect(Unit) {
-        if (context.checkSelfPermission(LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) allowNetwork.launch(LOCAL_NETWORK)
-    }
+    var networkAllowed by remember { mutableStateOf(context.checkSelfPermission(LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED) }
+    val allowNetwork = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { networkAllowed = it }
+    LaunchedEffect(Unit) { if (!networkAllowed) allowNetwork.launch(LOCAL_NETWORK) }
     var onCode by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val camera = rememberLauncherForActivityResult(ScanContract()) { result -> result.contents?.let { onCode?.invoke(it) } }
     SyncScreen(
@@ -145,7 +145,8 @@ private fun PhoneSyncScreen(app: PlannerApp, onClose: () -> Unit) {
                     .setDesiredBarcodeFormats(ScanOptions.QR_CODE),
             )
         },
-        failed = stringResource(Res.string.sync_blocked),
+        // a refusal of the permission is the one cause the person can fix, so it alone is named
+        failed = stringResource(if (networkAllowed) Res.string.sync_failed_phone else Res.string.sync_blocked),
         onClose = onClose,
     )
 }

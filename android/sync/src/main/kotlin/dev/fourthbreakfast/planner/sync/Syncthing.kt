@@ -86,7 +86,7 @@ class Syncthing(
         val api = SyncthingApi(port, key).also { this@Syncthing.api = it }
         var waited = 0
         while (!api.alive()) {
-            if (!running) throw IOException("syncthing stopped while starting")
+            if (!running) throw IOException("syncthing stopped while starting: ${File(home, "output.txt").lastLines(6)}")
             if (waited++ > 50) throw IOException("syncthing did not answer")
             delay(200)
         }
@@ -290,3 +290,6 @@ fun leftBehindSyncthings(binary: File, home: File, proc: File = File("/proc")): 
     val args = runCatching { File(entry, "cmdline").readText() }.getOrNull()?.split('\u0000') ?: return@mapNotNull null
     pid.takeIf { args.firstOrNull() == binary.path && "--home=${home.path}" in args }
 }
+
+/** The last [count] lines of a text file, on one line, for a message about why a program stopped; empty when there is no file. */
+internal fun File.lastLines(count: Int): String = runCatching { readLines().takeLast(count).joinToString(" | ") }.getOrDefault("")

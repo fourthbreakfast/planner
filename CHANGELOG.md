@@ -2,6 +2,11 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.4
+
+- phone: when sync cannot start, the sync screen no longer blames the network permission unless that permission is the cause, and the log keeps syncthing's last words
+- nothing changes on windows
+
 ## 1.0.3
 
 - windows: the add-a-task line starts flush with the rest of the column
