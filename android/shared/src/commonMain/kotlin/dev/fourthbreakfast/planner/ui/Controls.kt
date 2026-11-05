@@ -44,8 +44,10 @@ import dev.fourthbreakfast.planner.resources.bin_with_count
 import dev.fourthbreakfast.planner.resources.cancel
 import dev.fourthbreakfast.planner.resources.confirm_empty_bin
 import dev.fourthbreakfast.planner.resources.delete_forever
+import dev.fourthbreakfast.planner.resources.pin
 import dev.fourthbreakfast.planner.resources.search
 import dev.fourthbreakfast.planner.resources.settings_title
+import dev.fourthbreakfast.planner.resources.unpin
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlin.math.cos
 import kotlin.math.sin
@@ -186,8 +188,8 @@ fun QuietButton(label: String, enabled: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * A check box as a small drawing, the same one for tasks and notes: a sharp square outline, and once checked a smaller
- * solid square inside it, lit like a segment.
+ * A check box as a small drawing, the same one for tasks and notes: a sharp square outline, and once checked a bold
+ * tick inside it.
  */
 @Composable
 fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.size(Space.check)) {
@@ -198,10 +200,38 @@ fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.siz
         val line = Space.strokeThin.toPx()
         drawRect(ink, topLeft = corner + Offset(line / 2, line / 2), size = Size(side - line, side - line), style = Stroke(line))
         if (checked) {
-            val inset = Space.checkInset.toPx()
-            drawRect(ink, topLeft = corner + Offset(inset, inset), size = Size(side - 2 * inset, side - 2 * inset))
+            val tick = Path().apply {
+                moveTo(corner.x + side * 0.24f, corner.y + side * 0.53f)
+                lineTo(corner.x + side * 0.43f, corner.y + side * 0.72f)
+                lineTo(corner.x + side * 0.77f, corner.y + side * 0.29f)
+            }
+            drawPath(tick, ink, style = Stroke(line * 2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
+}
+
+/** A push pin, upright: outlined, or filled once the note is pinned. */
+fun DrawScope.pinIcon(ink: Color, filled: Boolean) {
+    val line = Space.strokeThin.toPx()
+    val w = size.width
+    val h = size.height
+    val head = Path().apply {
+        moveTo(w * 0.34f, h * 0.08f)
+        lineTo(w * 0.66f, h * 0.08f)
+        lineTo(w * 0.62f, h * 0.40f)
+        lineTo(w * 0.80f, h * 0.58f)
+        lineTo(w * 0.20f, h * 0.58f)
+        lineTo(w * 0.38f, h * 0.40f)
+        close()
+    }
+    if (filled) drawPath(head, ink) else drawPath(head, ink, style = Stroke(line, join = StrokeJoin.Round))
+    drawLine(ink, Offset(w * 0.5f, h * 0.58f), Offset(w * 0.5f, h * 0.94f), line, StrokeCap.Round)
+}
+
+/** The pin, in a touch square: outlined to pin the note, filled while it is pinned. */
+@Composable
+fun PinButton(pinned: Boolean, onClick: () -> Unit) {
+    DrawnIconButton(stringResource(if (pinned) Res.string.unpin else Res.string.pin), onClick) { ink -> pinIcon(ink, pinned) }
 }
 
 /** A plain cog for the settings: six blunt teeth on a body with flat sides between them, and a round hole, in one thin line. */

@@ -44,6 +44,7 @@ import dev.fourthbreakfast.planner.ui.QuietButton
 import dev.fourthbreakfast.planner.ui.SegmentNumber
 import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.binIcon
+import dev.fourthbreakfast.planner.ui.pinIcon
 import dev.fourthbreakfast.planner.ui.plus
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
@@ -198,5 +199,13 @@ fun DrawScope.chevron(ink: Color) {
 fun HoverBin(shown: Boolean, label: String, onClick: () -> Unit) {
     Box(Modifier.size(Desk.button)) {
         if (shown) HeaderButton(label, onClick) { binIcon(it) }
+    }
+}
+
+/** The pin beside the bin: filled and always there while the note is pinned, outlined when the pointer is over it. */
+@Composable
+fun HoverPin(pinned: Boolean, hovered: Boolean, label: String, onClick: () -> Unit) {
+    Box(Modifier.size(Desk.button)) {
+        if (pinned || hovered) HeaderButton(label, onClick) { pinIcon(it, pinned) }
     }
 }

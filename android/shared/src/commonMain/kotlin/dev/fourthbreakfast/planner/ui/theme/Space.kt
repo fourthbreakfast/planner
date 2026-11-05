@@ -44,7 +44,6 @@ object Space {
     val check = 14.dp
 
     /** The gap between a check box's outline and the block that fills it once done. */
-    val checkInset = 3.dp
 
     /** The room a list mark takes before a line of a note. */
     val markWidth = 26.dp

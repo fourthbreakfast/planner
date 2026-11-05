@@ -2,6 +2,7 @@ package dev.fourthbreakfast.planner.notes
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -40,6 +42,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -75,6 +78,7 @@ import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
 import dev.fourthbreakfast.planner.ui.offsetOf
+import dev.fourthbreakfast.planner.ui.pinIcon
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
 import dev.fourthbreakfast.planner.ui.sweepAndHold
@@ -425,12 +429,9 @@ private fun NoteRow(
                             modifier = Modifier.weight(1f),
                         )
                         if (note.pinned) {
-                            Text(
-                                text = stringResource(Res.string.pinned),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = colors.onSurfaceVariant,
-                                modifier = Modifier.padding(start = Space.x2),
-                            )
+                            val ink = colors.onSurfaceVariant
+                            val label = stringResource(Res.string.pinned)
+                            Canvas(Modifier.padding(start = Space.x2).size(Space.icon).semantics { contentDescription = label }) { pinIcon(ink, true) }
                         }
                     }
                 }

@@ -77,14 +77,13 @@ import dev.fourthbreakfast.planner.resources.more_indent
 import dev.fourthbreakfast.planner.resources.note_name
 import dev.fourthbreakfast.planner.resources.note_title
 import dev.fourthbreakfast.planner.resources.numbered_list
-import dev.fourthbreakfast.planner.resources.pin
 import dev.fourthbreakfast.planner.resources.redo
 import dev.fourthbreakfast.planner.resources.underline
 import dev.fourthbreakfast.planner.resources.undo
-import dev.fourthbreakfast.planner.resources.unpin
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.CheckBoxMark
+import dev.fourthbreakfast.planner.ui.PinButton
 import dev.fourthbreakfast.planner.ui.QuietButton
 import dev.fourthbreakfast.planner.ui.SegmentTab
 import dev.fourthbreakfast.planner.ui.theme.Space
@@ -160,9 +159,9 @@ fun NoteEditor(
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
                     SegmentTab(stringResource(Res.string.note_title), Modifier.weight(1f))
-                    QuietButton(stringResource(if (note.pinned) Res.string.unpin else Res.string.pin), onPin)
                     QuietButton(stringResource(Res.string.undo), state.canUndo) { state.undo() }
                     QuietButton(stringResource(Res.string.redo), state.canRedo) { state.redo() }
+                    PinButton(note.pinned, onPin)
                     BackButton {
                         save()
                         onClose()
@@ -243,11 +242,12 @@ private fun NoteText(state: NoteEditState) {
         )
         val placed = layout
         if (placed != null) {
-            var start = 1
+            // where each line begins; an empty line, such as the new one after Enter, begins where the text ends
+            var start = 0
             state.text.split('\n').forEachIndexed { index, words ->
                 val mark = marks.getOrNull(index)
-                if (mark != null && mark.kind != LineKind.PLAIN && start <= placed.layoutInput.text.length) {
-                    val row = placed.getLineForOffset(start)
+                if (mark != null && mark.kind != LineKind.PLAIN) {
+                    val row = placed.getLineForOffset(start.coerceAtMost(placed.layoutInput.text.length))
                     val top = with(density) { placed.getLineTop(row).toDp() }
                     val height = with(density) { (placed.getLineBottom(row) - placed.getLineTop(row)).toDp() }
                     LineMarker(mark, numbers.getOrNull(index), top, height) { state.toggleChecked(index) }
