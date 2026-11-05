@@ -62,7 +62,7 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.gutter, end = Desk.inset),
+        modifier = Modifier.fillMaxWidth().height(Desk.row).padding(start = Space.gutter, end = Desk.inset),
     ) {
         SegmentText(name, if (focused) colors.onBackground else colors.onSurfaceVariant)
         if (count != null) SegmentNumber(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
@@ -142,7 +142,7 @@ fun FootAdd(label: String, onClick: () -> Unit) {
     Row(
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.gutter, end = Desk.inset),
+        modifier = Modifier.fillMaxWidth().height(Desk.row).padding(start = Space.gutter, end = Desk.inset),
     ) {
         HeaderButton(label, onClick) { plus(it) }
     }

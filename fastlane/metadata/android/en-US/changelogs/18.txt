@@ -1,0 +1,2 @@
+the sync name is selected when you touch it, so typing replaces it
+no changes on windows apart from the tighter bottom lines
