@@ -2,6 +2,11 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.11
+
+- readme: a picture of the windows app, and the settings cog described where it is
+- windows: PLANNER_PREFS keeps a trial run's settings apart from your own
+
 ## 1.0.10
 
 - notes: the check, bullet and number markers sit on their own lines again (1.0.8 and 1.0.9 drew them a row too high)

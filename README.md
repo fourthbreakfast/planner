@@ -74,7 +74,11 @@ everything a row can do starts with holding it for a moment, so sweeping across 
 
 ### on windows
 
-the window shows the tasks, the agenda and the notes side by side. a note, an event, a bin, the search or the settings slide in from the right, and escape closes them. the cog at the bottom right opens the settings, which also have the list of shortcuts.
+<p align="center">
+  <img src="docs/readme/windows.png" alt="planner on windows in dark: tasks, the agenda and notes side by side" width="100%">
+</p>
+
+the window shows the tasks, the agenda and the notes side by side. a note, an event, a bin, the search or the settings slide in from the right, and escape closes them. the cog in the title bar opens the settings, which also have the list of shortcuts.
 
 <table>
   <tr><td>ctrl+1, ctrl+2, ctrl+3</td><td>go to tasks, agenda or notes</td></tr>
@@ -104,7 +108,7 @@ planner is written in kotlin with compose multiplatform, and stores its data wit
 
 `gradlew installDebug -Pdemo` installs a second copy called "planner dev" with its own empty data, so a change can be tried without touching the real app.
 
-the windows app runs with `gradlew :desktop:run`, and `gradlew :desktop:packageSetup` builds its installer (it needs [inno setup 6](https://jrsoftware.org/isinfo.php)). set `PLANNER_DATA` to a folder to try it on data other than your own.
+the windows app runs with `gradlew :desktop:run`, and `gradlew :desktop:packageSetup` builds its installer (it needs [inno setup 6](https://jrsoftware.org/isinfo.php)). set `PLANNER_DATA` to a folder, and `PLANNER_PREFS` to a name, to try it on data and settings other than your own.
 
 ### credits
 

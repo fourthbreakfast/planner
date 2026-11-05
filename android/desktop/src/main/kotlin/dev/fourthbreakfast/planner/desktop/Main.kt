@@ -79,7 +79,11 @@ private fun bundledSyncthing(): File? = System.getProperty("compose.application.
     ?.takeIf { it.exists() }
 
 /** Everything the window needs, made once. Tests give it a folder and preferences of their own. */
-internal class DesktopApp(private val folder: File = dataFolder(), prefsNode: String = "dev/fourthbreakfast/planner") {
+internal class DesktopApp(
+    private val folder: File = dataFolder(),
+    // PLANNER_PREFS does the same for the settings, so a trial run shares none of them with the real app
+    prefsNode: String = System.getenv("PLANNER_PREFS") ?: "dev/fourthbreakfast/planner",
+) {
     // background work, with no catch-all handler on purpose, as on the phone (see PlannerApp)
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val database = Room.databaseBuilder<PlannerDatabase>(File(folder, "planner.db").path)
