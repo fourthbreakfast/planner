@@ -1,0 +1,2 @@
+no changes on the phone
+windows: the add-a-task line starts flush with the column

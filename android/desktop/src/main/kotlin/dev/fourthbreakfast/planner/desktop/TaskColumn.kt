@@ -297,13 +297,13 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
                 stringResource(Res.string.add_inside_hint, aimed.title),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onSurfaceVariant,
-                modifier = Modifier.padding(start = Space.x2 + Space.x5 + Space.x6 + Space.x2, top = Space.x2).clickable { state.aimedTask = null },
+                modifier = Modifier.padding(start = addStart + Space.x6 + Space.x2, top = Space.x2).clickable { state.aimedTask = null },
             )
         }
         var typing by remember { mutableStateOf(false) }
-        Row(Modifier.fillMaxWidth().height(Space.touch).padding(start = Space.x2 + Space.x5), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(Space.touch).padding(start = addStart), verticalAlignment = Alignment.CenterVertically) {
             // the + is an invitation, the › says the line is in use, as on the phone. it sits where the priority dots
-            // are, and the words start where the task names do
+            // are not, but flush with the column's text; the words follow it
             Box(Modifier.size(Space.x6), contentAlignment = Alignment.Center) {
                 val ink = colors.onSurfaceVariant
                 val inUse = typing || text.isNotEmpty()
@@ -385,3 +385,6 @@ private fun RenameField(initial: String, modifier: Modifier = Modifier, onDone: 
             },
     )
 }
+
+/** Where the add line's box starts, so that the + drawn in its middle is flush with the column's text edge. */
+private val addStart = Space.gutter - (Space.x6 - Space.x3) / 2
