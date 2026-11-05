@@ -154,13 +154,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
-                            if (note.pinned) {
-                                Text(
-                                    stringResource(Res.string.pinned),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = colors.onSurfaceVariant,
-                                )
-                            }
+                            HoverPin(note.pinned, hovered, if (note.pinned) unpinLabel else pinLabel) { viewModel.setPinned(note.id, !note.pinned) }
                             HoverBin(hovered, stringResource(Res.string.bin)) { viewModel.moveToBin(note.id) }
                         }
                         val lines = remember(note) { linesUnderTitle(note) }
