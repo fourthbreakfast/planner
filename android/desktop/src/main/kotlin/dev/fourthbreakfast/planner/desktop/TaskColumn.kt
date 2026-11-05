@@ -301,7 +301,7 @@ private fun AddLine(state: DashboardState, tasks: List<Task>, viewModel: TasksVi
             )
         }
         var typing by remember { mutableStateOf(false) }
-        Row(Modifier.fillMaxWidth().height(Space.touch).padding(start = addStart), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(Desk.row).padding(start = addStart), verticalAlignment = Alignment.CenterVertically) {
             // the + is an invitation, the › says the line is in use, as on the phone. it sits where the priority dots
             // are not, but flush with the column's text; the words follow it
             Box(Modifier.size(Space.x6), contentAlignment = Alignment.Center) {

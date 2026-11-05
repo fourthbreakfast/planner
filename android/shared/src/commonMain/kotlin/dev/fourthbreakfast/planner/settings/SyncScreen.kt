@@ -41,8 +41,10 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.zxing.BarcodeFormat
@@ -257,15 +259,16 @@ private fun NameLine(label: String, name: String, onRename: (String) -> Unit) {
 @Composable
 private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: Boolean = false, onRename: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
-    var text by remember(name) { mutableStateOf(name) }
+    var field by remember(name) { mutableStateOf(TextFieldValue(name)) }
+    val text = field.text
     val focus = LocalFocusManager.current
     fun accept() {
         if (text != name) onRename(text)
         focus.clearFocus()
     }
     BasicTextField(
-        value = text,
-        onValueChange = { text = it.replace("\n", "") },
+        value = field,
+        onValueChange = { field = it.copy(text = it.text.replace("\n", "")) },
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyLarge.copy(
             color = colors.onBackground,
@@ -280,12 +283,19 @@ private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: B
                     event.type != KeyEventType.KeyDown -> false
                     event.key == Key.Enter || event.key == Key.NumPadEnter -> true.also { accept() }
                     event.key == Key.Escape -> true.also {
-                        text = name
+                        field = TextFieldValue(name)
                         focus.clearFocus()
                     }
                     else -> false
                 }
             }
-            .onFocusChanged { if (!it.isFocused && text != name) onRename(text) },
+            .onFocusChanged {
+                // the whole name is chosen when it is touched, so typing replaces it
+                if (it.isFocused) {
+                    field = field.copy(selection = TextRange(0, field.text.length))
+                } else if (text != name) {
+                    onRename(text)
+                }
+            },
     )
 }

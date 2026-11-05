@@ -31,7 +31,7 @@ SetupIconFile={#SourcePath}\..\icons\planner.ico
 UninstallDisplayIcon={app}\planner.exe
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-CloseApplications=yes
+CloseApplications=no
 RestartApplications=no
 
 [Files]
@@ -58,4 +58,16 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then RemoveFormerMsi();
+end;
+
+// planner sits in the tray with its window hidden, so it cannot be asked to close: stop what runs from the install
+// folder, planner and its own syncthing and nothing else, before the files are replaced
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  code: Integer;
+begin
+  Exec('powershell.exe',
+    '-NoProfile -NonInteractive -Command "Get-Process | Where-Object { $_.Path -like ''' + ExpandConstant('{app}') + '\*'' } | Stop-Process -Force; Start-Sleep -Seconds 2"',
+    '', SW_HIDE, ewWaitUntilTerminated, code);
+  Result := '';
 end;

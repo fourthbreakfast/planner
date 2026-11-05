@@ -2,6 +2,12 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.6
+
+- the sync name is selected when you touch it, so typing replaces it without deleting first
+- windows: the bottom line of each column (the add-a-task line and the + buttons) and the column headers are shorter, as tight as the rows
+- windows: the installer closes planner and its syncthing by itself when it is run by hand, instead of asking you to
+
 ## 1.0.5
 
 - phone: sync starts again. the releases built online since 1.0.1 stamped syncthing with a commit instead of a version, and syncthing refused to run; the build now stamps the real version and stops if it cannot
