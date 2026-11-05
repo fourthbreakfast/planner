@@ -16,6 +16,8 @@ jobs:
         with:
           submodules: true
       # the app carries its own Syncthing, built from third_party/syncthing with the Go version it asks for
+      - name: syncthing names its version from its tags, which a checkout leaves out
+        run: git -C ../third_party/syncthing fetch --tags --force origin
       - uses: actions/setup-go@v5
         with:
           go-version-file: third_party/syncthing/go.mod

@@ -1,0 +1,2 @@
+sync works again: releases since 1.0.1 carried a syncthing that refused to start, and now they carry a working one
+windows: a new installer with a single progress page

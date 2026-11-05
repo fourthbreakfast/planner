@@ -25,7 +25,7 @@ private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 data class Asset(val url: String, val sha256: String?)
 
 /** A published version, with its phone and windows files. */
-data class Release(val version: String, val apk: Asset?, val msi: Asset?)
+data class Release(val version: String, val apk: Asset?, val msi: Asset?, val setup: Asset? = null)
 
 /** Whether [candidate] ("0.9.0" or "v0.9.0") is a later version than [current]. */
 fun isNewer(candidate: String, current: String): Boolean {
@@ -53,7 +53,7 @@ fun parseRelease(json: String): Release? {
         val digest = found.text("digest").takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:")
         return Asset(url, digest)
     }
-    return Release(tag.removePrefix("v"), asset(".apk"), asset(".msi"))
+    return Release(tag.removePrefix("v"), asset(".apk"), asset(".msi"), asset("-setup.exe"))
 }
 
 private fun JsonObject.text(name: String): String = this[name]?.jsonPrimitive?.content.orEmpty()

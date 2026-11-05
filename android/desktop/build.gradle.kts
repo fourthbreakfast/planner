@@ -64,3 +64,27 @@ tasks.test {
 }
 
 tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(syncthingWindows) }
+
+// the installer people download: inno setup around the app folder jpackage makes (iscc comes with inno setup 6)
+val packageSetup by tasks.registering(Exec::class) {
+    group = "distribution"
+    dependsOn("createDistributable")
+    val version = providers.gradleProperty("plannerVersion").get()
+    val app = layout.buildDirectory.dir("compose/binaries/main/app/planner")
+    val script = file("installer/planner.iss")
+    inputs.dir(app)
+    inputs.file(script)
+    outputs.dir(layout.buildDirectory.dir("setup"))
+    val candidates = listOf(
+        providers.environmentVariable("ISCC").orNull,
+        System.getenv("LOCALAPPDATA")?.let { "$it/Programs/Inno Setup 6/ISCC.exe" },
+        "C:/Program Files (x86)/Inno Setup 6/ISCC.exe",
+    )
+    commandLine(
+        candidates.filterNotNull().firstOrNull { file(it).exists() } ?: "iscc",
+        "/Qp",
+        "/DVersion=$version",
+        "/DSource=${app.get().asFile.absolutePath}",
+        script.absolutePath,
+    )
+}

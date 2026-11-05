@@ -22,7 +22,8 @@ class UpdatesTest {
         val json = """
             {"tag_name": "v0.9.0", "assets": [
               {"name": "planner-0.9.0.apk", "digest": "sha256:ABC", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.apk"},
-              {"name": "planner-0.9.0.msi", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.msi"}
+              {"name": "planner-0.9.0.msi", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.msi"},
+              {"name": "planner-0.9.0-setup.exe", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0-setup.exe"}
             ]}
         """.trimIndent()
         val release = parseRelease(json)!!
@@ -31,6 +32,7 @@ class UpdatesTest {
         assertEquals("ABC", release.apk!!.sha256)
         assertTrue(release.msi!!.url.endsWith(".msi"))
         assertNull(release.msi!!.sha256)
+        assertTrue(release.setup!!.url.endsWith("-setup.exe"))
     }
 
     @Test

@@ -26,6 +26,8 @@ jobs:
           declared=$(grep '^plannerVersion=' gradle.properties | cut -d= -f2 | tr -d '\r')
           if [ "v$declared" != "$GITHUB_REF_NAME" ]; then echo "gradle.properties says $declared, the tag is $GITHUB_REF_NAME"; exit 1; fi
           echo "VERSION=$declared" >> "$GITHUB_ENV"
+      - name: syncthing names its version from its tags, which a checkout leaves out
+        run: git -C ../third_party/syncthing fetch --tags --force origin
       - uses: actions/setup-go@v5
         with:
           go-version-file: third_party/syncthing/go.mod
@@ -38,6 +40,8 @@ jobs:
         with:
           packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
+      - name: inno setup, which makes the windows installer
+        run: choco install innosetup --no-progress -y
       - name: the signing key
         env:
           KEYSTORE_B64: ${{ secrets.PLANNER_KEYSTORE_B64 }}
@@ -47,7 +51,7 @@ jobs:
       - name: build
         env:
           PLANNER_KEYSTORE_PASSWORD: ${{ secrets.PLANNER_KEYSTORE_PASSWORD }}
-        run: ./gradlew assembleRelease :desktop:packageMsi --no-configuration-cache --console=plain
+        run: ./gradlew assembleRelease :desktop:packageMsi :desktop:packageSetup --no-configuration-cache --console=plain
       - name: publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -56,6 +60,8 @@ jobs:
           mv app/build/outputs/apk/release/app-release.apk "$apk"
           msi="desktop/build/compose/binaries/main/msi/planner-$VERSION.msi"
           test -f "$msi"
+          setup="desktop/build/setup/planner-$VERSION-setup.exe"
+          test -f "$setup"
           awk -v v="$VERSION" '/^## /{p = ($2 == v); next} p' ../CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           if [ -s "$RUNNER_TEMP/notes.md" ]; then notes=(--notes-file "$RUNNER_TEMP/notes.md"); else notes=(--generate-notes); fi
-          gh release create "v$VERSION" "$apk" "$msi" --title "planner $VERSION" "${notes[@]}"
+          gh release create "v$VERSION" "$apk" "$setup" "$msi" --title "planner $VERSION" "${notes[@]}"

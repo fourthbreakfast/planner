@@ -2,6 +2,11 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.5
+
+- phone: sync starts again. the releases built online since 1.0.1 stamped syncthing with a commit instead of a version, and syncthing refused to run; the build now stamps the real version and stops if it cannot
+- windows: a new installer, one progress page instead of the old wizard, which also removes the former installer by itself. updates inside the app use it, and the old installer is still published for apps that have not updated yet
+
 ## 1.0.4
 
 - phone: when sync cannot start, the sync screen no longer blames the network permission unless that permission is the cause, and the log keeps syncthing's last words
