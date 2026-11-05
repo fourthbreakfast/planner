@@ -1,0 +1,1 @@
+fixes list markers in notes drawn a row too high, filled check boxes, new pictures

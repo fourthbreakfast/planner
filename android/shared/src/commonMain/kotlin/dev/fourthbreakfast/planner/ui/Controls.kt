@@ -188,24 +188,27 @@ fun QuietButton(label: String, enabled: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * A check box as a small drawing, the same one for tasks and notes: a sharp square outline, and once checked a bold
- * tick inside it.
+ * A check box as a small drawing, the same one for tasks and notes: a sharp square outline, and once checked the square
+ * is filled with a tick cut out of it.
  */
 @Composable
 fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.size(Space.check)) {
+    val cutout = MaterialTheme.colorScheme.background
     Canvas(modifier) {
         // square and centred, whatever room it is given
         val side = minOf(size.width, size.height, Space.check.toPx())
         val corner = Offset((size.width - side) / 2, (size.height - side) / 2)
         val line = Space.strokeThin.toPx()
-        drawRect(ink, topLeft = corner + Offset(line / 2, line / 2), size = Size(side - line, side - line), style = Stroke(line))
         if (checked) {
+            drawRect(ink, topLeft = corner, size = Size(side, side))
             val tick = Path().apply {
                 moveTo(corner.x + side * 0.24f, corner.y + side * 0.53f)
                 lineTo(corner.x + side * 0.43f, corner.y + side * 0.72f)
                 lineTo(corner.x + side * 0.77f, corner.y + side * 0.29f)
             }
-            drawPath(tick, ink, style = Stroke(line * 2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(tick, cutout, style = Stroke(line * 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        } else {
+            drawRect(ink, topLeft = corner + Offset(line / 2, line / 2), size = Size(side - line, side - line), style = Stroke(line))
         }
     }
 }

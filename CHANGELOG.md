@@ -2,6 +2,12 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.10
+
+- notes: the check, bullet and number markers sit on their own lines again (1.0.8 and 1.0.9 drew them a row too high)
+- check boxes: checked is a filled square with the tick cut out, as in most apps
+- new pictures in the readme and the store listing
+
 ## 1.0.9
 
 - windows: the add lines at the foot of the columns sit higher, with as much room under them as beside them
