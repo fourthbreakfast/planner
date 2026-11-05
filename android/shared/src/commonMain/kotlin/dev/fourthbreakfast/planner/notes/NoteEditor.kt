@@ -242,12 +242,12 @@ private fun NoteText(state: NoteEditState) {
         )
         val placed = layout
         if (placed != null) {
-            // where each line begins; an empty line, such as the new one after Enter, begins where the text ends
-            var start = 0
+            // the field's text has one character in front of the note's, so a line begins one further on
+            var start = 1
             state.text.split('\n').forEachIndexed { index, words ->
                 val mark = marks.getOrNull(index)
-                if (mark != null && mark.kind != LineKind.PLAIN) {
-                    val row = placed.getLineForOffset(start.coerceAtMost(placed.layoutInput.text.length))
+                if (mark != null && mark.kind != LineKind.PLAIN && start <= placed.layoutInput.text.length) {
+                    val row = placed.getLineForOffset(start)
                     val top = with(density) { placed.getLineTop(row).toDp() }
                     val height = with(density) { (placed.getLineBottom(row) - placed.getLineTop(row)).toDp() }
                     LineMarker(mark, numbers.getOrNull(index), top, height) { state.toggleChecked(index) }
