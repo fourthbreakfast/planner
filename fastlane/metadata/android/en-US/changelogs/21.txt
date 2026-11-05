@@ -1,0 +1,1 @@
+windows: the add lines at the foot of the columns sit higher

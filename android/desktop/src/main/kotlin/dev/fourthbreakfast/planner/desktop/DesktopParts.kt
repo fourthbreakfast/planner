@@ -152,7 +152,8 @@ fun FootAdd(label: String, onClick: () -> Unit) {
     Row(
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Desk.row).padding(start = Space.gutter, end = Desk.inset),
+        // the room under the + is the room beside it
+        modifier = Modifier.fillMaxWidth().padding(bottom = Desk.inset).height(Desk.row).padding(start = Space.gutter, end = Desk.inset),
     ) {
         HeaderButton(label, onClick) { plus(it) }
     }
