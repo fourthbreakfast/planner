@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/readme/hero.png" alt="planner in dark and light: the task list with subtasks and priorities, the agenda, the notes, and a note being written" width="100%">
+  <img src="docs/readme/hero.png" alt="planner in dark: the task list with subtasks and priorities, the agenda, the notes, and a note being written" width="100%">
 </p>
 
 planner is a task list, an agenda and a notebook for android and windows, in one small app that keeps everything on your own devices. there is no account and no server: it can sync between your devices by itself, with a private copy of syncthing built in.
@@ -61,9 +61,12 @@ everything a row can do starts with holding it for a moment, so sweeping across 
   <tr><td>touch a note</td><td>write in it; the row at the top sets pull out, push in, numbered list, bulleted list, checkbox, bold, italic and underline, enter makes a new line, two make a new paragraph or end a list, and a selection can run across lines</td></tr>
   <tr><td>hold a note, then drag</td><td>put it somewhere else in the list</td></tr>
   <tr><td>hold a note, then swipe right</td><td>move it to the notes bin, with undo</td></tr>
+  <tr><td>hold a note, then swipe left</td><td>copy all of it as text, without opening it</td></tr>
+  <tr><td>the pin at the top right of a note</td><td>pin it to the top of the list (a filled pin means pinned)</td></tr>
   <tr><th colspan="2">everywhere</th></tr>
   <tr><td>sweep sideways</td><td>go to the next tab: tasks, agenda, notes. it stops at the ends</td></tr>
   <tr><td>the cog at the top right, or hold any tab</td><td>open the settings: export and import, theme, a daily backup to a folder, where the notes toolbar sits, a link to the latest release, the widget, sync, and the list of gestures</td></tr>
+  <tr><td>hold the bin</td><td>empty that bin for good, after asking once</td></tr>
   <tr><td>the magnifying glass beside the bin, on the notes tab</td><td>search the notes by title and text</td></tr>
   <tr><td>hold the app icon</td><td>new task, new event or new note, straight away</td></tr>
   <tr><td>a reminder notification</td><td>touch it to open the event, snooze it for 10 minutes or dismiss it</td></tr>
@@ -80,7 +83,7 @@ the window shows the tasks, the agenda and the notes side by side. a note, an ev
   <tr><td>f2 or a double click</td><td>rename a task</td></tr>
   <tr><td>space, delete</td><td>check a task, or move what is chosen to the bin</td></tr>
   <tr><td>ctrl+f, ctrl+,</td><td>search the notes, open the settings</td></tr>
-  <tr><td>a right click</td><td>everything else a row can do: rename, priority, a task inside, pin, bin</td></tr>
+  <tr><td>a right click</td><td>everything else a row can do: rename, priority, a task inside, pin, copy a note, bin. the pin and bin also show beside a note when the pointer is over it, and holding the bin empties it</td></tr>
   <tr><td>drag</td><td>a task onto another to put it inside or beside, a note to reorder, an event onto a day of the month</td></tr>
   <tr><td>closing the window</td><td>keeps planner in the tray, so reminders and sync go on. quit from the tray, or have it start with windows in the settings</td></tr>
 </table>
