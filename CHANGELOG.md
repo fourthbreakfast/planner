@@ -2,6 +2,11 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.0.3
+
+- windows: the add-a-task line starts flush with the rest of the column
+- nothing changes on the phone
+
 ## 1.0.2
 
 - windows: the columns look like the phone again, flat with thin lines between them, as before 1.0.1
