@@ -1,8 +1,9 @@
 package dev.fourthbreakfast.planner.desktop
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -14,11 +15,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -33,6 +37,10 @@ import androidx.compose.ui.unit.dp
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.bin_with_count
+import dev.fourthbreakfast.planner.resources.cancel
+import dev.fourthbreakfast.planner.resources.confirm_empty_bin
+import dev.fourthbreakfast.planner.resources.delete_forever
+import dev.fourthbreakfast.planner.ui.QuietButton
 import dev.fourthbreakfast.planner.ui.SegmentNumber
 import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.binIcon
@@ -42,11 +50,11 @@ import org.jetbrains.compose.resources.stringResource
 
 /** The desktop's own sizes: a mouse needs less room than a thumb. */
 object Desk {
-    /** A computer screen is read from further and pointed at finely, so its type could be scaled; it is the phone's size, as Windows apps like Simplenote set theirs. */
-    val textScale = 1f
+    /** Type on a computer is smaller than on a phone, like other windows apps: seven eighths of the phone size. */
+    val textScale = 0.875f
 
     val titleBar = 40.dp
-    val row = 36.dp
+    val row = 32.dp
 
     // every control in a column is a 32dp square with a 16dp drawing, its edge 12dp in from the column's right side
     val button = 32.dp
@@ -72,8 +80,9 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
 }
 
 /** A small drawn button in the column header, the same quiet ink as the phone's icons. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HeaderButton(label: String, onClick: () -> Unit, draw: DrawScope.(Color) -> Unit) {
+fun HeaderButton(label: String, onClick: () -> Unit, onLongClick: (() -> Unit)? = null, draw: DrawScope.(Color) -> Unit) {
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
@@ -83,7 +92,7 @@ fun HeaderButton(label: String, onClick: () -> Unit, draw: DrawScope.(Color) -> 
             .size(Desk.button)
             .background(if (hovered) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
             .hoverable(hover)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics { contentDescription = label },
     ) {
         Canvas(Modifier.size(Desk.icon)) { draw(ink) }
@@ -150,7 +159,8 @@ fun FootAdd(label: String, onClick: () -> Unit) {
 
 /** The bin, with how many things are in it written just before it when there are any. */
 @Composable
-fun DeskBin(count: Int, onClick: () -> Unit) {
+fun DeskBin(count: Int, onClick: () -> Unit, onEmpty: () -> Unit) {
+    var asking by remember { mutableStateOf(false) }
     val label = if (count > 0) stringResource(Res.string.bin_with_count, count) else stringResource(Res.string.bin)
     if (count > 0) {
         Text(
@@ -160,7 +170,20 @@ fun DeskBin(count: Int, onClick: () -> Unit) {
             modifier = Modifier.padding(start = Space.x2),
         )
     }
-    HeaderButton(label, onClick) { binIcon(it) }
+    HeaderButton(label, onClick, onLongClick = if (count > 0) ({ asking = true }) else null) { binIcon(it) }
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            text = { Text(stringResource(Res.string.confirm_empty_bin)) },
+            confirmButton = {
+                QuietButton(stringResource(Res.string.delete_forever)) {
+                    asking = false
+                    onEmpty()
+                }
+            },
+            dismissButton = { QuietButton(stringResource(Res.string.cancel)) { asking = false } },
+        )
+    }
 }
 
 /** A › pointing right, for a line in use. */
@@ -168,4 +191,12 @@ fun DrawScope.chevron(ink: Color) {
     val line = Space.strokeThin.toPx()
     drawLine(ink, Offset(size.width * 0.36f, size.height * 0.18f), Offset(size.width * 0.68f, size.height * 0.5f), line, StrokeCap.Round)
     drawLine(ink, Offset(size.width * 0.68f, size.height * 0.5f), Offset(size.width * 0.36f, size.height * 0.82f), line, StrokeCap.Round)
+}
+
+/** The bin button of a row, which shows while the pointer is over the row. Its room is always kept, so nothing moves. */
+@Composable
+fun HoverBin(shown: Boolean, label: String, onClick: () -> Unit) {
+    Box(Modifier.size(Desk.button)) {
+        if (shown) HeaderButton(label, onClick) { binIcon(it) }
+    }
 }

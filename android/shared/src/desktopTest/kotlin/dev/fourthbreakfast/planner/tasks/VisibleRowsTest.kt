@@ -201,4 +201,16 @@ class VisibleRowsTest {
         assertEquals(DropZone.AFTER, dropZoneAt(0.73f))
         assertEquals(DropZone.AFTER, dropZoneAt(0.99f))
     }
+
+    @Test
+    fun aTaskWhosePriorityJustChangedStaysWhereItWasButShowsTheNewOne() {
+        val before = listOf(task("a", position = 1.0), task("b", position = 2.0))
+        val changed = listOf(before[0], before[1].copy(priority = Priority.HIGH))
+        // settled, the raised task goes first
+        assertEquals(listOf("b", "a"), arrange(changed, SortOrder.PRIORITY, emptyList()).keys())
+        // held at its old priority, it stays second, and still carries the new one
+        val held = arrangeHolding(changed, mapOf("b" to Priority.NONE), SortOrder.PRIORITY, emptyList())
+        assertEquals(listOf("a", "b"), held.keys())
+        assertEquals(Priority.HIGH, (held[1] as TaskNode).task.priority)
+    }
 }

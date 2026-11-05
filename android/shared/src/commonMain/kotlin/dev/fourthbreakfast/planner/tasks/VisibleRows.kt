@@ -2,6 +2,7 @@ package dev.fourthbreakfast.planner.tasks
 
 import dev.fourthbreakfast.planner.core.Destination
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
+import dev.fourthbreakfast.planner.core.Priority
 import dev.fourthbreakfast.planner.core.SortOrder
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.height
@@ -127,4 +128,15 @@ fun dropZoneAt(fraction: Float): DropZone = when {
     fraction < 0.28f -> DropZone.BEFORE
     fraction > 0.72f -> DropZone.AFTER
     else -> DropZone.INTO
+}
+
+/**
+ * [arrange], with tasks whose priority just changed kept where their old priority put them ([held] says what that was),
+ * so a task does not jump away from under the finger. The rows still show the new priority.
+ */
+fun arrangeHolding(tasks: List<Task>, held: Map<String, Priority>, order: SortOrder, collapsedIds: Collection<String>): List<ListRow> {
+    if (held.isEmpty()) return arrange(tasks, order, collapsedIds)
+    val byId = tasks.associateBy { it.id }
+    val placed = tasks.map { task -> held[task.id]?.let { task.copy(priority = it) } ?: task }
+    return arrange(placed, order, collapsedIds).map { row -> if (row is TaskNode) row.copy(task = byId.getValue(row.task.id)) else row }
 }

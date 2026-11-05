@@ -1,0 +1,2 @@
+hold the bin to empty it, hold a note and swipe left to copy it, and a task waits a moment before moving when its priority changes
+windows: smaller type, nothing moves when the pointer is over a row, right-click a note to copy it

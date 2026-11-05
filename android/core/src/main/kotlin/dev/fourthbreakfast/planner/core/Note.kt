@@ -133,3 +133,23 @@ fun linesUnderTitle(note: Note): List<NoteLine> {
     val first = lines.indexOfFirst { it.text.isNotBlank() }
     return if (first < 0) emptyList() else lines.drop(first + 1)
 }
+
+/**
+ * A note as plain text to paste somewhere else: the title, then each line pushed in and marked as it reads in the app
+ * (a dot, a number, or a box that is empty or crossed).
+ */
+fun noteAsText(note: Note): String {
+    val title = noteTitle(note)
+    val lines = linesUnderTitle(note).dropLastWhile { it.text.isEmpty() && it.kind == LineKind.PLAIN }
+    val numbers = numberLabels(lines)
+    val body = lines.mapIndexed { index, line ->
+        val marker = when (line.kind) {
+            LineKind.PLAIN -> ""
+            LineKind.BULLET -> "• "
+            LineKind.NUMBER -> "${numbers[index] ?: 1}. "
+            LineKind.CHECK -> if (line.checked) "[x] " else "[ ] "
+        }
+        "  ".repeat(line.indent) + marker + line.text
+    }
+    return (listOfNotNull(title.takeIf { it.isNotEmpty() }) + body).joinToString("\n")
+}

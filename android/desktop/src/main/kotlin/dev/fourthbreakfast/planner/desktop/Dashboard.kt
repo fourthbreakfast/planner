@@ -219,6 +219,7 @@ fun Dashboard(
                     allEvents.count { it.inBin },
                     state,
                     onRemove = { state.eventToRemove = it },
+                    onEmptyBin = agendaViewModel::emptyBin,
                     onMove = { event, from, day ->
                         // a repeating event moves only the time that was dragged; the others stay
                         agendaViewModel.save(event.id, from, movedDraft(event, from, day), onlyThisTime = event.repeat != Repeat.NONE)

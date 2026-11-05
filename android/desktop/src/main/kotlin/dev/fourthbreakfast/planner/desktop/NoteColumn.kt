@@ -29,9 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import dev.fourthbreakfast.planner.core.Note
 import dev.fourthbreakfast.planner.core.linesUnderTitle
+import dev.fourthbreakfast.planner.core.noteAsText
 import dev.fourthbreakfast.planner.core.noteTitle
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.notes.previewOf
@@ -39,13 +42,13 @@ import dev.fourthbreakfast.planner.notes.rememberPreviewBoxes
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_note
 import dev.fourthbreakfast.planner.resources.bin
+import dev.fourthbreakfast.planner.resources.copy_note
 import dev.fourthbreakfast.planner.resources.nothing_written
 import dev.fourthbreakfast.planner.resources.pin
 import dev.fourthbreakfast.planner.resources.pinned
 import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.search
 import dev.fourthbreakfast.planner.resources.unpin
-import dev.fourthbreakfast.planner.ui.binIcon
 import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
@@ -57,6 +60,8 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
     val removeTaskLabel = stringResource(Res.string.remove_task)
     val unpinLabel = stringResource(Res.string.unpin)
     val pinLabel = stringResource(Res.string.pin)
+    val copyLabel = stringResource(Res.string.copy_note)
+    val clipboard = LocalClipboardManager.current
     val colors = MaterialTheme.colorScheme
     val boxes = rememberPreviewBoxes(colors.onSurfaceVariant)
     state.visibleNotes = notes.map { it.id }
@@ -87,7 +92,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
     Column(Modifier.fillMaxSize()) {
         ColumnHeader("notes", notes.size, state.focused == Section.NOTES) {
             HeaderButton(stringResource(Res.string.search), { state.panel = Panel.Search }) { magnifier(it) }
-            DeskBin(binCount, { state.panel = Panel.NoteBin })
+            DeskBin(binCount, { state.panel = Panel.NoteBin }, viewModel::emptyBin)
         }
         if (notes.isEmpty()) Quiet(stringResource(Res.string.nothing_written))
         LazyColumn(state = list, modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -97,6 +102,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                 ContextMenuArea(items = {
                     listOf(
                         ContextMenuItem(if (note.pinned) unpinLabel else pinLabel) { viewModel.setPinned(note.id, !note.pinned) },
+                        ContextMenuItem(copyLabel) { clipboard.setText(AnnotatedString(noteAsText(note))) },
                         ContextMenuItem(removeTaskLabel) { viewModel.moveToBin(note.id) },
                     )
                 }) {
@@ -155,7 +161,7 @@ fun NoteColumn(notes: List<Note>, binCount: Int, state: DashboardState, viewMode
                                     color = colors.onSurfaceVariant,
                                 )
                             }
-                            if (hovered) HeaderButton(stringResource(Res.string.bin), { viewModel.moveToBin(note.id) }) { binIcon(it) }
+                            HoverBin(hovered, stringResource(Res.string.bin)) { viewModel.moveToBin(note.id) }
                         }
                         val lines = remember(note) { linesUnderTitle(note) }
                         if (lines.isNotEmpty()) {

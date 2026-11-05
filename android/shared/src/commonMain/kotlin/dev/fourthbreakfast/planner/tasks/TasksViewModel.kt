@@ -6,8 +6,14 @@ import dev.fourthbreakfast.planner.core.Destination
 import dev.fourthbreakfast.planner.core.Priority
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.Tasks
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
+private const val SETTLE_MILLIS = 1100L
 
 /** What the task screens can do, each change run in the background. */
 class TasksViewModel(private val tasks: Tasks) : ViewModel() {
@@ -25,11 +31,28 @@ class TasksViewModel(private val tasks: Tasks) : ViewModel() {
         viewModelScope.launch { tasks.setDone(task.id, done) }
     }
 
+    /** Tasks whose priority just changed, with the one they had, which still decides where they stand until things settle. */
+    private val holds = MutableStateFlow<Map<String, Priority>>(emptyMap())
+    val heldPriorities: StateFlow<Map<String, Priority>> = holds
+    private var settling: Job? = null
+
+    // a task stays put for a moment after its priority changes, so it can be changed again without chasing it around
+    private fun hold(task: Task) {
+        holds.value = holds.value + (task.id to (holds.value[task.id] ?: task.priority))
+        settling?.cancel()
+        settling = viewModelScope.launch {
+            delay(SETTLE_MILLIS)
+            holds.value = emptyMap()
+        }
+    }
+
     fun cyclePriority(task: Task) {
+        hold(task)
         viewModelScope.launch { tasks.cyclePriority(task.id) }
     }
 
     fun setPriority(task: Task, priority: Priority) {
+        hold(task)
         viewModelScope.launch { tasks.setPriority(task.id, priority) }
     }
 
