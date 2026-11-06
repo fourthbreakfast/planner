@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 private val DarkColorScheme = darkColorScheme(
     primary = AccentDark,
     onPrimary = PageDark,
-    error = PriorityHigh,
+    error = ErrorRed,
     onError = Color.White,
     secondaryContainer = AimDark,
     onSecondaryContainer = InkDark,
@@ -33,7 +33,7 @@ private val DarkColorScheme = darkColorScheme(
 private val LightColorScheme = lightColorScheme(
     primary = AccentLight,
     onPrimary = Color.White,
-    error = PriorityHigh,
+    error = ErrorRed,
     onError = Color.White,
     secondaryContainer = AimLight,
     onSecondaryContainer = InkLight,
@@ -53,10 +53,10 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun PlannerTheme(darkTheme: Boolean = isSystemInDarkTheme(), textScale: Float = 1f, content: @Composable () -> Unit) {
     val colors = if (darkTheme) DarkColorScheme else LightColorScheme
-    // Selection uses the navigation accent while priority and destructive marks keep their own meaning.
+    // Selection follows the quiet ink of the page.
     val selection = TextSelectionColors(
-        handleColor = colors.primary,
-        backgroundColor = colors.primary.copy(alpha = 0.2f),
+        handleColor = colors.onSurfaceVariant,
+        backgroundColor = colors.onSurfaceVariant.copy(alpha = 0.3f),
     )
     MaterialTheme(
         colorScheme = colors,

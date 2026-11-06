@@ -130,7 +130,7 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
                 modifier = Modifier.semantics { heading() },
             )
         }
-        CountLabel(
+        SegmentNumber(
             value = count,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
@@ -139,7 +139,7 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
         )
         // a second number, the same size but fainter: everything open, subtasks included
         if (secondCount != null) {
-            CountLabel(
+            SegmentNumber(
                 value = secondCount,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 modifier = Modifier.padding(start = Space.x3).semantics { contentDescription = countLabel },
