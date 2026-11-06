@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,8 +42,9 @@ import dev.fourthbreakfast.planner.resources.bin_with_count
 import dev.fourthbreakfast.planner.resources.cancel
 import dev.fourthbreakfast.planner.resources.confirm_empty_bin
 import dev.fourthbreakfast.planner.resources.delete_forever
-import dev.fourthbreakfast.planner.ui.CountLabel
 import dev.fourthbreakfast.planner.ui.QuietButton
+import dev.fourthbreakfast.planner.ui.SegmentNumber
+import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.binIcon
 import dev.fourthbreakfast.planner.ui.pinIcon
 import dev.fourthbreakfast.planner.ui.plus
@@ -52,11 +53,11 @@ import org.jetbrains.compose.resources.stringResource
 
 /** The desktop's own sizes: a mouse needs less room than a thumb. */
 object Desk {
-    /** Type on a computer is smaller than on a phone, like other windows apps: seven eighths of the phone size. */
-    val textScale = 0.875f
+    /** Keep desktop text at the same readable size as the phone. */
+    val textScale = 1f
 
     val titleBar = 40.dp
-    val row = 32.dp
+    val row = 36.dp
 
     // every control in a column is a 32dp square with a 16dp drawing, its edge 12dp in from the column's right side
     val button = 32.dp
@@ -72,18 +73,14 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
     val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Desk.row).padding(start = Space.gutter, end = Desk.inset),
+        modifier = Modifier.fillMaxWidth().heightIn(min = Desk.row).padding(start = Space.gutter, end = Desk.inset),
     ) {
-        Box(Modifier.height(Desk.row), contentAlignment = Alignment.CenterStart) {
-            Text(
-                name,
-                color = if (focused) colors.primary else colors.onSurfaceVariant,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() },
-            )
-            if (focused) Box(Modifier.align(Alignment.BottomStart).width(Space.x6).height(Space.strokeThick).background(colors.primary))
-        }
-        if (count != null) CountLabel(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
+        SegmentText(
+            name,
+            if (focused) colors.onBackground else colors.onSurfaceVariant,
+            modifier = Modifier.semantics { heading() },
+        )
+        if (count != null) SegmentNumber(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
         Box(Modifier.weight(1f))
         actions()
     }

@@ -57,6 +57,12 @@ object Space {
     val strokeThin = 1.5.dp
     val strokeThick = 2.dp
 
+    // the seven-segment digits
+    val digitWidth = 10.dp
+    val digitHeight = 18.dp
+    val digitBar = 2.4.dp
+    val digitGap = x1
+
     // the agenda
     /** Width of the time at the left of an event. */
     val timeColumn = 64.dp

@@ -57,6 +57,24 @@ private class RenderPrefs : Prefs {
 /** Opt-in reference screenshots use fixtures only, never a person's database or preferences. */
 class DesignRenderTest {
     @Test
+    fun renderTabsAtNormalAndLargeFontSizes() {
+        val folder = System.getenv("PLANNER_RENDER")?.let(::File)
+        assumeTrue(folder != null)
+        folder!!.mkdirs()
+        for (fontScale in listOf(1f, 2f)) {
+            for (tab in Tab.entries) {
+                ImageComposeScene(720, 160, Density(2f, fontScale)) {
+                    PlannerTheme { TabBar(tab, {}) }
+                }.use { scene ->
+                    repeat(3) { scene.render(it * 100_000_000L) }
+                    File(folder, "tabs-$fontScale-${tab.name.lowercase()}.png")
+                        .writeBytes(scene.render(500_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+                }
+            }
+        }
+    }
+
+    @Test
     fun renderPhoneScreensInBothThemes() {
         val folder = System.getenv("PLANNER_RENDER")?.let(::File)
         assumeTrue(folder != null)
