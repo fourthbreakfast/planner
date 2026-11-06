@@ -273,7 +273,8 @@ internal class NoteEditState(initialTitle: String, body: String) {
         val selection = value.selection
         val from = (minOf(selection.start, selection.end) - 1).coerceIn(0, text.length)
         val to = (maxOf(selection.start, selection.end) - 1).coerceIn(0, text.length)
-        return text.substring(0, from).count { it == '\n' }..text.substring(0, to).count { it == '\n' }
+        val last = if (to > from && text[to - 1] == '\n') to - 1 else to
+        return text.substring(0, from).count { it == '\n' }..text.substring(0, last).count { it == '\n' }
     }
 
     /** The kind of the line the selection starts in. */

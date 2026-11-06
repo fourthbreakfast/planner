@@ -39,7 +39,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -205,7 +213,7 @@ private fun NoteText(state: NoteEditState) {
     val quiet = colors.onSurfaceVariant
     val transformation = remember(marks, looks, quiet, density) {
         VisualTransformation { shown ->
-            TransformedText(styledBody(shown.text, marks, looks, quiet, density), OffsetMapping.Identity)
+            TransformedText(styledBody(shown.text, marks, looks, quiet, density), bodyOffsetMapping(shown.text))
         }
     }
     LaunchedEffect(state.focusRequest) {
@@ -224,6 +232,19 @@ private fun NoteText(state: NoteEditState) {
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focus)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        event.key == Key.Tab &&
+                        !event.isCtrlPressed &&
+                        !event.isAltPressed &&
+                        !event.isMetaPressed
+                    ) {
+                        state.push(if (event.isShiftPressed) -1 else 1)
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
@@ -375,4 +396,11 @@ private fun endOfLineForTouch(v: TextFieldValue, before: String, layout: TextLay
     if (at < 2 || at > v.text.length || v.text[at - 1] != '\n' || at > layout.layoutInput.text.length) return v
     val touchedLine = layout.getLineForVerticalPosition(touched.y)
     return if (touchedLine < layout.getLineForOffset(at)) v.copy(selection = TextRange(at - 1)) else v
+}
+
+/** The extra display-only character at the end maps back to the end of the real text. */
+internal fun bodyOffsetMapping(text: String): OffsetMapping = object : OffsetMapping {
+    private val length = text.length
+    override fun originalToTransformed(offset: Int): Int = if (offset == length && text.endsWith('\n')) offset + 1 else offset
+    override fun transformedToOriginal(offset: Int): Int = offset.coerceAtMost(length)
 }

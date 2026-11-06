@@ -1,13 +1,23 @@
 package dev.fourthbreakfast.planner.notes
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.use
 import dev.fourthbreakfast.planner.core.BOLD
 import dev.fourthbreakfast.planner.core.LineKind
 import dev.fourthbreakfast.planner.core.MAX_INDENT
 import dev.fourthbreakfast.planner.core.NoteLine
 import dev.fourthbreakfast.planner.core.formatBody
 import dev.fourthbreakfast.planner.core.plainBody
+import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
+import dev.fourthbreakfast.planner.ui.theme.Space
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -234,5 +244,64 @@ class NoteEditStateTest {
     fun whatIsWrittenComesBackOutAsTheBody() {
         val body = formatBody(listOf(NoteLine(LineKind.BULLET, 1, false, "kept", listOf(BOLD, 0, 0, 0)), NoteLine(text = "next")))
         assertEquals(body, NoteEditState("", body).body())
+    }
+
+    @Test
+    fun continuedEmptyListLineHasAStyledParagraphAndCaretAfterItsMarker() {
+        for (kind in listOf(LineKind.BULLET, LineKind.NUMBER, LineKind.CHECK)) {
+            val s = state(line("item", kind, 1))
+            s.type("item\n")
+            val shown = styledBody(s.value.text, s.marks, s.looks, Color.Gray, Density(1f))
+            val caret = s.value.selection.start
+            val paragraph = shown.paragraphStyles.single { it.start == caret }
+            assertEquals(caret + 1, paragraph.end)
+            assertTrue(paragraph.item.textIndent!!.firstLine.value > 0f)
+            val offsets = bodyOffsetMapping(s.value.text)
+            assertEquals(caret + 1, offsets.originalToTransformed(caret))
+            assertEquals(caret, offsets.transformedToOriginal(caret + 1))
+            assertEquals(kind, s.lines().last().kind)
+        }
+    }
+
+    @Test
+    fun indentingSelectionPreservesKindsAndExcludesNextLineAtSelectionEnd() {
+        val s = state(line("one", LineKind.NUMBER), line("two", LineKind.BULLET), line("three", LineKind.CHECK))
+        s.select(0, 8) // Ends immediately after the second line's newline.
+        val selection = s.value.selection
+        s.push(1)
+        assertEquals(listOf(1, 1, 0), s.lines().map { it.indent })
+        assertEquals(listOf(LineKind.NUMBER, LineKind.BULLET, LineKind.CHECK), s.lines().map { it.kind })
+        assertEquals(selection, s.value.selection)
+        s.push(-1)
+        assertEquals(listOf(0, 0, 0), s.lines().map { it.indent })
+    }
+
+    @Test
+    fun continuedEmptyLineCaretIsIndentedInComposeLayout() {
+        for (fontScale in listOf(1f, 2f)) {
+            for (depth in listOf(0, 1, MAX_INDENT)) {
+                for (kind in LineKind.entries) {
+                    val s = state(line("item", kind, depth))
+                    s.type("item\n")
+                    val density = Density(1f, fontScale)
+                    val shown = styledBody(s.value.text, s.marks, s.looks, Color.Gray, density)
+                    var caretX: Float? = null
+                    ImageComposeScene(400, 200, density) {
+                        PlannerTheme {
+                            BasicText(
+                                shown,
+                                modifier = Modifier.fillMaxWidth(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                onTextLayout = {
+                                    caretX = it.getCursorRect(bodyOffsetMapping(s.value.text).originalToTransformed(s.value.selection.start)).left
+                                },
+                            )
+                        }
+                    }.use { scene -> repeat(3) { scene.render(it * 100_000_000L) } }
+                    val expected = Space.indent.value * depth + if (kind == LineKind.PLAIN) 0f else Space.markWidth.value
+                    assertEquals("caret for $kind at depth $depth and font scale $fontScale", expected, caretX!!, 0.5f)
+                }
+            }
+        }
     }
 }

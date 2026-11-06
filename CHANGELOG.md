@@ -2,6 +2,12 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.1.2
+
+- keep the caret after the marker when Enter starts an empty list item
+- use Tab and Shift+Tab to nest and unnest bullets, numbered items and checkboxes
+- apply indentation to the selected lines without changing the following line
+
 ## 1.1.1
 
 - restore planner's warm white and charcoal surfaces, red/yellow/green priorities, segmented headings and counters

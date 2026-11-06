@@ -1,0 +1,1 @@
+Enter keeps the caret after the new list marker. Tab nests bullets, numbers and checkboxes; Shift+Tab moves them back out.
