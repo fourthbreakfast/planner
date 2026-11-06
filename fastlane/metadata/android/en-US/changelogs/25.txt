@@ -1,0 +1,1 @@
+Restore the original neutral colors, red/yellow/green priorities and segmented headings, with larger desktop text. The reliability fixes from 1.1.0 remain.

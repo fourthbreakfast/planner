@@ -1,11 +1,37 @@
-<!-- @dsCard group="Header" height=180 subtitle="readable title and quiet count" -->
+<!-- @dsCard group="Header" height=260 subtitle="title, seven-segment count and bin" -->
 <style>
   body { margin: 0; background: var(--page); color: var(--ink); font: 14px/20px var(--font-sans); }
-  .bar { display: flex; align-items: center; min-height: var(--touch); padding: var(--space-2) var(--gutter); }
-  h1 { margin: 0; font: 700 22px/28px var(--font-sans); }
-  .count { margin-left: var(--space-3); font: 500 12px/16px var(--font-mono); color: var(--quiet); }
-  .actions { margin-left: auto; display: flex; }
-  button { border: 0; background: none; color: var(--quiet); min-width: var(--touch); min-height: var(--touch); font: inherit; }
+  .bar { display: flex; align-items: center; padding: 0 var(--row-pad) 0 var(--gutter); }
+  .head { flex: 1; display: flex; align-items: center; padding: var(--space-2) 0; }
+  h1 { margin: 0; font: 500 22px/28px var(--font-mono); color: var(--ink); }
+  .seg { margin-left: var(--space-3); display: block; }
+  .seg.second { margin-left: var(--space-3); opacity: 0.6; }
+  .touch { width: var(--touch); height: var(--touch); display: flex; align-items: center; justify-content: center; color: var(--quiet); }
+  svg.bin { width: var(--icon); height: var(--icon); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .gap { height: 28px; }
 </style>
-<header class="bar"><h1>tasks</h1><span class="count" aria-label="4 open tasks">4</span><div class="actions"><button aria-label="open bin">bin</button></div></header>
-<header class="bar"><h1>notes</h1><span class="count" aria-label="3 notes">3</span><div class="actions"><button>search</button><button aria-label="open notes bin">bin</button></div></header>
+<div id="root"></div>
+<script>
+  // seven bars per digit, slanted to the right; unlit bars show faintly
+  const DIGITS = ['abcdef', 'bc', 'abdeg', 'abcdg', 'bcfg', 'acdfg', 'acdefg', 'abc', 'abcdefg', 'abcdfg'];
+  const W = 10, H = 18, T = 2.4, G = 0.45, SLANT = 0.12, SP = 4;
+  function bar(b, left) {
+    const h = T / 2;
+    const X = (x, y) => left + x + (H - y) * SLANT;
+    const hex = pts => pts.map(([x, y]) => X(x, y).toFixed(2) + ',' + y.toFixed(2)).join(' ');
+    const horiz = yc => [[h + G, yc], [T + G, yc - h], [W - T - G, yc - h], [W - h - G, yc], [W - T - G, yc + h], [T + G, yc + h]];
+    const vert = (xc, t, b2) => [[xc, t + G], [xc + h, t + h + G], [xc + h, b2 - h - G], [xc, b2 - G], [xc - h, b2 - h - G], [xc - h, t + h + G]];
+    const pts = { a: horiz(h), g: horiz(H / 2), d: horiz(H - h), f: vert(h, h, H / 2 + h * 0.2), b: vert(W - h, h, H / 2 + h * 0.2), e: vert(h, H / 2 - h * 0.2, H - h), c: vert(W - h, H / 2 - h * 0.2, H - h) }[b];
+    return hex(pts);
+  }
+  function segments(n, scale = 1, cls = '') {
+    const ds = String(n).split('').map(Number);
+    const w = ds.length * W + (ds.length - 1) * SP + H * SLANT;
+    const body = ds.map((d, i) => 'abcdefg'.split('').map(b =>
+      `<polygon points="${bar(b, i * (W + SP))}" fill="var(--quiet)" opacity="${DIGITS[d].includes(b) ? 1 : 0.13}"/>`).join('')).join('');
+    return `<svg class="seg ${cls}" viewBox="0 0 ${w.toFixed(2)} ${H}" width="${(w * scale).toFixed(2)}" height="${H * scale}" role="img" aria-label="${n}">${body}</svg>`;
+  }
+  const bin = '<svg class="bin" viewBox="0 0 20 20"><path d="M4.4 5.6 L5.6 18.4 L14.4 18.4 L15.6 5.6"/><path d="M2.4 5.6 L17.6 5.6 M7.6 5.6 L7.6 2 L12.4 2 L12.4 5.6"/></svg>';
+  const barHtml = (title, n, second) => `<div class="bar"><div class="head"><h1>${title}</h1>${segments(n)}${second ? segments(second, 1, 'second') : ''}</div><div class="touch">${bin}</div></div>`;
+  document.getElementById('root').innerHTML = barHtml('tasks', 4) + '<div class="gap"></div>' + barHtml('tasks', 3, 24);
+</script>

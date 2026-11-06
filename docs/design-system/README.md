@@ -1,6 +1,6 @@
 # planner design system
 
-planner is a calm workspace for tasks, an agenda and notes. Readable text, slate surfaces and a teal navigation accent give each screen a predictable hierarchy. The app stays compact enough for daily use without making important controls hard to find.
+planner is a small workspace for tasks, an agenda and notes. Warm white, charcoal, red, yellow and green; segmented names and counters; plain, readable text. Preserve that character as the app grows.
 
 The Kotlin theme in `android/shared/src/commonMain/kotlin/dev/fourthbreakfast/planner/ui/theme` defines the shipped appearance. `tokens.json` mirrors its colors and named sizes for reference previews. Phone screens use tabs and touch targets; Windows shows three columns with smaller mouse controls.
 
@@ -13,19 +13,19 @@ The Kotlin theme in `android/shared/src/commonMain/kotlin/dev/fourthbreakfast/pl
 
 ## Color and hierarchy
 
-- `page` is the slate-tinted ground; `panel` separates raised surfaces; `line` provides quiet dividers.
+- `page` is the neutral ground; `panel` separates raised surfaces; `line` provides quiet dividers.
 - `ink` carries readable content. `quiet` carries metadata and secondary controls, with at least 4.5:1 contrast on the page.
-- Teal `accent` identifies selected navigation, focus and text selection. Selection also has a visible indicator, so color is not its only signal.
+- Neutral `accent` supports focus and text selection. The active tab uses full ink; inactive tabs are quieter. Tabs expose their selected state to accessibility services.
 - `aim` identifies a targeted task, a drag destination or the rename side of a swipe.
-- Priority uses red, amber and blue marks. High, medium and low have diameters of 10, 8 and 6dp; the no-priority ring is 8dp. Accessible labels name the level. Kotlin's `dotHighRadius`, `dotMediumRadius` and `dotLowRadius` are radii; JSON tokens are diameters.
+- Priority uses red, yellow and green marks. High, medium and low have diameters of 10, 8 and 6dp; the no-priority ring is 8dp. Accessible labels name the level. Kotlin's `dotHighRadius`, `dotMediumRadius` and `dotLowRadius` are radii; JSON tokens are diameters.
 - Red backgrounds identify destructive actions. White labels on them exceed 4.5:1 contrast.
 - Design and inspect light and dark together.
 
 ## Typography
 
-IBM Plex Sans is used for navigation, headings, body text and actions. Screen headings use the 22sp bold title style; smaller headings use the 16sp medium style. IBM Plex Mono gives times, counts and short metadata a steady rhythm. Counts use the same readable text system rather than a separate drawing.
+Segmented lettering gives the main screen names their own voice, with seven-segment counters alongside them. IBM Plex Sans carries body text and actions; IBM Plex Mono carries ordinary headings, times and short metadata. Keep the distinctive lettering in navigation rather than spreading it into prose.
 
-Fonts are bundled. Desktop scales the shared typography to seven eighths of the phone scale. Respect the user's text size; event times have a separate width for a twelve-hour clock.
+Fonts are bundled. Desktop uses the full shared type scale instead of shrinking it. Respect the user's text size; event times have a separate width for a twelve-hour clock.
 
 ## Layout and controls
 
@@ -33,9 +33,9 @@ The shared spacing scale is 4, 8, 12, 16, 20 and 24dp, with named sizes for recu
 
 | Role | Rule |
 | --- | --- |
-| Phone navigation | Three equal tabs: tasks, agenda, notes; selected text and a short teal indicator |
+| Phone navigation | Three tabs: tasks, agenda, notes; segmented lettering, active in full ink |
 | Phone controls | At least 48dp touch targets, even when drawings are small |
-| Desktop controls | `Desk` scale: 32dp rows and mouse targets, 16dp drawings, 12dp inset |
+| Desktop controls | `Desk` scale: 36dp rows, 32dp mouse targets, 16dp drawings, 12dp inset |
 | Text gutter | 16dp |
 | Task indent | 20dp per level, four levels maximum |
 | Priority marker | A 40dp touchable lane beside task text |

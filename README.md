@@ -3,7 +3,15 @@
 </p>
 
 <p align="center">
-  <code>android</code> <code>windows</code> <code>kotlin</code> <code>jetpack compose</code> <code>no account</code> <code>agpl-3.0</code>
+  tasks, days and passing thoughts. kept together, on your own devices.
+</p>
+
+<p align="center">
+  <a href="https://github.com/fourthbreakfast/planner/releases/latest">download for android &amp; windows</a>
+  &nbsp; · &nbsp;
+  <a href="#build">build from source</a>
+  &nbsp; · &nbsp;
+  <a href="CHANGELOG.md">release notes</a>
 </p>
 
 <table>
@@ -15,9 +23,7 @@
   </tr>
 </table>
 
-planner is a task list, an agenda and a notebook for android and windows, in one small app that keeps everything on your own devices. there is no account and no server: it can sync between your devices by itself, with a private copy of syncthing built in.
-
-it started as a quick standalone trial and turned out to be useful on its own, so it is kept up. it is not part of any larger set of apps.
+planner brings a task list, an agenda and a notebook into one small app for android and windows. no account to make. your data stays on your devices, with optional sync between them through a private copy of syncthing.
 
 ### what it does
 
@@ -33,19 +39,22 @@ it started as a quick standalone trial and turned out to be useful on its own, s
 
 ### install
 
-the [latest release](https://github.com/fourthbreakfast/planner/releases/latest) has both.
+the [latest release](https://github.com/fourthbreakfast/planner/releases/latest) includes the android apk and windows setup. both install over the previous version and keep your data.
 
-**phone.** download the apk and open it on your phone. you need android 8 or newer; sync needs an ARM64 phone. your phone will ask you to allow installing it. updates install over the top and keep your data.
+**phone.** download the apk and open it on your phone. you need android 8 or newer; sync needs an ARM64 phone. your phone will ask you to allow installing it.
 
-**verify.** the apk is signed with one key for every release, whose SHA-256 certificate digest is `619dc72c00a929a10ec1da3e81ecec0062437f8a28e4263610655e4190d670db`, also kept in [android/signing-certificate.sha256](android/signing-certificate.sha256). check it with `apksigner verify --print-certs planner-1.0.0.apk`.
+**verify.** the apk is signed with one key for every release, whose SHA-256 certificate digest is `619dc72c00a929a10ec1da3e81ecec0062437f8a28e4263610655e4190d670db`, also kept in [android/signing-certificate.sha256](android/signing-certificate.sha256). check it with `apksigner verify --print-certs planner-<version>.apk`.
 
 **updates.** both apps look for a newer release once a day and download it in the background, checking its checksum before offering it in the settings (and on windows beside the settings cog in the title bar). the installer starts when you choose to install; android also asks you to confirm. the daily look can be turned off.
 
-**windows.** download the setup and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
+**windows.** download the setup and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it.
 
 ### use
 
 everything a row can do starts with holding it for a moment, so sweeping across the screen never removes anything by accident. the settings (the cog at the top right, or hold any of the three tabs) have a "how it works" list of every gesture.
+
+<details>
+<summary>phone gestures</summary>
 
 <table>
   <tr><th colspan="2">tasks</th></tr>
@@ -77,6 +86,8 @@ everything a row can do starts with holding it for a moment, so sweeping across 
   <tr><td>a reminder notification</td><td>touch it to open the event, snooze it for 10 minutes or dismiss it</td></tr>
 </table>
 
+</details>
+
 ### on windows
 
 <p align="center">
@@ -84,6 +95,9 @@ everything a row can do starts with holding it for a moment, so sweeping across 
 </p>
 
 the window shows the tasks, the agenda and the notes side by side. a note, an event, a bin, the search or the settings slide in from the right, and escape closes them. the cog in the title bar opens the settings, which also have the list of shortcuts.
+
+<details>
+<summary>keyboard, mouse and tray</summary>
 
 <table>
   <tr><td>ctrl+1, ctrl+2, ctrl+3</td><td>go to tasks, agenda or notes</td></tr>
@@ -97,27 +111,44 @@ the window shows the tasks, the agenda and the notes side by side. a note, an ev
   <tr><td>closing the window</td><td>keeps planner in the tray, so reminders and sync go on. quit from the tray, or have it start with windows in the settings</td></tr>
 </table>
 
+</details>
+
 ### privacy
 
-everything lives in a database on your device, and nothing is sent anywhere unless you pair another device. sync runs through the app's own copy of syncthing, with its own keys, ports and folder, separate from any syncthing you run yourself. it only looks for your devices on the network you are on: no discovery servers, no relays, no usage or crash reports. "sync anywhere" in the sync settings lets it reach your devices from other networks too, through syncthing's public discovery and relay servers; what travels is end to end encrypted, but those servers see your device's id and address.
+your tasks, events and notes live in a database on your device. planner has no account system, usage analytics or crash reporting.
 
-the daily update check is the one other thing that goes out: it asks github for the latest release page, and sends nothing about you. it can be turned off in the settings.
+**sync is optional.** it uses the app's own copy of syncthing, with separate keys, ports and storage from any syncthing you run yourself. by default, it looks for paired devices on your local network, without public discovery servers or relays. enabling “sync anywhere” allows syncthing's public discovery and relay services to help devices connect across networks. synced data is encrypted end to end; those services can see connection metadata, including device identifiers and network addresses.
+
+**updates contact github.** the daily check asks github's release API for the newest version. when one is available, planner downloads it and checks it against the checksum in the release metadata. these requests do not include your tasks, events or notes; github receives ordinary connection information, including your IP address. turn off the daily check in settings if you prefer to check manually.
 
 planner asks for network access for sync, and for the permissions reminders need: showing notifications, setting exact alarms, and setting them again after a restart. it asks for the camera only when you scan a code to pair.
 
-a backup is a plain json file you can read and keep. importing one only adds what is missing, never changes or removes what you have, so importing the same file twice is harmless.
+a backup is an unencrypted json file you can read and keep. choose a private place for it, including for daily backups. importing one only adds what is missing, never changes or removes what you have, so importing the same file twice is harmless.
 
 ### build
 
 planner is written in kotlin with compose multiplatform, and stores its data with room. the phone and windows apps share their data, rules, sync, words and parts of the screens; each has a layout of its own. the sync is [syncthing](https://syncthing.net), pinned as a submodule in [third_party/syncthing](third_party/syncthing) and built from source with go, so clone with `--recurse-submodules` and have go installed (the build fetches the exact go version syncthing asks for). open the `android` folder in android studio, or use its terminal with that folder as the working directory. the pinned tool versions and the structure of the code are in [android/README.md](android/README.md), and the look is documented in the [design system](docs/design-system).
 
-with a phone connected, run `.\gradlew.bat installDebug -Pdemo` to install a second copy called "planner dev". it keeps its data separate from the real app, and updating the dev copy preserves its existing data. use `-Pdemo` in an android studio run configuration too. on linux or macos, use `./gradlew` in place of `.\gradlew.bat`.
+from the `android` folder, with a phone connected:
 
-the windows app runs with `.\gradlew.bat :desktop:run`, and `.\gradlew.bat :desktop:packageSetup` builds its installer (it needs [inno setup 6](https://jrsoftware.org/isinfo.php)). set `PLANNER_DATA` to a folder, and `PLANNER_PREFS` to a name, to try it on data and settings other than your own.
+```powershell
+.\gradlew.bat installDebug -Pdemo
+```
+
+this installs a second copy called “planner dev”, with separate data. updating the dev copy preserves its data. use `-Pdemo` in android studio run configurations too. on linux or macos, use `./gradlew` in place of `.\gradlew.bat`.
+
+for windows:
+
+```powershell
+.\gradlew.bat :desktop:run
+.\gradlew.bat :desktop:packageSetup
+```
+
+packaging needs [inno setup 6](https://jrsoftware.org/isinfo.php). set `PLANNER_DATA` to a separate folder and `PLANNER_PREFS` to a separate name to try changes on disposable desktop data and settings.
 
 ### credits
 
-the fonts are [ibm plex sans](https://github.com/IBM/plex) and [ibm plex mono](https://github.com/IBM/plex), under the SIL open font license ([docs/licenses/IBMPlex-OFL.txt](docs/licenses/IBMPlex-OFL.txt)). headings use plex sans, with plex mono for times and small counts.
+the fonts are [ibm plex sans](https://github.com/IBM/plex) and [ibm plex mono](https://github.com/IBM/plex), under the SIL open font license ([docs/licenses/IBMPlex-OFL.txt](docs/licenses/IBMPlex-OFL.txt)). headings and large counts are drawn from digital segments. body text uses plex sans; times and small metadata use plex mono.
 
 sync is [syncthing](https://syncthing.net) by the syncthing contributors, under the mozilla public license 2.0 ([docs/licenses/Syncthing-MPL-2.0.txt](docs/licenses/Syncthing-MPL-2.0.txt)); its source is in [third_party/syncthing](third_party/syncthing), unchanged. the pairing codes are read and drawn with [zxing](https://github.com/zxing/zxing) and [zxing android embedded](https://github.com/journeyapps/zxing-android-embedded), under the apache license 2.0 ([docs/licenses/Apache-2.0.txt](docs/licenses/Apache-2.0.txt)).
 
