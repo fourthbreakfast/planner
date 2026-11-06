@@ -141,7 +141,7 @@ for windows:
 
 ```powershell
 .\gradlew.bat :desktop:run
-.\gradlew.bat :desktop:packageSetup
+.\gradlew.bat :desktop:packageSetup --no-configuration-cache
 ```
 
 packaging needs [inno setup 6](https://jrsoftware.org/isinfo.php). set `PLANNER_DATA` to a separate folder and `PLANNER_PREFS` to a separate name to try changes on disposable desktop data and settings.
