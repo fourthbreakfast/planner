@@ -52,15 +52,27 @@ class TwoDevicesTest {
         val root = Files.createTempDirectory("planner-sync").toFile()
         val pc = Device(binary!!, File(root, "pc"), Ports(22191, 21191, "127.0.0.1"))
         val phone = Device(binary, File(root, "phone"), Ports(22192, 21192, "127.0.0.1"))
+        var failed = false
         try {
             pc.start("pc")
             phone.start("phone")
             pc.syncthing.pair(phone.syncthing.myId, introducer = true, addresses = listOf(phone.syncthing.address))
             phone.syncthing.pair(pc.syncthing.myId, introducer = false, addresses = listOf(pc.syncthing.address))
-            until("connected") { pc.syncthing.peers().all { it.connected } && phone.syncthing.peers().all { it.connected } }
+            until("connected") {
+                pc.syncthing.peers().any { it.id == phone.syncthing.myId && it.connected } &&
+                    phone.syncthing.peers().any { it.id == pc.syncthing.myId && it.connected }
+            }
             // a device tells its id to anyone who starts a connection, which is how one is found without broadcasts
             assertEquals(phone.syncthing.myId, deviceIdAt("127.0.0.1", 22192))
-            assertEquals(listOf("phone"), pc.syncthing.peers().map { it.name })
+            assertEquals(listOf(phone.syncthing.myId), pc.syncthing.peers().map { it.id })
+
+            // A connection may start before the phone has accepted the pc. Syncthing then withholds the name in its
+            // hello, so the name is delivered by the app's shared name file even when the connection is already open.
+            phone.files.carryNames(phone.syncthing, "phone")
+            until("the initial name arrives") {
+                pc.files.carryNames(pc.syncthing, "pc")
+                pc.syncthing.peers().any { it.id == phone.syncthing.myId && it.name == "phone" && it.connected }
+            }
 
             // a device is named on itself, and the others call it that
             phone.files.carryNames(phone.syncthing, "kalypso")
@@ -85,10 +97,17 @@ class TwoDevicesTest {
                 pc.tasks.state.value.isEmpty() && pc.notes.state.value.isNotEmpty()
             }
             assertEquals("from the phone", pc.notes.state.value.single().body)
+        } catch (failure: Throwable) {
+            failed = true
+            System.err.println("sync failure files: $root")
+            for (name in listOf("pc", "phone")) {
+                System.err.println("$name log: ${File(root, "$name/home/syncthing.log").lastLines(80)}")
+            }
+            throw failure
         } finally {
             pc.syncthing.stop()
             phone.syncthing.stop()
-            root.deleteRecursively()
+            if (!failed) root.deleteRecursively()
         }
     }
 

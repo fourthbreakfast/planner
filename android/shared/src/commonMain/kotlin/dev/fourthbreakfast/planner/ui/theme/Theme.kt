@@ -11,8 +11,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PriorityHigh,
-    onPrimary = Color.White,
+    primary = AccentDark,
+    onPrimary = PageDark,
+    error = PriorityHigh,
+    onError = Color.White,
     secondaryContainer = AimDark,
     onSecondaryContainer = InkDark,
     background = PageDark,
@@ -29,8 +31,10 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PriorityHigh,
+    primary = AccentLight,
     onPrimary = Color.White,
+    error = PriorityHigh,
+    onError = Color.White,
     secondaryContainer = AimLight,
     onSecondaryContainer = InkLight,
     background = PageLight,
@@ -49,10 +53,10 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun PlannerTheme(darkTheme: Boolean = isSystemInDarkTheme(), textScale: Float = 1f, content: @Composable () -> Unit) {
     val colors = if (darkTheme) DarkColorScheme else LightColorScheme
-    // the text cursor handle and selection follow the page colors, not the red accent
+    // Selection uses the navigation accent while priority and destructive marks keep their own meaning.
     val selection = TextSelectionColors(
-        handleColor = colors.onSurfaceVariant,
-        backgroundColor = colors.onSurfaceVariant.copy(alpha = 0.3f),
+        handleColor = colors.primary,
+        backgroundColor = colors.primary.copy(alpha = 0.2f),
     )
     MaterialTheme(
         colorScheme = colors,

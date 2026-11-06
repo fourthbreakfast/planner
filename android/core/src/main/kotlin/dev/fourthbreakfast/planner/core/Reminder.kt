@@ -7,6 +7,11 @@ import java.time.ZoneId
 /** The reminders a person can pick, in minutes before the start. Null is no reminder. */
 val REMINDER_CHOICES: List<Int?> = listOf(null, 0, 10, 60)
 
+/** Future alarms, including the next occurrence after a repeating reminder has just fired. */
+fun scheduledReminders(events: List<Event>, now: Long, zone: ZoneId = ZoneId.systemDefault()): List<Pair<Event, Long>> = events
+    .filterNot { it.inBin }
+    .mapNotNull { event -> reminderAt(event, zone, from = now + 1)?.takeIf { it > now }?.let { event to it } }
+
 /**
  * The moment, in milliseconds since 1970, to remind about an event, or null when it has no reminder. The day and
  * time are read as written on the wall clock of [zone], so a reminder follows the phone to a new time zone.

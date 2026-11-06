@@ -29,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,7 +84,7 @@ import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.CheckBoxMark
 import dev.fourthbreakfast.planner.ui.PinButton
 import dev.fourthbreakfast.planner.ui.QuietButton
-import dev.fourthbreakfast.planner.ui.SegmentTab
+import dev.fourthbreakfast.planner.ui.ScreenHeading
 import dev.fourthbreakfast.planner.ui.theme.Space
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -104,31 +103,24 @@ fun NoteEditor(
     note: Note,
     onPin: () -> Unit,
     toolbarAbove: Boolean,
-    onSave: (title: String, body: String, base: Long, onSaved: (Long) -> Unit) -> Unit,
+    onSave: (title: String, body: String, base: Long, onSaved: (Long?) -> Unit) -> Unit,
     onClose: () -> Unit,
 ) {
     val state = remember { NoteEditState(note.title, note.body) }
-    var base by remember { mutableLongStateOf(note.updatedAt) }
-    var saved by remember { mutableStateOf(note.title to note.body) }
+    val saves = remember { NoteSaveQueue(note.title to note.body, note.updatedAt, onSave) }
 
     fun save() {
-        val now = state.title to state.body()
-        if (now == saved) return
-        onSave(now.first, now.second, base) { version ->
-            base = version
-            saved = now
-        }
+        saves.save(state.title to state.body())
     }
     BackHandler {
         save()
-        onClose()
+        saves.afterSaving(onClose)
     }
     // nothing typed here, and a newer version came in: show it
     LaunchedEffect(note.updatedAt) {
-        if (note.updatedAt > base && (state.title to state.body()) == saved) {
+        if (saves.idle && note.updatedAt > saves.version && (state.title to state.body()) == saves.saved) {
             state.replaceWith(note.title, note.body)
-            base = note.updatedAt
-            saved = note.title to note.body
+            saves.acceptRemote(note.title to note.body, note.updatedAt)
         }
     }
     LaunchedEffect(state) {
@@ -158,13 +150,13 @@ fun NoteEditor(
                         .statusBarsPadding()
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
-                    SegmentTab(stringResource(Res.string.note_title), Modifier.weight(1f))
+                    ScreenHeading(stringResource(Res.string.note_title), Modifier.weight(1f))
                     QuietButton(stringResource(Res.string.undo), state.canUndo) { state.undo() }
                     QuietButton(stringResource(Res.string.redo), state.canRedo) { state.redo() }
                     PinButton(note.pinned, onPin)
                     BackButton {
                         save()
-                        onClose()
+                        saves.afterSaving(onClose)
                     }
                 }
                 if (!toolbarAbove) Toolbar(state)

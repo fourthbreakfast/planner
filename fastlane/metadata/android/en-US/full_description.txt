@@ -1,4 +1,4 @@
-planner is a task list, an agenda and a notebook in one small app that keeps everything on your own devices. there is no account and no server, and it never phones home.
+planner is a task list, an agenda and a notebook in one small app that keeps everything on your own devices. there is no account. a daily update check asks github for the latest release and can be turned off in the settings.
 
 <b>tasks.</b> subtasks up to four levels deep, a priority on every task, and a bin for anything you remove. checking a task covers everything inside it.
 

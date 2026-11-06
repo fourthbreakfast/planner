@@ -7,6 +7,7 @@ import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -235,7 +236,7 @@ abstract class SyncRunner(
     /** Stops Syncthing, letting it close its database first. */
     suspend fun stop() {
         lock.withLock {
-            loop?.cancel()
+            loop?.cancelAndJoin()
             loop = null
             files = null
             syncthing?.stop()

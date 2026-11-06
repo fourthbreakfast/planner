@@ -42,6 +42,7 @@ kotlin {
         getByName("desktopMain").dependencies {
             implementation(compose.desktop.common)
             implementation(libs.androidx.sqlite.bundled)
+            implementation(libs.jna)
             implementation(libs.kotlinx.coroutines.swing)
         }
         getByName("desktopTest").dependencies {
@@ -69,4 +70,7 @@ dependencies {
 // the drawing tests write their pictures where PLANNER_RENDER says
 tasks.withType<Test>().configureEach {
     providers.environmentVariable("PLANNER_RENDER").orNull?.let { environment("PLANNER_RENDER", it) }
+    val designTokens = rootProject.file("../docs/design-system/tokens.json")
+    inputs.file(designTokens)
+    systemProperty("planner.designTokens", designTokens.absolutePath)
 }

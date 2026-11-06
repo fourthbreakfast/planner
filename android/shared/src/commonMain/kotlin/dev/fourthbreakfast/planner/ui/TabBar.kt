@@ -1,17 +1,21 @@
 package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -58,7 +62,7 @@ fun TabBar(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier
                 Tab.NOTES -> Res.string.notes_title
             }
             Box(Modifier.weight(1f)) {
-                TabWord(stringResource(title), selected == tab, tab.alignment, { onSelect(tab) }, onLongPress)
+                TabWord(stringResource(title), selected == tab, { onSelect(tab) }, onLongPress)
             }
         }
     }
@@ -66,13 +70,13 @@ fun TabBar(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TabWord(text: String, active: Boolean, alignment: Alignment, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+private fun TabWord(text: String, active: Boolean, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
     val haptics = LocalHapticFeedback.current
     val colors = MaterialTheme.colorScheme
     val press = remember { MutableInteractionSource() }
     val pressed by press.collectIsPressedAsState()
     Box(
-        contentAlignment = alignment,
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Space.touch)
@@ -92,26 +96,26 @@ private fun TabWord(text: String, active: Boolean, alignment: Alignment, onClick
             .padding(horizontal = Space.gutter - Space.rowPad)
             .semantics { selected = active },
     ) {
-        SegmentText(
+        Text(
             text = text,
-            color = if (active) colors.onBackground else colors.onSurfaceVariant,
-            scale = TAB_SCALE,
+            color = if (active) colors.primary else colors.onSurfaceVariant,
+            style = MaterialTheme.typography.labelLarge,
         )
+        if (active) {
+            Box(Modifier.align(Alignment.BottomCenter).width(Space.x6).height(Space.strokeThick).background(colors.primary))
+        }
     }
 }
 
-/** How large the calculator lettering is for tab words and screen titles. */
-const val TAB_SCALE = 1.0f
-
-/** A word in the same lettering and size as the tabs, for a screen that is a tab of its own. */
+/** A heading for a screen that is a tab of its own. */
 @Composable
-fun SegmentTab(text: String, modifier: Modifier = Modifier) {
+fun ScreenHeading(text: String, modifier: Modifier = Modifier) {
     Box(
         contentAlignment = Alignment.CenterStart,
         modifier = modifier
             .heightIn(min = Space.touch)
             .semantics { heading() },
     ) {
-        SegmentText(text = text, color = MaterialTheme.colorScheme.onBackground, scale = TAB_SCALE)
+        Text(text = text, color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleLarge)
     }
 }

@@ -34,11 +34,21 @@ class Sync(
     private val events: EventStore,
     private val notes: NoteStore,
     private val ledger: SyncLedger,
+    private val transactions: TransactionRunner = StoreTransactionRunner(tasks),
     private val clock: () -> Long = System::currentTimeMillis,
     // every time in another device's file is told to the clock, so this device's next change lands after it
     private val saw: (Long) -> Unit = {},
 ) {
-    suspend fun snapshot(): String = tasks.transaction { encodeBackup(tasks.all(), events.all(), notes.all(), ledger.gone()) }
+    constructor(
+        tasks: TaskStore,
+        events: EventStore,
+        notes: NoteStore,
+        ledger: SyncLedger,
+        clock: () -> Long,
+        saw: (Long) -> Unit = {},
+    ) : this(tasks, events, notes, ledger, StoreTransactionRunner(tasks), clock, saw)
+
+    suspend fun snapshot(): String = transactions.transaction { encodeBackup(tasks.all(), events.all(), notes.all(), ledger.gone()) }
 
     /** Takes in another device's snapshot and returns how many things changed here. */
     suspend fun merge(text: String): Int {
@@ -46,7 +56,7 @@ class Sync(
         val other = decodeBackup(text, acceptNewer = true)
         (other.tasks.map { it.updatedAt } + other.events.map { it.updatedAt } + other.notes.map { it.updatedAt } + other.gone.map { it.at })
             .maxOrNull()?.let(saw)
-        return tasks.transaction {
+        return transactions.transaction {
             val known = ledger.gone().associate { it.id to it.at }
             val incomingGone = other.gone.groupBy { it.id }.mapValues { (_, marks) -> marks.maxOf { it.at } }
             val newGone = incomingGone.filter { (id, at) -> (known[id] ?: Long.MIN_VALUE) < at }
@@ -60,24 +70,24 @@ class Sync(
                 incoming = other.tasks,
                 id = Task::id,
                 updatedAt = Task::updatedAt,
+                tieKey = Task::toString,
                 gone = gone,
-                incomingGone = incomingGone,
                 agreed = nowAgreed,
             ) + mergeKind(
                 store = events,
                 incoming = other.events,
                 id = Event::id,
                 updatedAt = Event::updatedAt,
+                tieKey = { it.copy(skipDays = it.skipDays.sorted().toCollection(LinkedHashSet())).toString() },
                 gone = gone,
-                incomingGone = incomingGone,
                 agreed = nowAgreed,
             ) + mergeKind(
                 store = notes,
                 incoming = other.notes,
                 id = Note::id,
                 updatedAt = Note::updatedAt,
+                tieKey = Note::toString,
                 gone = gone,
-                incomingGone = incomingGone,
                 agreed = nowAgreed,
                 beforeReplacing = { mine, theirs ->
                     val base = agreed[mine.id]
@@ -91,7 +101,7 @@ class Sync(
             if (conflicts.isNotEmpty()) notes.insert(conflicts)
             // the marks keep the time things were deleted on the device that deleted them. deleting them here wrote this
             // device's time over them, which would make a later change on a third device look older than the delete
-            if (newGone.isNotEmpty()) ledger.addGone(newGone.map { (id, at) -> Gone(id, at) })
+            if (gone.isNotEmpty()) ledger.addGone(gone.map { (id, at) -> Gone(id, at) })
             // two moves made apart can put two tasks inside each other: one is let go to the top
             val loose = loopBreaks(tasks.all())
             if (loose.isNotEmpty()) {
@@ -108,10 +118,10 @@ class Sync(
      * Whether [theirs] should replace [mine]: the later change wins. Two different versions changed at the very same
      * moment would otherwise each stay on its own device, so the tie goes the same way everywhere, by the text of each.
      */
-    private fun <T> isNewer(theirs: T, mine: T, updatedAt: (T) -> Long): Boolean {
+    private fun <T> isNewer(theirs: T, mine: T, updatedAt: (T) -> Long, tieKey: (T) -> String): Boolean {
         val a = updatedAt(theirs)
         val b = updatedAt(mine)
-        return a > b || (a == b && theirs != mine && theirs.toString() > mine.toString())
+        return a > b || (a == b && theirs != mine && tieKey(theirs) > tieKey(mine))
     }
 
     private suspend fun <T> mergeKind(
@@ -119,28 +129,27 @@ class Sync(
         incoming: List<T>,
         id: (T) -> String,
         updatedAt: (T) -> Long,
+        tieKey: (T) -> String,
         gone: Map<String, Long>,
-        incomingGone: Map<String, Long>,
         agreed: MutableMap<String, Long>,
         beforeReplacing: (mine: T, theirs: T) -> Unit = { _, _ -> },
     ): Int {
         val local = store.all()
         // deleted for good elsewhere, and not changed here since
-        val removed = local.filter { item -> incomingGone[id(item)]?.let { updatedAt(item) <= it } == true }
+        val removed = local.filter { item -> gone[id(item)]?.let { updatedAt(item) <= it } == true }
         val removedIds = removed.mapTo(HashSet(), id)
         val mine = local.filterNot { id(it) in removedIds }.associateBy(id)
         val added = ArrayList<T>()
         val replaced = ArrayList<T>()
-        for (theirs in incoming.groupBy(id).map { (_, copies) -> copies.maxBy(updatedAt) }) {
+        for (theirs in incoming.groupBy(id).map { (_, copies) -> copies.reduce { a, b -> if (isNewer(b, a, updatedAt, tieKey)) b else a } }) {
             val key = id(theirs)
-            if (key in removedIds) continue
             val here = mine[key]
             // something deleted for good here only comes back when it was changed after that
-            val wanted = here != null || gone[key]?.let { updatedAt(theirs) > it } != false
+            val wanted = gone[key]?.let { updatedAt(theirs) > it } != false
             if (!wanted) continue
             when {
                 here == null -> added += theirs
-                isNewer(theirs, here, updatedAt) -> {
+                isNewer(theirs, here, updatedAt, tieKey) -> {
                     beforeReplacing(here, theirs)
                     replaced += theirs
                 }

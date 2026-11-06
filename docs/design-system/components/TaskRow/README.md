@@ -6,5 +6,5 @@ The consumer provides the title, the priority, the depth (four levels at most), 
 
 - Do mark the targeted row with `aim` for its whole width.
 - Do keep the check box 48px square to touch, however small it is drawn.
-- Don't size the dot by priority, and don't add a border between rows.
-- Don't hide the row's remove and rename gestures behind buttons: swipe right removes, swipe left renames (see SwipeBackground).
+- Keep the priority size steps (10, 8 and 6dp diameters); do not add borders between task rows.
+- On the phone, hold before swiping right to remove or left to rename. Desktop also exposes context menus and keyboard shortcuts.
