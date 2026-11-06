@@ -1,4 +1,4 @@
-The form for one event. Its title, "event", uses the shared sans-serif screen heading, with a back arrow at the right and "delete" beside it only when the event already exists.
+The form for one event. Its title, "event", uses the segmented screen heading, with a back arrow at the right and "delete" beside it only when the event already exists.
 
 The fields are plain, with no hint sentences, no rules and no borders: a `note` label in `quiet` above each one, then the field. Name, location and notes are typed on the page colour, like the add line. Day and time are shown as plain text values that you touch; both are empty until chosen. A day left empty means today when saved, and a time left empty means the whole day. Notes start one line tall and grow as you write.
 
