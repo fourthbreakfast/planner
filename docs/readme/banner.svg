@@ -1,21 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 150" width="900" height="150" role="img" aria-label="planner: tasks, agenda and notes">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 150" width="900" height="150" role="img" aria-label="planner">
   <style>
-    .word { font: 700 76px system-ui, sans-serif; fill: #182735; letter-spacing: -3px; }
-    .caption { font: 400 19px system-ui, sans-serif; fill: #596b7b; }
-    .accent { stroke: #176b5b; }
-    .ring { fill: none; stroke: #596b7b; stroke-width: 3; }
+    .word { font: 500 76px ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; fill: #37352f; }
+    .quiet polygon { fill: #787774; }
+    .faint polygon { fill: #787774; fill-opacity: .6; }
+    .ring { fill: none; stroke: #787774; stroke-width: 3; }
     @media (prefers-color-scheme: dark) {
-      .word { fill: #e6eef5; }
-      .caption { fill: #a2b3c3; }
-      .accent { stroke: #83d5bf; }
-      .ring { stroke: #a2b3c3; }
+      .word { fill: #e6e6e4; }
+      .quiet polygon, .faint polygon { fill: #9b9b9b; }
+      .ring { stroke: #9b9b9b; }
     }
   </style>
-  <text class="word" x="8" y="90">planner</text>
-  <text class="caption" x="12" y="128">tasks · agenda · notes</text>
-  <path class="accent" d="M12 146h72" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="728" cy="76" r="12" fill="#c4444c"/>
-  <circle cx="772" cy="76" r="10" fill="#af790d"/>
-  <circle cx="816" cy="76" r="8" fill="#477ea8"/>
-  <circle cx="860" cy="76" r="8.5" class="ring"/>
+  <text class="word" x="0" y="100">planner</text>
+  <g transform="translate(372 44) scale(3.1)" class="quiet"><polygon points="3.67,1.2 5.01,0 9.31,0 10.37,1.2 9.02,2.4 4.72,2.4" opacity="1"/><polygon points="10.76,1.65 11.82,2.85 11.25,7.59 9.91,8.79 8.85,7.59 9.42,2.85" opacity="0.13"/><polygon points="9.85,9.21 10.91,10.41 10.34,15.15 9,16.35 7.94,15.15 8.51,10.41" opacity="1"/><polygon points="1.79,16.8 3.14,15.6 7.44,15.6 8.49,16.8 7.15,18 2.85,18" opacity="1"/><polygon points="2.25,9.21 3.31,10.41 2.74,15.15 1.4,16.35 0.34,15.15 0.91,10.41" opacity="0.13"/><polygon points="3.16,1.65 4.22,2.85 3.65,7.59 2.31,8.79 1.25,7.59 1.82,2.85" opacity="1"/><polygon points="2.73,9 4.07,7.8 8.37,7.8 9.43,9 8.09,10.2 3.79,10.2" opacity="1"/></g>
+  <g transform="translate(432 44) scale(3.1)" class="faint"><polygon points="3.67,1.2 5.01,0 9.31,0 10.37,1.2 9.02,2.4 4.72,2.4" opacity="0.13"/><polygon points="10.76,1.65 11.82,2.85 11.25,7.59 9.91,8.79 8.85,7.59 9.42,2.85" opacity="1"/><polygon points="9.85,9.21 10.91,10.41 10.34,15.15 9,16.35 7.94,15.15 8.51,10.41" opacity="1"/><polygon points="1.79,16.8 3.14,15.6 7.44,15.6 8.49,16.8 7.15,18 2.85,18" opacity="0.13"/><polygon points="2.25,9.21 3.31,10.41 2.74,15.15 1.4,16.35 0.34,15.15 0.91,10.41" opacity="0.13"/><polygon points="3.16,1.65 4.22,2.85 3.65,7.59 2.31,8.79 1.25,7.59 1.82,2.85" opacity="0.13"/><polygon points="2.73,9 4.07,7.8 8.37,7.8 9.43,9 8.09,10.2 3.79,10.2" opacity="0.13"/><polygon points="17.67,1.2 19.01,0 23.31,0 24.37,1.2 23.02,2.4 18.72,2.4" opacity="1"/><polygon points="24.76,1.65 25.82,2.85 25.25,7.59 23.91,8.79 22.85,7.59 23.42,2.85" opacity="1"/><polygon points="23.85,9.21 24.91,10.41 24.34,15.15 23,16.35 21.94,15.15 22.51,10.41" opacity="0.13"/><polygon points="15.79,16.8 17.14,15.6 21.44,15.6 22.49,16.8 21.15,18 16.85,18" opacity="1"/><polygon points="16.25,9.21 17.31,10.41 16.74,15.15 15.4,16.35 14.34,15.15 14.91,10.41" opacity="1"/><polygon points="17.16,1.65 18.22,2.85 17.65,7.59 16.31,8.79 15.25,7.59 15.82,2.85" opacity="0.13"/><polygon points="16.73,9 18.07,7.8 22.37,7.8 23.43,9 22.09,10.2 17.79,10.2" opacity="1"/></g>
+  <circle cx="728" cy="72" r="11" fill="#d93a3a"/>
+  <circle cx="772" cy="72" r="11" fill="#d9a300"/>
+  <circle cx="816" cy="72" r="11" fill="#448361"/>
+  <circle cx="860" cy="72" r="9.5" class="ring"/>
 </svg>

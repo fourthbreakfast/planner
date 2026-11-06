@@ -2,6 +2,13 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.1.1
+
+- restore planner's warm white and charcoal surfaces, red/yellow/green priorities, segmented headings and counters
+- larger desktop text and roomier rows, without the previous type shrink factor
+- a quieter, more considered readme, refreshed screenshots and matching design references
+- retain the data, sync, reminder and update safeguards introduced in 1.1.0
+
 ## 1.1.0
 
 - a calmer shared design: readable headings, slate surfaces, teal selected navigation, distinct priority marks, and consistent light and dark themes
