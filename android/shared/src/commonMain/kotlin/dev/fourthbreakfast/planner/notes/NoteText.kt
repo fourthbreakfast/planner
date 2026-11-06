@@ -96,6 +96,10 @@ internal fun styledBody(shown: String, marks: List<LineMark>, looks: List<Int>, 
     // each line is a paragraph, which breaks by itself: a line break left in would make a second one. something of the same
     // length stands in for it, so places in this text still match places in the real one
     append(shown.replace('\n', GUARD))
+    // Keep a full-height caret inside the final paragraph, without adding visible text or horizontal advance.
+    if (shown.endsWith('\n')) {
+        withStyle(SpanStyle(color = Color.Transparent, letterSpacing = (-1).em)) { append(' ') }
+    }
     val text = shown.drop(1)
     if (looks.size != text.length) return@buildAnnotatedString
     looks.forEachIndexed { i, look -> if (look != 0 && text[i] != '\n') addStyle(spanFor(look), i + 1, i + 2) }
@@ -103,7 +107,7 @@ internal fun styledBody(shown: String, marks: List<LineMark>, looks: List<Int>, 
     text.split('\n').forEachIndexed { index, words ->
         val mark = marks.getOrElse(index) { LineMark() }
         val first = if (index == 0) 0 else start + 1
-        val end = minOf(start + words.length + 2, shown.length)
+        val end = minOf(start + words.length + 2, length)
         val push = with(density) { (Space.indent * mark.indent + if (mark.kind == LineKind.PLAIN) 0.dp else Space.markWidth).toSp() }
         addStyle(ParagraphStyle(textIndent = TextIndent(push, push), lineHeightStyle = EVEN_LINES), first, end)
         if (mark.checked) addStyle(SpanStyle(color = quiet), first, end)
