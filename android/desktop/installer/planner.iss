@@ -41,7 +41,7 @@ Source: "{#Source}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 Name: "{autoprograms}\planner"; Filename: "{app}\planner.exe"
 
 [Run]
-Filename: "{app}\planner.exe"; Description: "open planner"; Flags: nowait postinstall
+Filename: "{app}\planner.exe"; Description: "open planner"; Flags: nowait postinstall skipifsilent
 
 [Code]
 // the former msi installer: take it away first, keeping the data, which lives outside the install folder
