@@ -150,6 +150,41 @@ class SyncTest {
     }
 
     @Test
+    fun newerIncomingVersionSurvivesDeleteOfStaleLocalVersion() = runBlocking {
+        phone.notes.insert(listOf(note("n", "stale", 5)))
+        pc.notes.insert(listOf(note("n", "new", 30)))
+        pc.ledger.addGone(listOf(Gone("n", 20)))
+
+        phone.from(pc)
+        assertEquals("new", phone.note("n")?.body)
+        assertEquals(listOf(Gone("n", 20)), phone.ledger.gone)
+    }
+
+    @Test
+    fun knownDeletionIsNotRestampedWhenRemovingStaleLocalVersion() = runBlocking {
+        phone.notes.insert(listOf(note("n", "stale", 5)))
+        phone.ledger.addGone(listOf(Gone("n", 20)))
+        pc.ledger.addGone(listOf(Gone("n", 10)))
+
+        phone.from(pc)
+        assertNull(phone.note("n"))
+        assertEquals(listOf(Gone("n", 20)), phone.ledger.gone)
+    }
+
+    @Test
+    fun duplicateEqualTimestampVersionsSettleRegardlessOfOrder() = runBlocking {
+        val a = Task(id = "t", title = "a", createdAt = 1, updatedAt = 10)
+        val b = a.copy(title = "b")
+        val left = Device()
+        val right = Device()
+        left.sync.merge(encodeBackup(listOf(a, b)))
+        right.sync.merge(encodeBackup(listOf(b, a)))
+        assertEquals(left.task("t"), right.task("t"))
+        assertEquals(0, left.from(right))
+        assertEquals(0, right.from(left))
+    }
+
+    @Test
     fun twoTasksMovedIntoEachOtherAreUntangled() = runBlocking {
         phone.tasks.insert(listOf(Task(id = "x", title = "x", createdAt = 1), Task(id = "y", title = "y", createdAt = 1)))
         pc.from(phone)
@@ -166,6 +201,15 @@ class SyncTest {
 }
 
 class SyncDetailsTest {
+    @Test
+    fun startupClockIncludesDeletedItems() = runBlocking {
+        val ledger = MemoryLedger()
+        ledger.addGone(listOf(Gone("deleted", 5_000)))
+        val clock = LogicalClock { 100 }
+        clock.saw(newestChange(MemoryTaskStore(), MemoryEventStore(), MemoryNoteStore(), ledger))
+        assertEquals(5_001, clock.now())
+    }
+
     @Test
     fun aClockNeverGoesBackPastWhatItSaw() {
         var wall = 100L

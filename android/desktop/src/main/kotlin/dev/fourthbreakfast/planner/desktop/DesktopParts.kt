@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.fourthbreakfast.planner.resources.Res
@@ -40,9 +42,8 @@ import dev.fourthbreakfast.planner.resources.bin_with_count
 import dev.fourthbreakfast.planner.resources.cancel
 import dev.fourthbreakfast.planner.resources.confirm_empty_bin
 import dev.fourthbreakfast.planner.resources.delete_forever
+import dev.fourthbreakfast.planner.ui.CountLabel
 import dev.fourthbreakfast.planner.ui.QuietButton
-import dev.fourthbreakfast.planner.ui.SegmentNumber
-import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.binIcon
 import dev.fourthbreakfast.planner.ui.pinIcon
 import dev.fourthbreakfast.planner.ui.plus
@@ -65,7 +66,7 @@ object Desk {
     val edge = 6.dp
 }
 
-/** The top of a column: its name in the calculator lettering, a count, then its buttons at the right. */
+/** The top of a column: its name, count, and buttons. */
 @Composable
 fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composable RowScope.() -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -73,8 +74,16 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().height(Desk.row).padding(start = Space.gutter, end = Desk.inset),
     ) {
-        SegmentText(name, if (focused) colors.onBackground else colors.onSurfaceVariant)
-        if (count != null) SegmentNumber(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
+        Box(Modifier.height(Desk.row), contentAlignment = Alignment.CenterStart) {
+            Text(
+                name,
+                color = if (focused) colors.primary else colors.onSurfaceVariant,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
+            if (focused) Box(Modifier.align(Alignment.BottomStart).width(Space.x6).height(Space.strokeThick).background(colors.primary))
+        }
+        if (count != null) CountLabel(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
         Box(Modifier.weight(1f))
         actions()
     }

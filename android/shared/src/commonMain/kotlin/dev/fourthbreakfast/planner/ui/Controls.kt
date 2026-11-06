@@ -115,7 +115,7 @@ fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier,
     }
 }
 
-/** The title of a screen with a little calculator-style number beside it. Both screens use it so they match. */
+/** A consistent heading and quiet count across the lists and bins. */
 @Composable
 fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Modifier = Modifier, secondCount: Int? = null) {
     Row(
@@ -130,7 +130,7 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
                 modifier = Modifier.semantics { heading() },
             )
         }
-        SegmentNumber(
+        CountLabel(
             value = count,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
@@ -139,7 +139,7 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
         )
         // a second number, the same size but fainter: everything open, subtasks included
         if (secondCount != null) {
-            SegmentNumber(
+            CountLabel(
                 value = secondCount,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 modifier = Modifier.padding(start = Space.x3).semantics { contentDescription = countLabel },

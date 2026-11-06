@@ -1,15 +1,19 @@
 package dev.fourthbreakfast.planner.reminders
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.text.format.DateFormat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import dev.fourthbreakfast.planner.MainActivity
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.R
@@ -53,7 +57,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 val snoozed = intent.getBooleanExtra(SNOOZED, false)
                 if (due != null && (snoozed || abs(due - now) < ON_TIME_MILLIS)) show(context, intent, id, manager)
                 // a repeating event's next time gets its alarm now that this one has rung
-                if (!snoozed) Reminders(context).sync(all, now + ON_TIME_MILLIS)
+                if (!snoozed) Reminders(context).sync(all, now)
             } finally {
                 pending.finish()
             }
@@ -65,6 +69,11 @@ class ReminderReceiver : BroadcastReceiver() {
         val time = timeText(intent.getIntExtra(MINUTE, 0), DateFormat.is24HourFormat(context))
         val place = intent.getStringExtra(PLACE).orEmpty()
         if (!manager.areNotificationsEnabled()) return
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(CHANNEL, context.getString(R.string.reminders_channel), NotificationManager.IMPORTANCE_HIGH).apply {
                 description = context.getString(R.string.reminders_channel_text)
@@ -106,7 +115,11 @@ class ReminderReceiver : BroadcastReceiver() {
             .addAction(0, context.getString(R.string.snooze), snooze)
             .addAction(0, context.getString(R.string.dismiss), dismiss)
             .build()
-        manager.notify(id.hashCode(), notification)
+        try {
+            manager.notify(id.hashCode(), notification)
+        } catch (_: SecurityException) {
+            // Notification permission can be revoked after the check above.
+        }
     }
 
     companion object {

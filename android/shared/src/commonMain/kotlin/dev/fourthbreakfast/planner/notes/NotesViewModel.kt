@@ -43,9 +43,9 @@ class NotesViewModel(private val notes: Notes, private val drafts: Prefs) : View
     }
 
     /** Saves what an editor holds, telling it the version it saved. See [Notes.update] for [base]. */
-    fun save(id: String, title: String, body: String, base: Long, onSaved: (Long) -> Unit) {
+    fun save(id: String, title: String, body: String, base: Long, onSaved: (Long?) -> Unit) {
         viewModelScope.launch {
-            notes.update(id, title, body, base)?.let(onSaved)
+            onSaved(notes.update(id, title, body, base))
             if (title.isNotBlank() || !isBlankBody(body)) remember(id, false)
         }
     }

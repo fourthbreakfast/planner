@@ -79,6 +79,7 @@ import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
 import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.pinIcon
+import dev.fourthbreakfast.planner.ui.rememberAnimationsOn
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
 import dev.fourthbreakfast.planner.ui.sweepAndHold
@@ -156,7 +157,13 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
     } else {
         0
     }
-    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "notes") { shown ->
+    val animated = rememberAnimationsOn()
+    Crossfade(
+        targetState = mode,
+        modifier = Modifier.background(MaterialTheme.colorScheme.background),
+        animationSpec = tween(if (animated) 150 else 0),
+        label = "notes",
+    ) { shown ->
         when {
             shown == 1 && open != null -> key(open.id) {
                 NoteEditor(

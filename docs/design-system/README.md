@@ -1,65 +1,65 @@
 # planner design system
 
-The tokens, brand book and components of the app. `tokens.json` holds the colors (light and dark), type, spacing, radius and shadow. Each folder in `components` has a `README.md` with the rules and a `preview.html` you can open in a browser (it expects the tokens as CSS variables).
+planner is a calm workspace for tasks, an agenda and notes. Readable text, slate surfaces and a teal navigation accent give each screen a predictable hierarchy. The app stays compact enough for daily use without making important controls hard to find.
 
-planner is a task list that stays out of the way: a plain page, a list, one line to add things. The look is neutral and Notion-like, with a touch of console. Build every screen from the tokens and components here, and leave anything not described here out.
+The Kotlin theme in `android/shared/src/commonMain/kotlin/dev/fourthbreakfast/planner/ui/theme` defines the shipped appearance. `tokens.json` mirrors its colors and named sizes for reference previews. Phone screens use tabs and touch targets; Windows shows three columns with smaller mouse controls.
 
-## Content fundamentals
+## Content
 
-- Write everything the app says in lowercase: `tasks`, `bin`, `add a task`, `undo`, `move to bin`. Never title case, never exclamation marks, never emoji.
-- Say what happens, in the fewest words: `moved to bin`, `clear`, `empty bin`. The undo note is a pill, not a banner.
-- Speak about things, not the system: `add inside: prep tfm`, not `parent task selected`.
-- New tasks start lowercase because the keyboard does not capitalize. Never rewrite what a person typed.
-- Numbers are the voice of state: the open count beside the title, `0/2` done of total beside a parent, the bin count beside the bin.
+- Keep interface copy lowercase, brief and concrete: `tasks`, `add a task`, `moved to bin`, `undo`.
+- Preserve the user's capitalization and wording.
+- Name the action rather than the implementation: `add inside: trip`, `copy`, `restore`.
+- Counts explain state: open tasks, direct-child progress, upcoming events and items in a bin.
 
-## Visual foundations
+## Color and hierarchy
 
-- Color: `page` is the ground, `ink` the text, `quiet` for anything secondary. `aim` marks the one thing that is targeted or being moved. The three priority colors are marks, never text or fills; `priority-high` doubles as the single accent (the remove side of a swipe).
-- Themes: always design light and dark together. The priority colors are identical in both.
-- Type: set screen titles and every small number or note in the mono families (`title`, `note`, `target`). Set everything a person reads or types in `body`. Quiet buttons use `label`.
-- Spacing: text starts at `gutter`. Each level of subtask moves right by `indent`, and the priority dot moves with its task. There are four levels at most: main task, subtask, sub-subtask, sub-sub-subtask. Anything tappable is at least `touch` tall.
-- Dots: every priority dot is `dot` across. Never size a dot to show importance; color is the only signal, and the order of the list is the second.
-- Borders and shadows: there are none at rest. Separate things with space. The only shadow is `lift` on the row being dragged.
-- Radius: the choosers use `radius-check`; the undo pill uses `radius-pill`. Nothing else is rounded: the check box is sharp.
-- Motion: things move only when something happened. A dragged row follows the finger; rows slide to make room; a small haptic tick marks each change of drop spot. No decorative animation; respect the system's reduced motion setting.
-- Layout: one column, full width. Two tabs run along the top, tasks at the left and agenda at the right, with the screen's own bar under them (counts at the left, controls at the right). The agenda has its own bin, and a quiet plus sits at its bottom right. The the add bar is pinned to the bottom above the keyboard, and the list scrolls between them. An invisible row of `end-row` ends the list.
+- `page` is the slate-tinted ground; `panel` separates raised surfaces; `line` provides quiet dividers.
+- `ink` carries readable content. `quiet` carries metadata and secondary controls, with at least 4.5:1 contrast on the page.
+- Teal `accent` identifies selected navigation, focus and text selection. Selection also has a visible indicator, so color is not its only signal.
+- `aim` identifies a targeted task, a drag destination or the rename side of a swipe.
+- Priority uses red, amber and blue marks. High, medium and low have diameters of 10, 8 and 6dp; the no-priority ring is 8dp. Accessible labels name the level. Kotlin's `dotHighRadius`, `dotMediumRadius` and `dotLowRadius` are radii; JSON tokens are diameters.
+- Red backgrounds identify destructive actions. White labels on them exceed 4.5:1 contrast.
+- Design and inspect light and dark together.
 
-## Behaviour that shapes the interface
+## Typography
 
-- One order: each level of the list is ranked by priority. Priority only ranks a task among its siblings, so a subtask never leaves its parent.
-- Touching a task opens or closes its subtasks. While the add line is in use, touching a task targets it instead; leaving the add line drops the target.
-- Sweeping sideways across empty space switches tabs: left on tasks opens the agenda, right on the agenda goes back. It never loops, and it ignores any sweep that starts on a row.
-- Swipe a row right to move it to the bin, left to rename it. Long press and drag to move a task, with the finger moving sideways to choose how deep the task lands.
-- The agenda lists events soonest first with the time, name, location and notes all on view. A touch edits an event, a swipe right moves it to the event bin. An event has a name, a day, a time that is all day, a start, or a start and an end, a location and notes. The form is empty lines, the day and time choosers are drawn in the app's own style, and the add button is a quiet plus at the bottom right.
-- There is no collapse arrow on a task; a parent shows `done/total` on the right. Every parent starts closed when the app opens. One small triangle at the top, left of the bin, opens everything (pointing down, shown while anything is closed) or closes everything (pointing up).
-- Four levels at most.
-- Holding the tasks tab opens a small menu with export and import, as wide as its two words, on `panel` with a `line` border and no shadow. They use the phone's file picker, and a backup carries the tasks and the agenda. Import only adds what is missing and never changes what is already there.
+IBM Plex Sans is used for navigation, headings, body text and actions. Screen headings use the 22sp bold title style; smaller headings use the 16sp medium style. IBM Plex Mono gives times, counts and short metadata a steady rhythm. Counts use the same readable text system rather than a separate drawing.
 
-## Iconography
+Fonts are bundled. Desktop scales the shared typography to seven eighths of the phone scale. Respect the user's text size; event times have a separate width for a twelve-hour clock.
 
-- The app icon is the four priority levels as a two by two grid of dots on the dark `page`: `priority-high`, `priority-medium`, `priority-low` and an outline ring.
-- Icons are drawn with `stroke-thin` round-capped lines in `quiet`, `icon` across in a `touch` square: the bin (a can with a lid and handle). There is no icon font.
-- The open count is drawn as seven-segment digits, like a calculator watch, in `quiet`, with the unlit bars faintly visible. Draw them, never set them in a font.
-- Do not add decorative icons. If a control needs a symbol, prefer a word.
+## Layout and controls
 
-## Spacing and layout
+The shared spacing scale is 4, 8, 12, 16, 20 and 24dp, with named sizes for recurring roles. A specialized control can have a documented size of its own.
 
-Every number sits on a 4px grid (`space-1` to `space-6`) or is a named size (`touch`, `icon`, `check`, `dot`, and the rest of the spacing tokens). The app reads the same names from `Space.kt`, so nothing on a screen has a number of its own.
-
-| Where | Rule |
+| Role | Rule |
 | --- | --- |
-| Left edge of text | `gutter` on every screen |
-| Rows and bars, sides | `row-pad` each side; the control at the right fills the rest of its `touch` slot |
-| Row height | `touch`, never less; a title with two lines grows by `space-3` above and below |
-| Title bar | `space-2` above and below the title, `gutter` at the left, `row-pad` at the right |
-| Title and its count | `space-3` apart; a second, fainter count follows `space-3` further |
-| Priority dot | `dot` across in a `dot-lane` by `touch`; each level of depth adds `indent` before it |
-| Check box | `check` across in a `touch` square, outlined with `stroke-thin` |
-| Icons | `icon` across in a `touch` square, `stroke-thin` lines |
-| Undo pill | `gutter` on the left, `row-pad` on the right, `space-1` above the add bar |
-| Add bar | sits at the bottom edge; target line starts at `gutter` |
-| End of the list | an invisible row of `end-row` |
-| Drop line | `stroke-thick` tall, starting at `row-pad` plus one `indent` for each level of depth |
-| Seven-segment digits | `digit-width` by `digit-height`, `digit-gap` apart, bars `digit-bar` thick |
+| Phone navigation | Three equal tabs: tasks, agenda, notes; selected text and a short teal indicator |
+| Phone controls | At least 48dp touch targets, even when drawings are small |
+| Desktop controls | `Desk` scale: 32dp rows and mouse targets, 16dp drawings, 12dp inset |
+| Text gutter | 16dp |
+| Task indent | 20dp per level, four levels maximum |
+| Priority marker | A 40dp touchable lane beside task text |
+| Check box | A sharp 14dp square; checked is filled with a contrasting tick |
+| Note marker | 26dp reserved before each marked line |
+| Event time | 64dp for 24-hour time, 88dp for 12-hour time, scaled with text size |
+| List ending | At least 72dp or a third of available height, allowing the last row to be brought into view |
+| Desktop dashboard | Three independently scrolling columns; editors and settings open in a dismissible side panel |
 
-Never invent an in-between number. If something does not fit a step, change the step for everyone.
+Keep thin drawn icons for pin, bin, search, calendar and settings. Prefer a word when a symbol would be ambiguous. Avoid decorative icons and unnecessary shadows.
+
+## Interaction
+
+- A task opens or closes its children. While adding, touching a task chooses where the new task goes. Parents start closed.
+- Siblings are ordered by completion and priority. Dragging changes placement within that order; a child stays under its parent.
+- On the phone, hold before swiping or dragging a row. An ordinary horizontal sweep changes tabs, stops at the ends and respects the system back-gesture edge.
+- A task's right swipe moves it to the bin with undo; its left swipe renames it. A note's left swipe copies its text.
+- Dragging onto a task nests at the end; a line inserts above the next task at that depth. The drop indication must match the final priority-ranked placement.
+- An event opens its editor. Repeating events ask whether a change concerns one occurrence or the series. Month mode marks busy days.
+- Notes support lists, check boxes, indentation and emphasis, with undo, redo and ordered autosave. Pinned notes stay above unpinned notes.
+- Bins allow restore and permanent deletion. Holding a bin asks once before emptying it.
+- Settings open from the cog or a held phone tab. Back closes the current surface; Escape does the same on Windows.
+- Motion explains a state change. Respect system reduced motion and avoid decorative animation.
+
+## Maintaining this reference
+
+Change shared theme roles before adding per-screen colors. Update `tokens.json`, component notes and previews when the shipped component changes. Reference HTML expects tokens as CSS variables. Shipped Kotlin behavior and rendered app checks take precedence over an old preview.

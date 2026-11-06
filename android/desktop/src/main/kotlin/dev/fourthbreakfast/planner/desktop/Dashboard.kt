@@ -1,6 +1,8 @@
 package dev.fourthbreakfast.planner.desktop
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -33,6 +35,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.min
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.agenda.AgendaBin
@@ -47,11 +50,15 @@ import dev.fourthbreakfast.planner.core.binEntries
 import dev.fourthbreakfast.planner.notes.NoteEditor
 import dev.fourthbreakfast.planner.notes.NotesBin
 import dev.fourthbreakfast.planner.notes.NotesViewModel
+import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.back
 import dev.fourthbreakfast.planner.search.SearchScreen
 import dev.fourthbreakfast.planner.tasks.BinScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.ui.LocalServices
+import dev.fourthbreakfast.planner.ui.rememberAnimationsOn
 import dev.fourthbreakfast.planner.ui.theme.Space
+import org.jetbrains.compose.resources.stringResource
 
 /** The three parts of the dashboard, which one the keyboard is in. */
 enum class Section { TASKS, AGENDA, NOTES }
@@ -242,19 +249,28 @@ fun Dashboard(
             lastNote = now
         }
         val panel = state.panel
+        val animated = rememberAnimationsOn()
         // a dim layer over the dashboard, a click on it closes the panel
-        AnimatedVisibility(panel != null, enter = fadeIn(), exit = fadeOut()) {
+        val dismissLabel = stringResource(Res.string.back)
+        AnimatedVisibility(panel != null, enter = if (animated) fadeIn() else EnterTransition.None, exit = if (animated) fadeOut() else ExitTransition.None) {
             Box(
                 Modifier
                     .fillMaxSize()
                     .background(colors.scrim.copy(alpha = 0.32f))
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { state.panel = null },
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.Button,
+                        onClickLabel = dismissLabel,
+                    ) {
+                        state.panel = null
+                    },
             )
         }
         AnimatedVisibility(
             panel != null,
-            enter = slideInHorizontally { it } + fadeIn(),
-            exit = slideOutHorizontally { it } + fadeOut(),
+            enter = if (animated) slideInHorizontally { it } + fadeIn() else EnterTransition.None,
+            exit = if (animated) slideOutHorizontally { it } + fadeOut() else ExitTransition.None,
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
             Box(Modifier.width(min(Desk.panel, maxWidth * 0.7f)).fillMaxHeight().background(colors.background)) {

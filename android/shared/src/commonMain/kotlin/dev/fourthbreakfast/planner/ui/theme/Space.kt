@@ -43,27 +43,19 @@ object Space {
     val icon = 20.dp
     val check = 14.dp
 
-    /** The gap between a check box's outline and the block that fills it once done. */
-
     /** The room a list mark takes before a line of a note. */
     val markWidth = 26.dp
     val dot = 8.dp
 
-    /** The priority dots differ in size as well as colour: bigger is more urgent. */
-    val dotHigh = 5.dp
-    val dotMedium = 4.dp
-    val dotLow = 3.dp
+    /** Radii of filled priority dots; documentation tokens describe their diameters. */
+    val dotHighRadius = 5.dp
+    val dotMediumRadius = 4.dp
+    val dotLowRadius = 3.dp
     val dotLane = 40.dp
     val modeDot = 10.dp
     val radiusCheck = 3.dp
     val strokeThin = 1.5.dp
     val strokeThick = 2.dp
-
-    // the seven-segment digits
-    val digitWidth = 10.dp
-    val digitHeight = 18.dp
-    val digitBar = 2.4.dp
-    val digitGap = x1
 
     // the agenda
     /** Width of the time at the left of an event. */

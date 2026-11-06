@@ -2,6 +2,7 @@ package dev.fourthbreakfast.planner.sync
 
 import com.sun.net.httpserver.HttpServer
 import java.io.IOException
+import java.net.ConnectException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import kotlinx.coroutines.runBlocking
@@ -68,5 +69,29 @@ class SyncthingApiTest {
     fun nothingAnswersMeansNotAlive() = runBlocking {
         server.stop(0)
         assertEquals(false, api.alive())
+    }
+
+    @Test
+    fun startupRetriesAConnectionRefusedBetweenRequests() = runBlocking {
+        var attempts = 0
+        val result = retryStartupConnection {
+            if (attempts++ == 0) throw ConnectException("restarting")
+            "ready"
+        }
+        assertEquals("ready", result)
+        assertEquals(2, attempts)
+    }
+
+    @Test
+    fun startupDoesNotRetryAnApiError() = runBlocking {
+        var attempts = 0
+        val failure = runCatching {
+            retryStartupConnection {
+                attempts++
+                throw IOException("invalid response")
+            }
+        }.exceptionOrNull()
+        assertTrue(failure is IOException)
+        assertEquals(1, attempts)
     }
 }

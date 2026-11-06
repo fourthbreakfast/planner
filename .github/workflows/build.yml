@@ -41,6 +41,6 @@ jobs:
       - name: tests
         run: ./gradlew :core:test :sync:test :shared:desktopTest :desktop:test testDebugUnitTest --console=plain
       - name: app
-        run: ./gradlew assembleDebug assembleRelease --console=plain
+        run: ./gradlew assembleDebug assembleRelease lintDebug --console=plain
       - name: windows app
         run: ./gradlew :desktop:compileKotlin --console=plain

@@ -5,8 +5,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import dev.fourthbreakfast.planner.core.Event
-import dev.fourthbreakfast.planner.core.reminderAt
+import dev.fourthbreakfast.planner.core.scheduledReminders
 
 private const val PREFS = "reminders"
 private const val SCHEDULED = "scheduled"
@@ -18,9 +19,7 @@ class Reminders(private val context: Context) {
 
     /** Sets the alarm of every event that should have one and takes away the others that were set before. */
     fun sync(events: List<Event>, now: Long = System.currentTimeMillis()) {
-        val coming = events.filter { !it.inBin }.mapNotNull { event ->
-            reminderAt(event)?.takeIf { it > now }?.let { event to it }
-        }
+        val coming = scheduledReminders(events, now)
         val keep = coming.map { (event, at) ->
             set(event, at)
             event.id
@@ -55,7 +54,7 @@ class Reminders(private val context: Context) {
 
     /** Sets an alarm: exact when the phone allows it, otherwise as close as it will go. */
     private fun ring(at: Long, pending: PendingIntent) {
-        if (alarms.canScheduleExactAlarms()) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()) {
             alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
         } else {
             alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)

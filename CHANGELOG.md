@@ -2,6 +2,20 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.1.0
+
+- a calmer shared design: readable headings, slate surfaces, teal selected navigation, distinct priority marks, and consistent light and dark themes
+- backup restoration is atomic across tasks, events, notes and sync deletion records; writable data services are initialized through one factory
+- design tokens and readable color contrast are checked against the shipped theme; design references and build instructions match the app
+- windows respects reduced-motion settings, and side-panel dismissal has an accessible action
+- the local release helper publishes the same apk, setup executable and compatibility msi as the automated release
+- reminders: scheduling works on android 8–11, and one reminder no longer cancels others due in the next half hour
+- reminders and widgets: keep the broadcast alive until reboot restoration or a widget refresh finishes
+- reminders: check notification permission before posting; build checks now include android lint
+- sync: startup observes saved deletion timestamps before any edits; permanent deletions keep their original time, and duplicate versions settle consistently
+- notes: saves are ordered, so undoing while an earlier save is pending and then closing keeps the final text
+- updates: require a valid checksum, stream downloads with a size limit, reject insecure redirects, and remove incomplete files after failure or cancellation
+
 ## 1.0.11
 
 - readme: a picture of the windows app, and the settings cog described where it is

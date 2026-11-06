@@ -23,7 +23,7 @@ fun plex(): FontFamily = FontFamily(
     Font(Res.font.plex_sans_italic, FontWeight.Normal, FontStyle.Italic),
 )
 
-/** The console voice: numbers, small labels and the headings of lists. IBM Plex Mono. */
+/** Precise metadata: times, small counts and keyboard hints. IBM Plex Mono. */
 @Composable
 fun plexMono(): FontFamily = FontFamily(
     Font(Res.font.plex_mono_regular, FontWeight.Normal),
@@ -38,9 +38,8 @@ fun plannerTypography(scale: Float = 1f): Typography {
     val base = Typography(
         displaySmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp),
         headlineSmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp),
-        // the header and the small numbers and notes use a monospace, like a console
-        titleLarge = TextStyle(fontFamily = mono, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 28.sp),
-        titleMedium = TextStyle(fontFamily = mono, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp),
+        titleLarge = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
+        titleMedium = TextStyle(fontFamily = plex, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp),
         titleSmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp),
         bodyLarge = TextStyle(fontFamily = plex, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
         bodyMedium = TextStyle(fontFamily = plex, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),

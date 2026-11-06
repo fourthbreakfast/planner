@@ -13,6 +13,7 @@ import dev.fourthbreakfast.planner.core.NoteStore
 import dev.fourthbreakfast.planner.core.Store
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.TaskStore
+import dev.fourthbreakfast.planner.core.TransactionRunner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -72,6 +73,11 @@ internal fun roomEventStore(database: PlannerDatabase, clock: () -> Long): Event
 
 internal fun roomNoteStore(database: PlannerDatabase, clock: () -> Long): NoteStore =
     RoomStore(database, database.noteDao(), Note::id, NoteEntity::toNote, Note::toEntity, clock)
+
+/** One database transaction covers tasks, events, notes and the sync ledger. */
+internal fun roomTransactions(database: PlannerDatabase): TransactionRunner = object : TransactionRunner {
+    override suspend fun <R> transaction(block: suspend () -> R): R = database.inTransaction(block)
+}
 
 /** Every store deletes for good through here, so the mark that keeps it gone on other devices is never left out. */
 private suspend fun PlannerDatabase.forget(ids: List<String>, at: Long) = syncDao().addGone(ids.map { GoneEntity(it, at) })

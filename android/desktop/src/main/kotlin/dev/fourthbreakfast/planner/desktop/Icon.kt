@@ -2,7 +2,13 @@ package dev.fourthbreakfast.planner.desktop
 
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import dev.fourthbreakfast.planner.ui.theme.PageDark
+import dev.fourthbreakfast.planner.ui.theme.PriorityHigh
+import dev.fourthbreakfast.planner.ui.theme.PriorityLow
+import dev.fourthbreakfast.planner.ui.theme.PriorityMedium
+import dev.fourthbreakfast.planner.ui.theme.QuietDark
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.RenderingHints
@@ -19,7 +25,7 @@ fun appIcon(size: Int): BufferedImage {
     val g = image.createGraphics()
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
     val s = size.toDouble()
-    g.color = Color(0x19, 0x19, 0x19)
+    g.color = Color(PageDark.toArgb(), true)
     g.fill(RoundRectangle2D.Double(0.0, 0.0, s, s, s * 0.22, s * 0.22))
     val radius = s * 0.13
     val near = s * 0.33
@@ -28,11 +34,11 @@ fun appIcon(size: Int): BufferedImage {
         g.color = color
         g.fill(Ellipse2D.Double(cx - radius, cy - radius, radius * 2, radius * 2))
     }
-    dot(near, near, Color(0xd9, 0x3a, 0x3a))
-    dot(far, near, Color(0xd9, 0xa3, 0x00))
-    dot(near, far, Color(0x44, 0x83, 0x61))
+    dot(near, near, Color(PriorityHigh.toArgb(), true))
+    dot(far, near, Color(PriorityMedium.toArgb(), true))
+    dot(near, far, Color(PriorityLow.toArgb(), true))
     val line = s * 0.05
-    g.color = Color(0x9b, 0x9b, 0x9b)
+    g.color = Color(QuietDark.toArgb(), true)
     g.stroke = BasicStroke(line.toFloat())
     val ring = radius - line / 2
     g.draw(Ellipse2D.Double(far - ring, far - ring, ring * 2, ring * 2))

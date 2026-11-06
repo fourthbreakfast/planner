@@ -34,7 +34,7 @@ import dev.fourthbreakfast.planner.resources.theme_system
 import dev.fourthbreakfast.planner.sync.SyncControls
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
-import dev.fourthbreakfast.planner.ui.SegmentTab
+import dev.fourthbreakfast.planner.ui.ScreenHeading
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.StringArrayResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -52,7 +52,7 @@ fun SettingsBar(title: String, onClose: () -> Unit) {
             .statusBarsPadding()
             .padding(start = Space.gutter, end = Space.rowPad),
     ) {
-        SegmentTab(title, Modifier.weight(1f))
+        ScreenHeading(title, Modifier.weight(1f))
         BackButton(onClose)
     }
 }
