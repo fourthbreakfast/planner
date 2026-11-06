@@ -1,28 +1,30 @@
 package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -48,21 +50,29 @@ enum class Tab(val alignment: Alignment) {
  */
 @Composable
 fun TabBar(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier, onLongPress: (() -> Unit)? = null) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = Space.rowPad)
-            .selectableGroup(),
+    val labels = listOf(
+        stringResource(Res.string.tasks_title),
+        stringResource(Res.string.agenda_title),
+        stringResource(Res.string.notes_title),
+    )
+    val density = LocalDensity.current
+    val scroll = rememberScrollState()
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = Space.rowPad),
     ) {
-        for (tab in Tab.entries) {
-            val title = when (tab) {
-                Tab.TASKS -> Res.string.tasks_title
-                Tab.AGENDA -> Res.string.agenda_title
-                Tab.NOTES -> Res.string.notes_title
-            }
-            Box(Modifier.weight(1f)) {
-                TabWord(stringResource(title), selected == tab, { onSelect(tab) }, onLongPress)
+        val wordWidth = labels.maxOf { segmentTextWidth(it, TAB_SCALE * density.fontScale) }
+        val cellWidth = maxOf(maxWidth / Tab.entries.size, wordWidth + (Space.gutter - Space.rowPad) * 2)
+        val viewportPx = with(density) { maxWidth.toPx() }
+        val cellPx = with(density) { cellWidth.toPx() }
+        LaunchedEffect(selected, viewportPx, cellPx, scroll.maxValue) {
+            val target = (selected.ordinal * cellPx - (viewportPx - cellPx) / 2).toInt().coerceIn(0, scroll.maxValue)
+            scroll.scrollTo(target)
+        }
+        Row(Modifier.horizontalScroll(scroll).selectableGroup()) {
+            Tab.entries.forEachIndexed { index, tab ->
+                Box(Modifier.width(cellWidth)) {
+                    TabWord(labels[index], selected == tab, tab.alignment, { onSelect(tab) }, onLongPress)
+                }
             }
         }
     }
@@ -70,13 +80,13 @@ fun TabBar(selected: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TabWord(text: String, active: Boolean, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+private fun TabWord(text: String, active: Boolean, alignment: Alignment, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
     val haptics = LocalHapticFeedback.current
     val colors = MaterialTheme.colorScheme
     val press = remember { MutableInteractionSource() }
     val pressed by press.collectIsPressedAsState()
     Box(
-        contentAlignment = Alignment.Center,
+        contentAlignment = alignment,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Space.touch)
@@ -96,18 +106,18 @@ private fun TabWord(text: String, active: Boolean, onClick: () -> Unit, onLongCl
             .padding(horizontal = Space.gutter - Space.rowPad)
             .semantics { selected = active },
     ) {
-        Text(
+        SegmentText(
             text = text,
-            color = if (active) colors.primary else colors.onSurfaceVariant,
-            style = MaterialTheme.typography.labelLarge,
+            color = if (active) colors.onBackground else colors.onSurfaceVariant,
+            scale = TAB_SCALE,
         )
-        if (active) {
-            Box(Modifier.align(Alignment.BottomCenter).width(Space.x6).height(Space.strokeThick).background(colors.primary))
-        }
     }
 }
 
-/** A heading for a screen that is a tab of its own. */
+/** How large the calculator lettering is for tab words and screen titles. */
+const val TAB_SCALE = 1.0f
+
+/** A word in the same lettering and size as the tabs, for a screen that is a tab of its own. */
 @Composable
 fun ScreenHeading(text: String, modifier: Modifier = Modifier) {
     Box(
@@ -116,6 +126,6 @@ fun ScreenHeading(text: String, modifier: Modifier = Modifier) {
             .heightIn(min = Space.touch)
             .semantics { heading() },
     ) {
-        Text(text = text, color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.titleLarge)
+        SegmentText(text = text, color = MaterialTheme.colorScheme.onBackground, scale = TAB_SCALE)
     }
 }

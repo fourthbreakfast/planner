@@ -30,7 +30,7 @@ fun plexMono(): FontFamily = FontFamily(
     Font(Res.font.plex_mono_medium, FontWeight.Medium),
 )
 
-/** The type scale, built once the fonts are loaded. [scale] shrinks every size alike, as a computer screen wants smaller type than a phone. */
+/** The type scale, built once the fonts are loaded. [scale] shrinks every size alike, when a different size is needed. */
 @Composable
 fun plannerTypography(scale: Float = 1f): Typography {
     val plex = plex()
@@ -38,8 +38,8 @@ fun plannerTypography(scale: Float = 1f): Typography {
     val base = Typography(
         displaySmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp),
         headlineSmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp),
-        titleLarge = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
-        titleMedium = TextStyle(fontFamily = plex, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp),
+        titleLarge = TextStyle(fontFamily = mono, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 28.sp),
+        titleMedium = TextStyle(fontFamily = mono, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 24.sp),
         titleSmall = TextStyle(fontFamily = plex, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp),
         bodyLarge = TextStyle(fontFamily = plex, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
         bodyMedium = TextStyle(fontFamily = plex, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),

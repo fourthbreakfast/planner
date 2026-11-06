@@ -72,7 +72,7 @@ class DesignTokensTest {
             InkDark to PageDark,
             QuietDark to PageDark,
             AccentDark to PageDark,
-            Color.White to PriorityHigh,
+            Color.White to ErrorRed,
         )
         for ((foreground, background) in pairs) {
             val a = luminance(foreground)
