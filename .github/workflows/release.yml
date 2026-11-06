@@ -52,6 +52,20 @@ jobs:
         env:
           PLANNER_KEYSTORE_PASSWORD: ${{ secrets.PLANNER_KEYSTORE_PASSWORD }}
         run: ./gradlew assembleRelease :desktop:packageMsi :desktop:packageSetup --no-configuration-cache --console=plain
+      - name: verify the APK signing certificate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $expected = (Get-Content -LiteralPath 'signing-certificate.sha256' -Raw).Trim().ToLowerInvariant()
+          if ($expected -notmatch '^[a-f0-9]{64}$') { throw 'Invalid public signing certificate pin' }
+          $apksigner = Join-Path $env:ANDROID_HOME 'build-tools/36.0.0/apksigner.bat'
+          if (-not (Test-Path -LiteralPath $apksigner -PathType Leaf)) { throw 'Pinned Android build-tools apksigner is missing' }
+          $verification = & $apksigner verify --print-certs 'app/build/outputs/apk/release/app-release.apk' 2>&1
+          if ($LASTEXITCODE) { throw 'APK signature verification failed' }
+          $certificates = [regex]::Matches(($verification -join "`n"), '(?m)^Signer #\d+ certificate SHA-256 digest:\s*([a-fA-F0-9]{64})\s*$')
+          if ($certificates.Count -ne 1 -or $certificates[0].Groups[1].Value.ToLowerInvariant() -ne $expected) {
+              throw 'APK signing certificate does not match existing installs'
+          }
       - name: publish
         env:
           GH_TOKEN: ${{ github.token }}

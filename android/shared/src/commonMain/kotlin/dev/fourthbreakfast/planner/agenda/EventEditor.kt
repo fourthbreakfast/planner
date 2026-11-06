@@ -54,7 +54,7 @@ import dev.fourthbreakfast.planner.resources.save
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.QuietButton
-import dev.fourthbreakfast.planner.ui.SegmentTab
+import dev.fourthbreakfast.planner.ui.ScreenHeading
 import dev.fourthbreakfast.planner.ui.rememberAskToNotify
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.theme.Space
@@ -133,7 +133,7 @@ fun EventEditor(
                     .statusBarsPadding()
                     .padding(start = Space.gutter, end = Space.rowPad),
             ) {
-                SegmentTab(stringResource(Res.string.event_title), Modifier.weight(1f))
+                ScreenHeading(stringResource(Res.string.event_title), Modifier.weight(1f))
                 if (onDelete != null) QuietButton(stringResource(Res.string.delete)) { if (asksWhich) asking = "delete" else onDelete(false) }
                 BackButton(onClose)
             }

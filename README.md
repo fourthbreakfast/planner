@@ -6,9 +6,14 @@
   <code>android</code> <code>windows</code> <code>kotlin</code> <code>jetpack compose</code> <code>no account</code> <code>agpl-3.0</code>
 </p>
 
-<p align="center">
-  <img src="docs/readme/hero.png" alt="planner in dark: the task list with subtasks and priorities, the agenda, the notes, and a note being written" width="100%">
-</p>
+<table>
+  <tr>
+    <td><img src="docs/readme/tasks.png" alt="tasks with priorities" width="100%"></td>
+    <td><img src="docs/readme/agenda.png" alt="agenda grouped by day" width="100%"></td>
+    <td><img src="docs/readme/notes.png" alt="pinned notes and checklists" width="100%"></td>
+    <td><img src="docs/readme/editor.png" alt="a note being written" width="100%"></td>
+  </tr>
+</table>
 
 planner is a task list, an agenda and a notebook for android and windows, in one small app that keeps everything on your own devices. there is no account and no server: it can sync between your devices by itself, with a private copy of syncthing built in.
 
@@ -30,11 +35,11 @@ it started as a quick standalone trial and turned out to be useful on its own, s
 
 the [latest release](https://github.com/fourthbreakfast/planner/releases/latest) has both.
 
-**phone.** download the apk and open it on your phone. you need android 8 or newer, and your phone will ask you to allow installing it. updates install over the top and keep your data.
+**phone.** download the apk and open it on your phone. you need android 8 or newer; sync needs an ARM64 phone. your phone will ask you to allow installing it. updates install over the top and keep your data.
 
-**verify.** the apk is signed with one key for every release, whose SHA-256 certificate digest is `619dc72c00a929a10ec1da3e81ecec0062437f8a28e4263610655e4190d670db`. check it with `apksigner verify --print-certs planner-1.0.0.apk`.
+**verify.** the apk is signed with one key for every release, whose SHA-256 certificate digest is `619dc72c00a929a10ec1da3e81ecec0062437f8a28e4263610655e4190d670db`, also kept in [android/signing-certificate.sha256](android/signing-certificate.sha256). check it with `apksigner verify --print-certs planner-1.0.0.apk`.
 
-**updates.** both apps look for a newer release once a day and offer it in the settings (and on windows beside the settings cog in the title bar); one touch downloads it and starts the installer. the daily look can be turned off.
+**updates.** both apps look for a newer release once a day and download it in the background, checking its checksum before offering it in the settings (and on windows beside the settings cog in the title bar). the installer starts when you choose to install; android also asks you to confirm. the daily look can be turned off.
 
 **windows.** download the setup and run it. it installs for you alone, needs no administrator, and puts planner in the start menu. windows 11 or 10, 64 bit. the installer is not signed, so windows may warn the first time: "more info", then "run anyway". the first time sync runs, the windows firewall asks whether planner may use the network: allow it on private networks, or your phone cannot reach it. updates install over the top and keep your data.
 
@@ -104,15 +109,15 @@ a backup is a plain json file you can read and keep. importing one only adds wha
 
 ### build
 
-planner is written in kotlin with compose multiplatform, and stores its data with room. the phone and windows apps share their data, rules, sync, words and parts of the screens; each has a layout of its own. the sync is [syncthing](https://syncthing.net), pinned as a submodule in [third_party/syncthing](third_party/syncthing) and built from source with go, so clone with `--recurse-submodules` and have go installed (the build fetches the exact go version syncthing asks for). to build it, open the `android` folder in android studio and press run, or use `gradlew installDebug` with a phone connected. the pinned tool versions and the structure of the code are in [android/README.md](android/README.md), and the look is documented in the [design system](docs/design-system).
+planner is written in kotlin with compose multiplatform, and stores its data with room. the phone and windows apps share their data, rules, sync, words and parts of the screens; each has a layout of its own. the sync is [syncthing](https://syncthing.net), pinned as a submodule in [third_party/syncthing](third_party/syncthing) and built from source with go, so clone with `--recurse-submodules` and have go installed (the build fetches the exact go version syncthing asks for). open the `android` folder in android studio, or use its terminal with that folder as the working directory. the pinned tool versions and the structure of the code are in [android/README.md](android/README.md), and the look is documented in the [design system](docs/design-system).
 
-`gradlew installDebug -Pdemo` installs a second copy called "planner dev" with its own empty data, so a change can be tried without touching the real app.
+with a phone connected, run `.\gradlew.bat installDebug -Pdemo` to install a second copy called "planner dev". it keeps its data separate from the real app, and updating the dev copy preserves its existing data. use `-Pdemo` in an android studio run configuration too. on linux or macos, use `./gradlew` in place of `.\gradlew.bat`.
 
-the windows app runs with `gradlew :desktop:run`, and `gradlew :desktop:packageSetup` builds its installer (it needs [inno setup 6](https://jrsoftware.org/isinfo.php)). set `PLANNER_DATA` to a folder, and `PLANNER_PREFS` to a name, to try it on data and settings other than your own.
+the windows app runs with `.\gradlew.bat :desktop:run`, and `.\gradlew.bat :desktop:packageSetup` builds its installer (it needs [inno setup 6](https://jrsoftware.org/isinfo.php)). set `PLANNER_DATA` to a folder, and `PLANNER_PREFS` to a name, to try it on data and settings other than your own.
 
 ### credits
 
-the fonts are [ibm plex sans](https://github.com/IBM/plex) and [ibm plex mono](https://github.com/IBM/plex), under the SIL open font license ([docs/licenses/IBMPlex-OFL.txt](docs/licenses/IBMPlex-OFL.txt)). the calculator-style lettering is drawn in code, not a font.
+the fonts are [ibm plex sans](https://github.com/IBM/plex) and [ibm plex mono](https://github.com/IBM/plex), under the SIL open font license ([docs/licenses/IBMPlex-OFL.txt](docs/licenses/IBMPlex-OFL.txt)). headings use plex sans, with plex mono for times and small counts.
 
 sync is [syncthing](https://syncthing.net) by the syncthing contributors, under the mozilla public license 2.0 ([docs/licenses/Syncthing-MPL-2.0.txt](docs/licenses/Syncthing-MPL-2.0.txt)); its source is in [third_party/syncthing](third_party/syncthing), unchanged. the pairing codes are read and drawn with [zxing](https://github.com/zxing/zxing) and [zxing android embedded](https://github.com/journeyapps/zxing-android-embedded), under the apache license 2.0 ([docs/licenses/Apache-2.0.txt](docs/licenses/Apache-2.0.txt)).
 

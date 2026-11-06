@@ -19,17 +19,31 @@ import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.widgetLines
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 private val LINES = intArrayOf(R.id.line0, R.id.line1, R.id.line2, R.id.line3, R.id.line4, R.id.line5, R.id.line6, R.id.line7)
 
 /** The home screen widget: the day, today's events and the open tasks, as plain console lines. A touch opens the app. */
 class PlannerWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        (context.applicationContext as PlannerApp).refreshWidgets()
+        refresh(context)
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
-        (context.applicationContext as PlannerApp).refreshWidgets()
+        refresh(context)
+    }
+
+    private fun refresh(context: Context) {
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                (context.applicationContext as PlannerApp).refreshWidgets().join()
+            } finally {
+                pending.finish()
+            }
+        }
     }
 
     companion object {

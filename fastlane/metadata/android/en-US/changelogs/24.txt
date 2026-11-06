@@ -1,0 +1,1 @@
+A calmer design for phone and windows, safer reminders and note saving, atomic backups, steadier sync and verified update downloads.

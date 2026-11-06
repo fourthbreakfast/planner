@@ -4,6 +4,7 @@ import java.io.File
 import java.io.IOException
 import java.net.InetAddress
 import java.net.ServerSocket
+import java.net.SocketException
 import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -90,24 +91,22 @@ class Syncthing(
             if (waited++ > 50) throw IOException("syncthing did not answer")
             delay(200)
         }
-        myId = api.get("/rest/system/status").obj().string("myID")
-        api.patch("/rest/config/devices/${encoded(myId)}", buildJsonObject { put("name", name) })
+        myId = retryStartupConnection { api.get("/rest/system/status").obj().string("myID") }
+        retryStartupConnection { api.patch("/rest/config/devices/${encoded(myId)}", buildJsonObject { put("name", name) }) }
         // its web pages need a password nobody knows, so nothing else on this computer can use them. changing it
         // restarts the web side, at the same address, so the app waits until it answers again
-        api.patch(
-            "/rest/config/gui",
-            buildJsonObject {
-                put("address", "127.0.0.1:$port")
-                put("user", "planner")
-                put("password", randomKey())
-            },
-        )
+        val gui = buildJsonObject {
+            put("address", "127.0.0.1:$port")
+            put("user", "planner")
+            put("password", randomKey())
+        }
+        retryStartupConnection { api.patch("/rest/config/gui", gui) }
         waited = 0
         while (!api.alive()) {
             if (waited++ > 50) throw IOException("syncthing did not answer after its settings changed")
             delay(200)
         }
-        ensureFolder(api)
+        retryStartupConnection { ensureFolder(api) }
         log("running as ${shortId(myId)}")
     }
 
@@ -259,6 +258,18 @@ class Syncthing(
             return String(CharArray(32) { letters[random.nextInt(letters.length)] })
         }
     }
+}
+
+/** A config change can briefly restart Syncthing's local API between consecutive startup requests. */
+internal suspend fun <T> retryStartupConnection(block: suspend () -> T): T {
+    repeat(50) {
+        try {
+            return block()
+        } catch (_: SocketException) {
+            delay(200)
+        }
+    }
+    return block()
 }
 
 // what syncthing answers is read without trusting its shape: an answer of another shape than expected is a failure to

@@ -107,9 +107,9 @@ fun PriorityDot(priority: Priority, modifier: Modifier = Modifier) {
     val color by animateColorAsState(priorityColor(priority))
     val radius by animateDpAsState(
         when (priority) {
-            Priority.HIGH -> Space.dotHigh
-            Priority.MEDIUM -> Space.dotMedium
-            Priority.LOW -> Space.dotLow
+            Priority.HIGH -> Space.dotHighRadius
+            Priority.MEDIUM -> Space.dotMediumRadius
+            Priority.LOW -> Space.dotLowRadius
             Priority.NONE -> Space.dot / 2
         },
     )

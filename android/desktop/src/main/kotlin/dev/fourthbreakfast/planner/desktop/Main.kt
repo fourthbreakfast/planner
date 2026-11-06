@@ -90,7 +90,7 @@ internal class DesktopApp(
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
         .build()
-    val data = PlannerData(database).also { data -> scope.launch { data.startClock() } }
+    val data = runBlocking(Dispatchers.IO) { PlannerData.create(database) }
     private val prefs = DesktopPrefs(prefsNode)
     val tasksViewModel = TasksViewModel(data.tasks)
     val agendaViewModel = AgendaViewModel(data.events)

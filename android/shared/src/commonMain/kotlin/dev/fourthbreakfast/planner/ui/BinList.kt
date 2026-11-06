@@ -39,7 +39,7 @@ import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The top of a bin. The word "bin" is in the calculator lettering, in the place of the tab it was opened from (tasks
+ * The top of a bin. Its heading occupies the place of the tab it was opened from (tasks
  * at the left, agenda in the middle, notes at the right), and the row under it is the main screen's row: the count
  * at the left, the arrow where the bin button was.
  */
@@ -61,10 +61,8 @@ fun BinBar(count: Int, from: Tab, onEmpty: () -> Unit, onClose: () -> Unit) {
                         .padding(horizontal = Space.gutter - Space.rowPad),
                 ) {
                     if (tab == from) {
-                        SegmentText(
+                        ScreenHeading(
                             text = stringResource(Res.string.bin),
-                            color = MaterialTheme.colorScheme.onBackground,
-                            scale = TAB_SCALE,
                             modifier = Modifier.semantics { heading() },
                         )
                     }

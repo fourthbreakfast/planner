@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class PlannerApp : Application() {
     private val database: PlannerDatabase by lazy {
@@ -33,7 +34,9 @@ class PlannerApp : Application() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /** The tasks, the agenda, the notes, the backup and sync, over the database. */
-    val data by lazy { PlannerData(database) }
+    val data by lazy {
+        runBlocking(Dispatchers.IO) { PlannerData.create(database) }
+    }
     private val reminders by lazy { Reminders(this) }
 
     private val prefs by lazy { AndroidPrefs(this, "view") }
@@ -59,7 +62,6 @@ class PlannerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         setUpShortcuts()
-        scope.launch { data.startClock() }
         // the alarms follow the agenda: every change to an event sets or takes away its alarm
         scope.launch { data.events.all.collect { reminders.sync(it) } }
         // and the widget on the home screen follows the events and the tasks
@@ -89,12 +91,8 @@ class PlannerApp : Application() {
     }
 
     /** Draws the home screen widgets again, for when the widget is added or resized or the day changes. */
-    fun refreshWidgets() {
-        scope.launch { PlannerWidget.update(this@PlannerApp, data.events.all.first(), data.tasks.all.first()) }
-    }
+    fun refreshWidgets() = scope.launch { PlannerWidget.update(this@PlannerApp, data.events.all.first(), data.tasks.all.first()) }
 
     /** Sets every alarm again, for after a restart or a change of the clock. */
-    fun resyncReminders() {
-        scope.launch { reminders.sync(data.events.all.first()) }
-    }
+    fun resyncReminders() = scope.launch { reminders.sync(data.events.all.first()) }
 }

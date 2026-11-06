@@ -74,6 +74,7 @@ import dev.fourthbreakfast.planner.ui.Tab
 import dev.fourthbreakfast.planner.ui.TabBar
 import dev.fourthbreakfast.planner.ui.TitleWithCount
 import dev.fourthbreakfast.planner.ui.listLines
+import dev.fourthbreakfast.planner.ui.rememberAnimationsOn
 import dev.fourthbreakfast.planner.ui.rememberIs24Hour
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
@@ -140,7 +141,13 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
     } else {
         0
     }
-    Crossfade(targetState = mode, modifier = Modifier.background(MaterialTheme.colorScheme.background), animationSpec = tween(150), label = "agenda") { shown ->
+    val animated = rememberAnimationsOn()
+    Crossfade(
+        targetState = mode,
+        modifier = Modifier.background(MaterialTheme.colorScheme.background),
+        animationSpec = tween(if (animated) 150 else 0),
+        label = "agenda",
+    ) { shown ->
         when {
             shown == 1 -> EventEditor(
                 initial = if (editorMode == 1) null else editing,

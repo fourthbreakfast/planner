@@ -248,13 +248,13 @@ internal fun SwipeBackground(renaming: Boolean, removeLabel: String, renameLabel
     Box(
         contentAlignment = if (renaming) Alignment.CenterEnd else Alignment.CenterStart,
         modifier = modifier
-            .background(if (renaming) colors.secondaryContainer else colors.primary)
+            .background(if (renaming) colors.secondaryContainer else colors.error)
             .padding(horizontal = Space.gutter),
     ) {
         Text(
             text = if (renaming) renameLabel else removeLabel,
             style = MaterialTheme.typography.labelLarge,
-            color = if (renaming) colors.onSecondaryContainer else colors.onPrimary,
+            color = if (renaming) colors.onSecondaryContainer else colors.onError,
         )
     }
 }

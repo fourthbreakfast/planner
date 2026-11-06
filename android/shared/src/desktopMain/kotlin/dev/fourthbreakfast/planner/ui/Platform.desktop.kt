@@ -2,13 +2,21 @@ package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import com.sun.jna.Native
+import com.sun.jna.ptr.IntByReference
+import com.sun.jna.win32.StdCallLibrary
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.prefs.Preferences
+import kotlinx.coroutines.delay
 
 /** The user's own preferences on this computer, under one node. */
 class DesktopPrefs(node: String) : Prefs {
@@ -77,7 +85,33 @@ fun is24HourClock(): Boolean {
 actual fun rememberIs24Hour(): Boolean = remember { is24HourClock() }
 
 @Composable
-actual fun rememberAnimationsOn(): Boolean = true
+actual fun rememberAnimationsOn(): Boolean {
+    var enabled by remember { mutableStateOf(desktopAnimationsOn()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2_000)
+            enabled = desktopAnimationsOn()
+        }
+    }
+    return enabled
+}
+
+internal interface AnimationSettings : StdCallLibrary {
+    @Suppress("FunctionName")
+    fun SystemParametersInfoW(action: Int, parameter: Int, value: IntByReference, flags: Int): Boolean
+}
+
+/** Read the Windows client-area animation preference; use normal motion if unavailable. */
+internal fun desktopAnimationsOn(osName: String = System.getProperty("os.name").orEmpty(), read: () -> Boolean? = ::readWindowsAnimations): Boolean =
+    if (!osName.startsWith("Windows", ignoreCase = true)) true else runCatching { read() }.getOrNull() ?: true
+
+private const val GET_CLIENT_AREA_ANIMATION = 0x1042
+private val animationSettings: AnimationSettings by lazy { Native.load("user32", AnimationSettings::class.java) }
+
+internal fun readWindowsAnimations(): Boolean? {
+    val value = IntByReference()
+    return if (animationSettings.SystemParametersInfoW(GET_CLIENT_AREA_ANIMATION, 0, value, 0)) value.value != 0 else null
+}
 
 @Composable
 actual fun rememberAskToNotify(): () -> Unit = {}

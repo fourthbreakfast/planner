@@ -19,9 +19,10 @@ class UpdatesTest {
 
     @Test
     fun aReleasePageGivesTheVersionAndBothFiles() {
+        val digest = "ABC1".repeat(16)
         val json = """
             {"tag_name": "v0.9.0", "assets": [
-              {"name": "planner-0.9.0.apk", "digest": "sha256:ABC", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.apk"},
+              {"name": "planner-0.9.0.apk", "digest": "sha256:$digest", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.apk"},
               {"name": "planner-0.9.0.msi", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0.msi"},
               {"name": "planner-0.9.0-setup.exe", "browser_download_url": "https://github.com/x/releases/download/v0.9.0/planner-0.9.0-setup.exe"}
             ]}
@@ -29,7 +30,7 @@ class UpdatesTest {
         val release = parseRelease(json)!!
         assertEquals("0.9.0", release.version)
         assertTrue(release.apk!!.url.endsWith(".apk"))
-        assertEquals("ABC", release.apk!!.sha256)
+        assertEquals(digest, release.apk!!.sha256)
         assertTrue(release.msi!!.url.endsWith(".msi"))
         assertNull(release.msi!!.sha256)
         assertTrue(release.setup!!.url.endsWith("-setup.exe"))
@@ -45,5 +46,30 @@ class UpdatesTest {
     fun somethingElseIsNoRelease() {
         assertNull(parseRelease("""{"message": "Not Found"}"""))
         assertNull(parseRelease("not json"))
+    }
+
+    @Test
+    fun unexpectedJsonShapesNeverCrashTheUpdater() {
+        listOf(
+            "[]",
+            "null",
+            """{"tag_name": [], "assets": []}""",
+            """{"tag_name": 123, "assets": []}""",
+            """{"tag_name": "v1", "assets": {}}""",
+        ).forEach { assertNull(parseRelease(it)) }
+        val release = parseRelease(
+            """{"tag_name":"v2", "assets":[null, 4, [], {"name":{}}, {"name":"planner.apk", "browser_download_url":[]}]}""",
+        )!!
+        assertNull(release.apk)
+    }
+
+    @Test
+    fun malformedChecksumsAreNotTreatedAsPublishedChecksums() {
+        listOf("sha256:ABC", "sha512:${"a".repeat(64)}", "sha256:${"g".repeat(64)}").forEach { digest ->
+            val release = parseRelease(
+                """{"tag_name":"v2", "assets":[{"name":"planner.apk", "digest":"$digest", "browser_download_url":"https://example.test/a.apk"}]}""",
+            )!!
+            assertNull(release.apk!!.sha256)
+        }
     }
 }
