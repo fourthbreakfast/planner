@@ -123,8 +123,17 @@ class DesignRenderTest {
         val notes = NotesViewModel(Notes(noteStore), prefs)
         for ((theme, dark) in listOf("dark" to true, "light" to false)) {
             for (screen in listOf("tasks", "agenda", "notes", "editor")) {
+                val owner = object : androidx.lifecycle.LifecycleOwner {
+                    override val lifecycle = androidx.lifecycle.LifecycleRegistry.createUnsafe(this).apply {
+                        currentState = androidx.lifecycle.Lifecycle.State.RESUMED
+                    }
+                }
                 ImageComposeScene(880, 1800, Density(2f)) {
-                    CompositionLocalProvider(LocalServices provides services, LocalBackStack provides BackStack()) {
+                    CompositionLocalProvider(
+                        androidx.lifecycle.compose.LocalLifecycleOwner provides owner,
+                        LocalServices provides services,
+                        LocalBackStack provides BackStack(),
+                    ) {
                         PlannerTheme(darkTheme = dark) {
                             when (screen) {
                                 "tasks" -> TaskList(tasks, 0, {}, {}, {}, taskModel)

@@ -205,22 +205,31 @@ fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.siz
     }
 }
 
-/** A push pin, upright: outlined, or filled once the note is pinned. */
+/** A diagonal pin with a squared cap and pointed needle; filled only while pinned. Shared by every surface. */
 fun DrawScope.pinIcon(ink: Color, filled: Boolean) {
-    val line = Space.strokeThin.toPx()
-    val w = size.width
-    val h = size.height
-    val head = Path().apply {
-        moveTo(w * 0.34f, h * 0.08f)
-        lineTo(w * 0.66f, h * 0.08f)
-        lineTo(w * 0.62f, h * 0.40f)
-        lineTo(w * 0.80f, h * 0.58f)
-        lineTo(w * 0.20f, h * 0.58f)
-        lineTo(w * 0.38f, h * 0.40f)
+    val unit = size.minDimension / 21f
+    val centre = Offset(size.width / 2, size.height / 2)
+
+    // Rotate the same 24-unit drawing clockwise, keeping it centred in any icon slot.
+    fun point(x: Float, y: Float): Offset {
+        val dx = x - 12f
+        val dy = y - 12f
+        return centre + Offset((dx - dy) * 0.7071068f, (dx + dy) * 0.7071068f) * unit
+    }
+    fun polygon(vararg vertices: Pair<Float, Float>) = Path().apply {
+        vertices.forEachIndexed { index, (x, y) ->
+            val p = point(x, y)
+            if (index == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+        }
         close()
     }
-    if (filled) drawPath(head, ink) else drawPath(head, ink, style = Stroke(line, join = StrokeJoin.Round))
-    drawLine(ink, Offset(w * 0.5f, h * 0.58f), Offset(w * 0.5f, h * 0.94f), line, StrokeCap.Round)
+    val head = polygon(
+        8f to 3f, 16f to 3f, 16f to 5f, 14f to 5f, 14f to 10f,
+        17f to 13f, 17f to 15f, 7f to 15f, 7f to 13f,
+        10f to 10f, 10f to 5f, 8f to 5f,
+    )
+    if (filled) drawPath(head, ink) else drawPath(head, ink, style = Stroke(unit * 1.8f, join = StrokeJoin.Miter))
+    drawPath(polygon(11.25f to 15f, 12.75f to 15f, 12f to 22f), ink)
 }
 
 /** The pin, in a touch square: outlined to pin the note, filled while it is pinned. */
