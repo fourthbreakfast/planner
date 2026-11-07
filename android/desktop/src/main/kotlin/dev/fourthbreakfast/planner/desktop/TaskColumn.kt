@@ -76,6 +76,7 @@ import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.rename
 import dev.fourthbreakfast.planner.resources.task_progress
 import dev.fourthbreakfast.planner.tasks.DropZone
+import dev.fourthbreakfast.planner.tasks.EndRow
 import dev.fourthbreakfast.planner.tasks.PriorityDot
 import dev.fourthbreakfast.planner.tasks.TaskCheck
 import dev.fourthbreakfast.planner.tasks.TaskNode
@@ -83,6 +84,7 @@ import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.tasks.arrangeHolding
 import dev.fourthbreakfast.planner.tasks.dropZoneAt
 import dev.fourthbreakfast.planner.tasks.rankedDestination
+import dev.fourthbreakfast.planner.tasks.rankedMark
 import dev.fourthbreakfast.planner.tasks.resolveDrop
 import dev.fourthbreakfast.planner.ui.itemAt
 import dev.fourthbreakfast.planner.ui.offsetOf
@@ -120,9 +122,27 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
     var dragging by remember { mutableStateOf<String?>(null) }
     var dragY by remember { mutableStateOf(0f) }
     var drop by remember { mutableStateOf<Pair<String, DropZone>?>(null) }
+    val line = drop?.let { target ->
+        val moved = dragging
+        if (moved == null || (target.second == DropZone.INTO && target.first != EndRow.key)) {
+            null
+        } else {
+            resolveDrop(rows, active, moved, target.first, target.second)?.let { landing ->
+                rankedMark(rows, active, moved, landing.destination, landing.depth)
+            }
+        }
+    }
 
     fun targetAt(y: Float): Pair<String, DropZone>? {
-        val item = list.itemAt(y) ?: return null
+        val item = list.itemAt(y)
+        if (item == null) {
+            val last = list.layoutInfo.visibleItemsInfo.lastOrNull() ?: return null
+            return if (isBelowEndRow(y, last.key, last.offset + last.size, list.layoutInfo.viewportEndOffset, list.canScrollForward)) {
+                EndRow.key to DropZone.AFTER
+            } else {
+                null
+            }
+        }
         val zone = dropZoneAt((y - item.offset) / item.size)
         return (item.key as? String)?.let { it to zone }
     }
@@ -143,7 +163,8 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                 val task = node.task
                 val (hover, hovered) = rememberHover()
                 val selected = state.focused == Section.TASKS && state.selectedTask == task.id
-                val mark = drop?.takeIf { it.first == task.id }?.second
+                val mark = line?.takeIf { it.key == task.id }?.zone
+                    ?: drop?.takeIf { it.first == task.id && it.second == DropZone.INTO }?.second
                 ContextMenuArea(items = {
                     listOf(
                         ContextMenuItem(renameLabel) { state.renamingTask = task.id },
@@ -282,10 +303,17 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                     }
                 }
             }
+            if (rows.isNotEmpty()) {
+                item(key = EndRow.key) { Box(Modifier.fillMaxWidth().height(Desk.row * 1.5f)) }
+            }
         }
         AddLine(state, active, viewModel)
     }
 }
+
+/** Blank space after the end row is also a drop target, but only at the actual end of the list. */
+internal fun isBelowEndRow(y: Float, lastKey: Any?, lastBottom: Int, viewportEnd: Int, canScrollForward: Boolean): Boolean =
+    !canScrollForward && lastKey == EndRow.key && y >= lastBottom && y < viewportEnd
 
 /** The line at the foot of the column that adds a task, inside the aimed one when there is one. */
 @Composable

@@ -78,6 +78,22 @@ class TasksTest {
     }
 
     @Test
+    fun movingAfterLastYellowKeepsItsPriorityAndOtherTasks() = runBlocking {
+        tasks.add("yellow1")
+        tasks.add("plain")
+        tasks.add("yellow2")
+        tasks.add("red")
+        tasks.setPriority(id("yellow1"), Priority.MEDIUM)
+        tasks.setPriority(id("yellow2"), Priority.MEDIUM)
+        tasks.setPriority(id("red"), Priority.HIGH)
+        tasks.move(id("yellow1"), Destination(afterId = id("yellow2")))
+        assertEquals(listOf("red", "yellow2", "yellow1", "plain"), sorted(store.state.value, SortOrder.PRIORITY).map { it.title })
+        assertEquals(Priority.MEDIUM, get("yellow1").priority)
+        assertEquals(null, get("yellow1").parentId)
+        assertFalse(get("yellow1").done)
+    }
+
+    @Test
     fun moveWithoutANeighbourGoesLast() = runBlocking {
         abc()
         tasks.move(id("a"), Destination())

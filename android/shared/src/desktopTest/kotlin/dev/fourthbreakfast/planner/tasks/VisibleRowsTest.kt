@@ -150,6 +150,24 @@ class VisibleRowsTest {
     }
 
     @Test
+    fun aYellowDroppedBelowTheLastYellowGoesAfterIt() {
+        val visible = rows(ranked, SortOrder.PRIORITY)
+        val landing = resolveDrop(visible, ranked, "yellow1", "yellow2", DropZone.AFTER)!!
+        assertEquals(Destination(beforeId = "plain"), landing.destination)
+        assertEquals(Destination(afterId = "yellow2"), rankedDestination(ranked, "yellow1", landing.destination))
+        assertEquals(DropMark("plain", DropZone.BEFORE, 0), rankedMark(visible, ranked, "yellow1", landing.destination, landing.depth))
+    }
+
+    @Test
+    fun droppingInTheEndAreaMakesYellowLastWhenItIsTheLastColour() {
+        val yellowLast = ranked.filterNot { it.id == "plain" }
+        val visible = rows(yellowLast, SortOrder.PRIORITY)
+        val landing = resolveDrop(visible, yellowLast, "yellow1", EndRow.key, DropZone.INTO)!!
+        assertEquals(Destination(afterId = "yellow2"), rankedDestination(yellowLast, "yellow1", landing.destination))
+        assertEquals(DropMark("yellow2", DropZone.AFTER, 0), rankedMark(visible, yellowLast, "yellow1", landing.destination, landing.depth))
+    }
+
+    @Test
     fun aColourAloneAmongItsNeighboursGoesWhereItWasPut() {
         assertEquals(Destination(beforeId = "yellow1"), rankedDestination(ranked, "red", Destination(beforeId = "yellow1")))
     }
