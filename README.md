@@ -29,7 +29,7 @@ planner brings a task list, an agenda and a notebook into one small app for andr
 
 **tasks.** subtasks up to four levels deep, a priority on every task (none, low, medium, high), a bin for anything you remove, and every level ranked by priority. checking a task covers everything inside it, and tasks with subtasks start closed.
 
-**agenda.** your events soonest first, grouped by day, with the time, the place and the notes in view. an event can be all day, have a start, or have a start and an end, last several days, repeat by day, week, month or year, and remind you: at the time, 10 minutes before or an hour before. events from other calendars come in from an .ics file. the agenda can also show a month, with a dot on every day that has something on it.
+**agenda.** your events soonest first, grouped by day, with the time, the place and the notes in view. an event can be all day, have a start, or have a start and an end, last several days, repeat by day, week, month or year, and remind you at the time or a preset or custom number of minutes, hours or days before. events from other calendars come in from an .ics file. the agenda can also show a month, with a dot on every day that has something on it.
 
 **notes.** a title, then plain text you can mark up: bulleted and numbered lists, checkboxes, indent, bold, italic and underline, with undo and redo. notes are kept in the order you put them, can be pinned, and have a bin of their own.
 

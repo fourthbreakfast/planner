@@ -68,4 +68,38 @@ class AgendaRenderTest {
             }
         }
     }
+
+    @Test
+    fun drawEventForm() {
+        val out = System.getenv("PLANNER_RENDER")?.let(::File)
+        assumeTrue(out != null)
+        out!!.mkdirs()
+        val prefs = MemoryPrefs()
+        val event = dev.fourthbreakfast.planner.core.Event(
+            title = "train to the coast",
+            day = today(),
+            minute = 8 * 60 + 12,
+            endMinute = 10 * 60 + 40,
+            reminder = 45,
+            createdAt = 0,
+            repeat = dev.fourthbreakfast.planner.core.Repeat.WEEKLY,
+        )
+        for (dark in listOf(true, false)) {
+            ImageComposeScene(880, 1800, Density(2f)) {
+                CompositionLocalProvider(
+                    LocalServices provides PlannerServices(Requests(), UiSettings(prefs), prefs),
+                    dev.fourthbreakfast.planner.ui.LocalBackStack provides dev.fourthbreakfast.planner.ui.BackStack(),
+                ) {
+                    PlannerTheme(darkTheme = dark) { EventEditor(event, onSave = { _, _ -> }, onDelete = null, onClose = {}) }
+                }
+            }.use { scene ->
+                repeat(10) {
+                    scene.render(it * 100_000_000L)
+                    Thread.sleep(100)
+                }
+                File(out, "event-form-" + (if (dark) "dark" else "light") + ".png")
+                    .writeBytes(scene.render(2_000_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+            }
+        }
+    }
 }

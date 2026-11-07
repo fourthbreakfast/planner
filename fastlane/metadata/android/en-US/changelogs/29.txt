@@ -1,0 +1,1 @@
+Fix dropping tasks at the bottom of a priority group on desktop. Group date and recurrence settings inside day, keep time directly below, and add custom reminders in minutes, hours or days.
