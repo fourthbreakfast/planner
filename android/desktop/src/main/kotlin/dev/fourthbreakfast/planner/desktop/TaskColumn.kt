@@ -120,7 +120,6 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
     state.visibleTasks = rows.map { it.task.id }
     val list = rememberLazyListState()
     var dragging by remember { mutableStateOf<String?>(null) }
-    var dragY by remember { mutableStateOf(0f) }
     var drop by remember { mutableStateOf<Pair<String, DropZone>?>(null) }
     val line = drop?.let { target ->
         val moved = dragging
@@ -213,14 +212,12 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                             )
                             .pointerInput(task.id) {
                                 detectDragGestures(
-                                    onDragStart = { at ->
+                                    onDragStart = {
                                         dragging = task.id
-                                        dragY = list.offsetOf(task.id) + at.y
                                     },
-                                    onDrag = { change, amount ->
+                                    onDrag = { change, _ ->
                                         change.consume()
-                                        dragY += amount.y
-                                        drop = targetAt(dragY)?.takeIf { it.first != task.id }
+                                        drop = targetAt(list.offsetOf(task.id) + change.position.y)?.takeIf { it.first != task.id }
                                     },
                                     onDragEnd = {
                                         val target = drop

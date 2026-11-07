@@ -2,6 +2,10 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.2.1
+
+- use the current mouse position for desktop task dragging, so the initial drag movement is not counted twice and drops stay on the intended priority boundary
+
 ## 1.2.0
 
 - drop desktop tasks below the last visible priority group, with a marker showing their actual ranked destination

@@ -1,0 +1,1 @@
+Keep desktop task drop targets aligned with the mouse. Includes the grouped event dates and custom reminders from 1.2.0.
