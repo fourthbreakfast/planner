@@ -5,7 +5,6 @@
   .head { flex: 1; display: flex; align-items: center; padding: var(--space-2) 0; }
   h1 { margin: 0; font: 500 22px/28px var(--font-mono); color: var(--ink); }
   .seg { margin-left: var(--space-3); display: block; }
-  .seg.second { margin-left: var(--space-3); opacity: 0.6; }
   .touch { width: var(--touch); height: var(--touch); display: flex; align-items: center; justify-content: center; color: var(--quiet); }
   svg.bin { width: var(--icon); height: var(--icon); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   .gap { height: 28px; }
@@ -32,6 +31,6 @@
     return `<svg class="seg ${cls}" viewBox="0 0 ${w.toFixed(2)} ${H}" width="${(w * scale).toFixed(2)}" height="${H * scale}" role="img" aria-label="${n}">${body}</svg>`;
   }
   const bin = '<svg class="bin" viewBox="0 0 20 20"><path d="M4.4 5.6 L5.6 18.4 L14.4 18.4 L15.6 5.6"/><path d="M2.4 5.6 L17.6 5.6 M7.6 5.6 L7.6 2 L12.4 2 L12.4 5.6"/></svg>';
-  const barHtml = (title, n, second) => `<div class="bar"><div class="head"><h1>${title}</h1>${segments(n)}${second ? segments(second, 1, 'second') : ''}</div><div class="touch">${bin}</div></div>`;
-  document.getElementById('root').innerHTML = barHtml('tasks', 4) + '<div class="gap"></div>' + barHtml('tasks', 3, 24);
+  const barHtml = (title, n) => `<div class="bar"><div class="head"><h1>${title}</h1>${segments(n)}</div><div class="touch">${bin}</div></div>`;
+  document.getElementById('root').innerHTML = barHtml('tasks', 4) + '<div class="gap"></div>' + barHtml('notes', 3);
 </script>
