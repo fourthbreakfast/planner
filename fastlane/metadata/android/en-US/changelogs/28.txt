@@ -1,0 +1,1 @@
+A sharper diagonal pin, consistent across note rows and editors on phone and desktop.

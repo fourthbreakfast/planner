@@ -2,6 +2,11 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.1.4
+
+- a sharper diagonal pin with a squared cap and pointed needle, shared by phone and desktop
+- preserve outlined and filled pin states across note rows and editors
+
 ## 1.1.3
 
 - show one task counter; keep progress on each parent task
