@@ -183,7 +183,7 @@
     </plurals>
     <string name="undo">undo</string>
     <string name="tasks_title">tasks</string>
-    <string name="open_tasks_in_all">%1$d open main tasks, %2$d open subtasks</string>
+    <string name="open_main_tasks">%1$d open main tasks</string>
     <string name="bin">bin</string>
     <string name="bin_with_count">bin %1$d</string>
     <string name="back">back</string>

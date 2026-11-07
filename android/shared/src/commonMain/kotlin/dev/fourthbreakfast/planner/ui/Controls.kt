@@ -117,7 +117,7 @@ fun BinButton(binCount: Int, onClick: () -> Unit, modifier: Modifier = Modifier,
 
 /** A consistent heading and quiet count across the lists and bins. */
 @Composable
-fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Modifier = Modifier, secondCount: Int? = null) {
+fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.padding(vertical = Space.x2),
@@ -137,14 +137,6 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
                 .padding(start = if (title != null) Space.x3 else 0.dp)
                 .semantics { contentDescription = countLabel },
         )
-        // a second number, the same size but fainter: everything open, subtasks included
-        if (secondCount != null) {
-            SegmentNumber(
-                value = secondCount,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                modifier = Modifier.padding(start = Space.x3).semantics { contentDescription = countLabel },
-            )
-        }
     }
 }
 

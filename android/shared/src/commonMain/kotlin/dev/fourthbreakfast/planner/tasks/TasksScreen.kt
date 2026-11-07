@@ -55,7 +55,7 @@ import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.subtree
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.nothing_to_do
-import dev.fourthbreakfast.planner.resources.open_tasks_in_all
+import dev.fourthbreakfast.planner.resources.open_main_tasks
 import dev.fourthbreakfast.planner.resources.task_removed
 import dev.fourthbreakfast.planner.resources.undo
 import dev.fourthbreakfast.planner.ui.BinButton
@@ -302,7 +302,6 @@ internal fun TaskList(
         topBar = {
             Header(
                 openCount = tasks.count { !it.done && it.parentId == null },
-                subtasksOpen = tasks.count { !it.done && it.parentId != null },
                 showExpandAll = parentIds.isNotEmpty(),
                 anyCollapsed = anyCollapsed,
                 onToggleAll = {
@@ -423,7 +422,6 @@ private fun reorderSpring() = spring<IntOffset>(
 @Composable
 private fun Header(
     openCount: Int,
-    subtasksOpen: Int,
     showExpandAll: Boolean,
     anyCollapsed: Boolean,
     onToggleAll: () -> Unit,
@@ -448,8 +446,7 @@ private fun Header(
             TitleWithCount(
                 title = null,
                 count = openCount,
-                secondCount = subtasksOpen,
-                countLabel = stringResource(Res.string.open_tasks_in_all, openCount, subtasksOpen),
+                countLabel = stringResource(Res.string.open_main_tasks, openCount),
                 modifier = Modifier.weight(1f),
             )
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)

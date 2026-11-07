@@ -2,6 +2,13 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.1.3
+
+- show one task counter; keep progress on each parent task
+- expand or collapse desktop parent tasks with a click, matching the phone
+- keep pin and bin controls visible for the selected desktop note
+- use “notes” consistently in the readme introduction
+
 ## 1.1.2
 
 - keep the caret after the marker when Enter starts an empty list item

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  tasks, days and passing thoughts. kept together, on your own devices.
+  tasks, an agenda and notes. kept together, on your own devices.
 </p>
 
 <p align="center">
@@ -102,6 +102,7 @@ the window shows the tasks, the agenda and the notes side by side. a note, an ev
 <table>
   <tr><td>ctrl+1, ctrl+2, ctrl+3</td><td>go to tasks, agenda or notes</td></tr>
   <tr><td>ctrl+n</td><td>a new task, event or note, in the part you are in</td></tr>
+  <tr><td>click a parent task</td><td>expand or collapse its subtasks</td></tr>
   <tr><td>up, down, enter</td><td>choose a task, an event or a note, and open it</td></tr>
   <tr><td>tab, shift+tab while writing a note</td><td>nest or unnest the selected bullets, numbered items or checkboxes</td></tr>
   <tr><td>f2 or a double click</td><td>rename a task</td></tr>

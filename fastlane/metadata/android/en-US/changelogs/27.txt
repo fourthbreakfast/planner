@@ -1,0 +1,1 @@
+One task counter, click-to-collapse desktop tasks, and clearer note pin/bin controls.

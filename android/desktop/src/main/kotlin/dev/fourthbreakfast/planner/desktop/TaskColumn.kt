@@ -184,6 +184,9 @@ fun TaskColumn(tasks: List<Task>, binCount: Int, state: DashboardState, viewMode
                                 onClick = {
                                     state.focused = Section.TASKS
                                     state.selectedTask = task.id
+                                    if (node.childCount > 0) {
+                                        state.openTasks = if (node.collapsed) state.openTasks + task.id else state.openTasks - task.id
+                                    }
                                 },
                                 onDoubleClick = { state.renamingTask = task.id },
                             )
