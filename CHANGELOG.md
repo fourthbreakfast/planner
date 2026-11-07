@@ -2,6 +2,14 @@
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
 
+## 1.2.0
+
+- drop desktop tasks below the last visible priority group, with a marker showing their actual ranked destination
+- keep date, recurrence and end dates together inside the day picker, with time directly below day on the event form
+- choose reminder presets or a custom number of minutes, hours or days before an event
+- validate custom offsets without overflow and schedule long reminders correctly for repeating events
+- keep chooser panels scrollable on phones and comfortably sized on desktop
+
 ## 1.1.4
 
 - a sharper diagonal pin with a squared cap and pointed needle, shared by phone and desktop

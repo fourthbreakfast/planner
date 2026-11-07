@@ -134,6 +134,8 @@
     <string name="previous_month">previous month</string>
     <string name="next_month">next month</string>
     <string name="event_ends">ends on</string>
+    <string name="event_date_range_invalid">end dates must be on or after the start day</string>
+    <string name="event_repeat_ends">repeat ends on</string>
     <string name="event_repeats">repeats</string>
     <string name="event_until">until</string>
     <string name="repeat_never">never</string>
@@ -153,6 +155,28 @@
     <string name="reminder_10">10 minutes before</string>
     <string name="reminder_60">1 hour before</string>
     <string name="reminder_other">%1$d minutes before</string>
+    <string name="reminder_custom">custom reminder</string>
+    <string name="reminder_offset">time before the event</string>
+    <string name="reminder_minutes_unit">minutes</string>
+    <string name="reminder_hours_unit">hours</string>
+    <string name="reminder_days_unit">days</string>
+    <string name="reminder_invalid_amount">enter a whole number from 1 to %1$d</string>
+    <plurals name="reminder_minutes">
+        <item quantity="one">%1$d minute before</item>
+        <item quantity="other">%1$d minutes before</item>
+    </plurals>
+    <plurals name="reminder_hours">
+        <item quantity="one">%1$d hour before</item>
+        <item quantity="other">%1$d hours before</item>
+    </plurals>
+    <plurals name="reminder_days">
+        <item quantity="one">%1$d day before</item>
+        <item quantity="other">%1$d days before</item>
+    </plurals>
+    <plurals name="reminder_weeks">
+        <item quantity="one">%1$d week before</item>
+        <item quantity="other">%1$d weeks before</item>
+    </plurals>
     <string name="save">save</string>
     <string name="set">set</string>
     <string name="open_event">open this event</string>

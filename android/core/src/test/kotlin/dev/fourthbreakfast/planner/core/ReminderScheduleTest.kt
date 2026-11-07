@@ -2,6 +2,7 @@ package dev.fourthbreakfast.planner.core
 
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ReminderScheduleTest {
@@ -29,5 +30,30 @@ class ReminderScheduleTest {
     @Test
     fun removedAndUnscheduledEventsHaveNoAlarm() {
         assertEquals(emptyList<Pair<Event, Long>>(), scheduledReminders(listOf(event(610).copy(deletedAt = 1), event(620).copy(reminder = null)), now, utc))
+    }
+
+    @Test
+    fun repeatingReminderCanCountBackMoreThanTheOccurrenceSearchWindow() {
+        val repeating = event(610).copy(repeat = Repeat.DAILY, reminder = 1000 * 24 * 60)
+        assertEquals(now + 10 * 60_000L, scheduledReminders(listOf(repeating), now, utc).single().second)
+    }
+
+    @Test
+    fun maximumStoredOffsetSchedulesWithoutOverflow() {
+        val repeating = event(600).copy(repeat = Repeat.DAILY, reminder = Int.MAX_VALUE)
+        val next = now + (1440 - Int.MAX_VALUE % 1440) * 60_000L
+        assertEquals(next, scheduledReminders(listOf(repeating), now, utc).single().second)
+    }
+
+    @Test
+    fun offsetOccurrenceSearchStillHonorsSkippedDaysAndRepeatEnd() {
+        val repeating = event(600).copy(
+            repeat = Repeat.DAILY,
+            reminder = 1000 * 24 * 60,
+            skipDays = setOf(day + 1000),
+            repeatUntil = day + 1001,
+        )
+        assertEquals(now + 86_400_000L, reminderAt(repeating, utc, now))
+        assertNull(reminderAt(repeating.copy(repeatUntil = day + 1000), utc, now))
     }
 }

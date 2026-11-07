@@ -64,6 +64,10 @@ object Space {
     val digitGap = x1
 
     // the agenda
+    /** A chooser stays compact on a desktop and fills the available width on a phone. */
+    val chooserWidth = 560.dp
+    val chooserHeight = 720.dp
+
     /** Width of the time at the left of an event. */
     val timeColumn = 64.dp
 

@@ -39,17 +39,21 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.clear_target
 import dev.fourthbreakfast.planner.resources.delete
+import dev.fourthbreakfast.planner.resources.event_date_range_invalid
 import dev.fourthbreakfast.planner.resources.event_day
 import dev.fourthbreakfast.planner.resources.event_ends
 import dev.fourthbreakfast.planner.resources.event_location
 import dev.fourthbreakfast.planner.resources.event_name
 import dev.fourthbreakfast.planner.resources.event_notes
 import dev.fourthbreakfast.planner.resources.event_reminder
+import dev.fourthbreakfast.planner.resources.event_repeat_ends
 import dev.fourthbreakfast.planner.resources.event_repeats
 import dev.fourthbreakfast.planner.resources.event_time
 import dev.fourthbreakfast.planner.resources.event_title
 import dev.fourthbreakfast.planner.resources.event_until
+import dev.fourthbreakfast.planner.resources.reminder_none
 import dev.fourthbreakfast.planner.resources.save
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
@@ -85,9 +89,6 @@ fun EventEditor(
     var endDay by rememberSaveable { mutableStateOf(initial?.endDay?.let { it - initial.day + (shownDay ?: initial.day) }) }
     var repeat by rememberSaveable { mutableStateOf(initial?.repeat ?: Repeat.NONE) }
     var until by rememberSaveable { mutableStateOf(initial?.repeatUntil) }
-    var pickingEnd by rememberSaveable { mutableStateOf(false) }
-    var pickingRepeat by rememberSaveable { mutableStateOf(false) }
-    var pickingUntil by rememberSaveable { mutableStateOf(false) }
     var asking by rememberSaveable { mutableStateOf<String?>(null) }
     var daySet by rememberSaveable { mutableStateOf(initial != null || newDay != null) }
     var start by rememberSaveable { mutableStateOf(initial?.minute) }
@@ -169,15 +170,17 @@ fun EventEditor(
             Label(Res.string.event_name)
             QuietField(title, { title = it }, Modifier.focusRequester(nameFocus))
             Label(Res.string.event_day)
-            Choice(if (daySet) dateText(day, today) else "") { pickingDay = true }
-            Label(Res.string.event_ends)
-            Choice(endDay?.let { dateText(it, today) } ?: "") { pickingEnd = true }
-            Label(Res.string.event_repeats)
-            Choice(if (repeat == Repeat.NONE) "" else repeatText(repeat)) { pickingRepeat = true }
-            if (repeat != Repeat.NONE) {
-                Label(Res.string.event_until)
-                Choice(until?.let { dateText(it, today) } ?: "") { pickingUntil = true }
-            }
+            Choice(
+                if (daySet) {
+                    listOfNotNull(
+                        dateText(day, today) + (endDay?.let { " – " + dateText(it, today) } ?: ""),
+                        repeat.takeIf { it != Repeat.NONE }?.let { repeatText(it) },
+                        until?.takeIf { repeat != Repeat.NONE }?.let { stringResource(Res.string.event_until) + " " + dateText(it, today) },
+                    ).joinToString(" · ")
+                } else {
+                    ""
+                },
+            ) { pickingDay = true }
             Label(Res.string.event_time)
             Choice(if (timeSet) timeRangeText(start, end, is24Hour) else "") { pickingTime = true }
             // a reminder needs a time to count back from
@@ -193,48 +196,21 @@ fun EventEditor(
     }
 
     if (pickingDay) {
-        DayChooser(
-            initialDay = if (daySet) day else null,
+        DayOptionsChooser(
+            initialDay = day,
+            initialEnd = endDay,
+            initialRepeat = repeat,
+            initialUntil = until,
             today = today,
-            onSet = {
-                day = it
+            onSet = { chosenDay, chosenEnd, chosenRepeat, chosenUntil ->
+                day = chosenDay
+                endDay = chosenEnd
+                repeat = chosenRepeat
+                until = chosenUntil
                 daySet = true
                 pickingDay = false
             },
             onCancel = { pickingDay = false },
-        )
-    }
-    if (pickingEnd) {
-        DayChooser(
-            initialDay = endDay ?: day,
-            today = today,
-            onSet = {
-                // the same day as the start is no end at all
-                endDay = it.takeIf { end -> end > day }
-                pickingEnd = false
-            },
-            onCancel = { pickingEnd = false },
-        )
-    }
-    if (pickingRepeat) {
-        RepeatChooser(
-            current = repeat,
-            onPick = {
-                repeat = it
-                pickingRepeat = false
-            },
-            onCancel = { pickingRepeat = false },
-        )
-    }
-    if (pickingUntil) {
-        DayChooser(
-            initialDay = until ?: day,
-            today = today,
-            onSet = {
-                until = it.takeIf { last -> last >= day }
-                pickingUntil = false
-            },
-            onCancel = { pickingUntil = false },
         )
     }
     asking?.let { what ->
@@ -320,4 +296,71 @@ private fun QuietField(value: String, onChange: (String) -> Unit, modifier: Modi
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
         modifier = modifier.fillMaxWidth(),
     )
+}
+
+private enum class DayPart { MAIN, END, REPEAT, UNTIL }
+
+/** Keep date settings together and commit them only when the day panel is confirmed. */
+@Composable
+private fun DayOptionsChooser(
+    initialDay: Long,
+    initialEnd: Long?,
+    initialRepeat: Repeat,
+    initialUntil: Long?,
+    today: Long,
+    onSet: (Long, Long?, Repeat, Long?) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var day by rememberSaveable { mutableLongStateOf(initialDay) }
+    var end by rememberSaveable { mutableStateOf(initialEnd) }
+    var repeat by rememberSaveable { mutableStateOf(initialRepeat) }
+    var until by rememberSaveable { mutableStateOf(initialUntil) }
+    var part by remember { mutableStateOf(DayPart.MAIN) }
+    when (part) {
+        DayPart.END -> DayChooser(end ?: day, today, onSet = {
+            end = it
+            part = DayPart.MAIN
+        }, onCancel = { part = DayPart.MAIN })
+        DayPart.UNTIL -> DayChooser(until ?: day, today, onSet = {
+            until = it
+            part = DayPart.MAIN
+        }, onCancel = { part = DayPart.MAIN })
+        DayPart.REPEAT -> RepeatChooser(repeat, onPick = {
+            repeat = it
+            part = DayPart.MAIN
+        }, onCancel = { part = DayPart.MAIN })
+        DayPart.MAIN -> DayChooser(
+            initialDay = day,
+            today = today,
+            onDayChange = { day = it },
+            canSet = { selected -> (end == null || end!! >= selected) && (repeat == Repeat.NONE || until == null || until!! >= selected) },
+            onSet = { selected -> onSet(selected, end?.takeIf { it > selected }, repeat, until.takeIf { repeat != Repeat.NONE }) },
+            onCancel = onCancel,
+            details = { selected ->
+                Label(Res.string.event_ends)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { Choice(end?.let { dateText(it, today) } ?: stringResource(Res.string.reminder_none)) { part = DayPart.END } }
+                    if (end != null) QuietButton(stringResource(Res.string.clear_target)) { end = null }
+                }
+                Label(Res.string.event_repeats)
+                Choice(repeatText(repeat)) { part = DayPart.REPEAT }
+                if (repeat != Repeat.NONE) {
+                    Label(Res.string.event_repeat_ends)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) {
+                            Choice(until?.let { dateText(it, today) } ?: stringResource(Res.string.reminder_none)) { part = DayPart.UNTIL }
+                        }
+                        if (until != null) QuietButton(stringResource(Res.string.clear_target)) { until = null }
+                    }
+                }
+                if ((end != null && end!! < selected) || (repeat != Repeat.NONE && until != null && until!! < selected)) {
+                    Text(
+                        stringResource(Res.string.event_date_range_invalid),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            },
+        )
+    }
 }
