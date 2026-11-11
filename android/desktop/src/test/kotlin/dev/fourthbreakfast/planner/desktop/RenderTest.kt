@@ -32,6 +32,9 @@ class RenderTest {
         app.tasksViewModel.add("call the dentist", null)
         app.tasksViewModel.add("buy oat milk", null)
         runBlocking {
+            app.data.habits.add("Read daily", now - 7, (1..7).toSet())
+            app.data.habits.add("Go outside", now - 7, (1..7).toSet())
+            app.data.habits.add("Stretch", now - 7, setOf(1, 3, 5))
             app.data.events.add("lunch with sam", now, 12 * 60 + 30, "the corner cafe", "")
             app.data.events.add("train to the coast", now + 1, 8 * 60 + 12, "central station", "", endMinute = 10 * 60 + 40)
             app.data.events.add("mum's birthday", now + 3, null, "", "")
@@ -61,6 +64,7 @@ class RenderTest {
                             app.tasksViewModel,
                             app.agendaViewModel,
                             app.notesViewModel,
+                            habits = app.habitsViewModel,
                         ) { onClose ->
                             DesktopSettings(app.data.backups, app.sync, app.updates, app.version, onClose, install = {})
                         }
@@ -76,6 +80,14 @@ class RenderTest {
         }
         draw("dashboard-dark", dark = true)
         draw("dashboard-light", dark = false)
+        for (tab in dev.fourthbreakfast.planner.ui.Tab.entries.drop(1)) {
+            app.dashboard.destination = tab
+            draw("desktop-" + tab.name.lowercase(), dark = true)
+        }
+        app.dashboard.destination = dev.fourthbreakfast.planner.ui.Tab.TODAY
+        app.dashboard.aimedTask = trip.id
+        draw("dashboard-subtask-target", dark = true)
+        app.dashboard.aimedTask = null
         app.dashboard.openNote(noteId!!)
         draw("dashboard-note", dark = true)
     }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -35,11 +36,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.calendar_read_only
 import dev.fourthbreakfast.planner.resources.clear_target
+import dev.fourthbreakfast.planner.resources.complete_task
 import dev.fourthbreakfast.planner.resources.delete
 import dev.fourthbreakfast.planner.resources.event_date_range_invalid
 import dev.fourthbreakfast.planner.resources.event_day
@@ -55,6 +67,7 @@ import dev.fourthbreakfast.planner.resources.event_title
 import dev.fourthbreakfast.planner.resources.event_until
 import dev.fourthbreakfast.planner.resources.reminder_none
 import dev.fourthbreakfast.planner.resources.save
+import dev.fourthbreakfast.planner.resources.scheduled_task_hint
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.QuietButton
@@ -79,8 +92,13 @@ fun EventEditor(
     onSave: (draft: EventDraft, onlyThisTime: Boolean) -> Unit,
     onDelete: ((onlyThisTime: Boolean) -> Unit)?,
     onClose: () -> Unit,
+    onCompleteTask: (() -> Unit)? = null,
 ) {
     BackHandler(onBack = onClose)
+    if (initial?.readOnly == true) {
+        SubscribedEventView(initial, onClose)
+        return
+    }
     val asksWhich = initial != null && initial.repeat != Repeat.NONE && occurrence != null
     // a time of a repeating event shows its own day; the series starts on the event's first day
     val shownDay = if (asksWhich) occurrence!! else initial?.day
@@ -124,6 +142,11 @@ fun EventEditor(
     }
     LaunchedEffect(Unit) { if (initial == null) nameFocus.requestFocus() }
 
+    fun save() {
+        if (title.isBlank() || pickingDay || pickingTime || pickingReminder || asking != null) return
+        if (asksWhich) asking = "save" else onSave(draft(), false)
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -135,6 +158,7 @@ fun EventEditor(
                     .padding(start = Space.gutter, end = Space.rowPad),
             ) {
                 ScreenHeading(stringResource(Res.string.event_title), Modifier.weight(1f))
+                if (onCompleteTask != null) QuietButton(stringResource(Res.string.complete_task), onCompleteTask)
                 if (onDelete != null) QuietButton(stringResource(Res.string.delete)) { if (asksWhich) asking = "delete" else onDelete(false) }
                 BackButton(onClose)
             }
@@ -151,7 +175,7 @@ fun EventEditor(
                     .heightIn(min = Space.touch)
                     .background(colors.surfaceVariant, RoundedCornerShape(Space.radiusCheck))
                     .border(Space.strokeThin, colors.outline, RoundedCornerShape(Space.radiusCheck))
-                    .clickable(enabled = ready) { if (asksWhich) asking = "save" else onSave(draft(), false) },
+                    .clickable(enabled = ready) { save() },
             ) {
                 Text(
                     text = stringResource(Res.string.save),
@@ -168,7 +192,15 @@ fun EventEditor(
                 .verticalScroll(rememberScrollState()),
         ) {
             Label(Res.string.event_name)
-            QuietField(title, { title = it }, Modifier.focusRequester(nameFocus))
+            QuietField(title, { title = it }, Modifier.focusRequester(nameFocus), readOnly = initial?.taskId != null, onSubmit = ::save)
+            if (initial?.taskId != null) {
+                Text(
+                    stringResource(Res.string.scheduled_task_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Space.gutter),
+                )
+            }
             Label(Res.string.event_day)
             Choice(
                 if (daySet) {
@@ -185,13 +217,15 @@ fun EventEditor(
             Choice(if (timeSet) timeRangeText(start, end, is24Hour) else "") { pickingTime = true }
             // a reminder needs a time to count back from
             if (timeSet && start != null) {
-                Label(Res.string.event_reminder)
-                Choice(reminder?.let { reminderText(it) } ?: "") { pickingReminder = true }
+                Column {
+                    Label(Res.string.event_reminder)
+                    Choice(reminder?.let { reminderText(it) } ?: "") { pickingReminder = true }
+                }
             }
             Label(Res.string.event_location)
-            QuietField(location, { location = it })
+            QuietField(location, { location = it }, onSubmit = ::save)
             Label(Res.string.event_notes)
-            QuietField(notes, { notes = it }, singleLine = false)
+            QuietField(notes, { notes = it }, singleLine = false, onSubmit = ::save)
         }
     }
 
@@ -201,6 +235,7 @@ fun EventEditor(
             initialEnd = endDay,
             initialRepeat = repeat,
             initialUntil = until,
+            allowRepeat = initial?.taskId == null,
             today = today,
             onSet = { chosenDay, chosenEnd, chosenRepeat, chosenUntil ->
                 day = chosenDay
@@ -251,6 +286,36 @@ fun EventEditor(
     }
 }
 
+/** Subscriptions are inspected here; edits belong in the publishing calendar. */
+@Composable
+private fun SubscribedEventView(event: Event, onClose: () -> Unit) {
+    val today = rememberToday()
+    val is24Hour = rememberIs24Hour()
+    Scaffold(
+        topBar = {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = Space.gutter, end = Space.rowPad), verticalAlignment = Alignment.CenterVertically) {
+                ScreenHeading(stringResource(Res.string.event_title), Modifier.weight(1f))
+                BackButton(onClose)
+            }
+        },
+    ) { padding ->
+        SelectionContainer {
+            Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Space.gutter)) {
+                Text(event.title, style = MaterialTheme.typography.headlineSmall)
+                event.calendarName?.let { Text(it, Modifier.padding(top = Space.x2), style = MaterialTheme.typography.bodyMedium) }
+                Text(stringResource(Res.string.calendar_read_only), Modifier.padding(vertical = Space.x3), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    dateText(event.day, today) + (event.endDay?.let { " – " + dateText(it, today) } ?: ""),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                if (event.minute != null) Text(timeRangeText(event.minute, event.endMinute, is24Hour), style = MaterialTheme.typography.bodyLarge)
+                if (event.location.isNotBlank()) Text(event.location, Modifier.padding(top = Space.x4), style = MaterialTheme.typography.bodyLarge)
+                if (event.notes.isNotBlank()) Text(event.notes, Modifier.padding(top = Space.x4), style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+    }
+}
+
 @Composable
 private fun Label(resource: StringResource) {
     Text(
@@ -278,12 +343,20 @@ private fun Choice(text: String, onClick: () -> Unit) {
 
 /** A plain text field with nothing around it, like the add line. */
 @Composable
-private fun QuietField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, singleLine: Boolean = true) {
+private fun QuietField(
+    value: String,
+    onChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    readOnly: Boolean = false,
+    onSubmit: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     TextField(
         value = value,
         onValueChange = onChange,
         singleLine = singleLine,
+        readOnly = readOnly,
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
@@ -294,7 +367,20 @@ private fun QuietField(value: String, onChange: (String) -> Unit, modifier: Modi
             unfocusedIndicatorColor = Color.Transparent,
         ),
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+            if (event.type == KeyEventType.KeyDown &&
+                (event.key == Key.Enter || event.key == Key.NumPadEnter) &&
+                !event.isShiftPressed &&
+                !event.isAltPressed &&
+                !event.isMetaPressed &&
+                (singleLine || event.isCtrlPressed)
+            ) {
+                onSubmit()
+                true
+            } else {
+                false
+            }
+        },
     )
 }
 
@@ -310,6 +396,7 @@ private fun DayOptionsChooser(
     today: Long,
     onSet: (Long, Long?, Repeat, Long?) -> Unit,
     onCancel: () -> Unit,
+    allowRepeat: Boolean = true,
 ) {
     var day by rememberSaveable { mutableLongStateOf(initialDay) }
     var end by rememberSaveable { mutableStateOf(initialEnd) }
@@ -342,8 +429,10 @@ private fun DayOptionsChooser(
                     Box(Modifier.weight(1f)) { Choice(end?.let { dateText(it, today) } ?: stringResource(Res.string.reminder_none)) { part = DayPart.END } }
                     if (end != null) QuietButton(stringResource(Res.string.clear_target)) { end = null }
                 }
-                Label(Res.string.event_repeats)
-                Choice(repeatText(repeat)) { part = DayPart.REPEAT }
+                if (allowRepeat) {
+                    Label(Res.string.event_repeats)
+                    Choice(repeatText(repeat)) { part = DayPart.REPEAT }
+                }
                 if (repeat != Repeat.NONE) {
                     Label(Res.string.event_repeat_ends)
                     Row(verticalAlignment = Alignment.CenterVertically) {

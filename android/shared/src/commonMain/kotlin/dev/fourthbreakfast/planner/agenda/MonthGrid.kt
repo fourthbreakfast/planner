@@ -36,12 +36,11 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
-import java.time.temporal.WeekFields
 import java.util.Locale
 import org.jetbrains.compose.resources.stringResource
 
-/** The day the person's weeks start on, from their language and region. */
-fun firstDayOfWeek(locale: Locale = Locale.getDefault()): DayOfWeek = WeekFields.of(locale).firstDayOfWeek
+/** Planner's calendar weeks always begin on Monday; day names still follow the device language. */
+fun firstDayOfWeek(): DayOfWeek = DayOfWeek.MONDAY
 
 /**
  * The days of [month] laid out a week to a row, the first row starting on [firstDay]: days as days since 1970, and

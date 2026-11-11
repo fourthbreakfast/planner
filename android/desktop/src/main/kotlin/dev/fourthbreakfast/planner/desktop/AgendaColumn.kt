@@ -47,7 +47,6 @@ import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.core.occurrences
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_event
-import dev.fourthbreakfast.planner.resources.all_day
 import dev.fourthbreakfast.planner.resources.bin
 import dev.fourthbreakfast.planner.resources.earlier
 import dev.fourthbreakfast.planner.resources.nothing_planned
@@ -168,10 +167,10 @@ private fun EventLine(
     val (hover, hovered) = rememberHover()
     val selected = state.focused == Section.AGENDA && state.selectedEvent == key
     ContextMenuArea(items = {
-        listOf(
-            ContextMenuItem(openLabel) { state.openEvent(key) },
-            ContextMenuItem(binLabel) { onRemove(key) },
-        )
+        buildList {
+            add(ContextMenuItem(openLabel) { state.openEvent(key) })
+            if (!event.readOnly) add(ContextMenuItem(binLabel) { onRemove(key) })
+        }
     }) {
         Row(
             modifier = Modifier
@@ -194,7 +193,7 @@ private fun EventLine(
                 )
                 .onGloballyPositioned { rowCorner = it.positionInRoot() }
                 .then(
-                    if (drag == null) {
+                    if (drag == null || event.readOnly) {
                         Modifier
                     } else {
                         Modifier.pointerInput(key) {
@@ -220,7 +219,7 @@ private fun EventLine(
             val ink = if (earlier) colors.onSurfaceVariant else colors.onBackground
             Column(Modifier.width(if (is24Hour) Space.timeColumn else Space.timeColumn12)) {
                 Text(
-                    text = event.minute?.let { timeText(it, is24Hour) } ?: stringResource(Res.string.all_day),
+                    text = event.minute?.let { timeText(it, is24Hour) }.orEmpty(),
                     style = if (event.minute != null) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
                     color = if (event.minute != null) ink else colors.onSurfaceVariant,
                     maxLines = 1,
@@ -229,10 +228,11 @@ private fun EventLine(
             }
             Column(Modifier.weight(1f)) {
                 Text(event.title, style = MaterialTheme.typography.bodyLarge, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                event.calendarName?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant) }
                 if (event.location.isNotEmpty()) Text(event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 EventSpanAndRepeat(event, day, today)
             }
-            HoverBin(hovered, stringResource(Res.string.bin)) { onRemove(key) }
+            if (!event.readOnly) HoverBin(hovered, stringResource(Res.string.bin)) { onRemove(key) }
         }
     }
 }

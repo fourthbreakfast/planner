@@ -9,7 +9,7 @@ class Tasks(private val store: TaskStore, private val clock: () -> Long = System
     val all: Flow<List<Task>> = store.observeAll().map { sorted(it, SortOrder.TREE) }
 
     /** A done task must never hide open work, so a new open task reopens the tasks above it. */
-    suspend fun add(title: String, parentId: String? = null) {
+    suspend fun add(title: String, parentId: String? = null, starred: Boolean = false) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
         val now = clock()
@@ -23,11 +23,17 @@ class Tasks(private val store: TaskStore, private val clock: () -> Long = System
                         parentId = parentId,
                         position = position + 1,
                         createdAt = now,
+                        starred = starred,
                     ),
                 ),
             )
             reopenAncestors(parentId, now)
         }
+    }
+
+    suspend fun setStarred(id: String, starred: Boolean) = store.transaction {
+        val task = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
+        if (task.starred != starred) store.update(listOf(task.copy(starred = starred, updatedAt = clock())))
     }
 
     /** A blank title is ignored, so a task can never end up nameless. */

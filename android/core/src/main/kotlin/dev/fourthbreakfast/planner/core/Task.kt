@@ -26,6 +26,8 @@ data class Task(
     val deletedAt: Long? = null,
     /** Place among siblings, set by dragging. */
     val position: Double = 0.0,
+    /** A deliberate, saved shortlist, independent of priority. */
+    val starred: Boolean = false,
 ) {
     val inBin: Boolean get() = deletedAt != null
 }

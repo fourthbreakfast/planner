@@ -1,10 +1,7 @@
-A task: a priority dot at the left, the title, a done/total count when it has subtasks, and a check box at the right.
+A compact text-led row: leading completion checkbox, priority control, task title, optional done/total metadata, and a quiet horizontal ellipsis menu. Nesting indents the whole row content by 20dp per level. Titles wrap; completed titles use secondary ink and a strikethrough.
 
-Lay it out as one row at least `touch` tall, `space-1` of padding at each side. The dot sits in a `dot-lane`; every level of subtask adds `indent` before the dot, so dots and text indent together. Show `done/total` in `note` on the right only when the task has subtasks, and never draw a collapse arrow: touching the row opens or closes what is inside.
+Shared mobile controls keep 48dp hit targets, independent of their small drawings. Task content uses 16sp/24sp SansSerif; metadata uses 13sp/20sp. Selection and valid nesting use the neutral selected surface with 4dp corners; rows have no individual borders.
 
-The consumer provides the title, the priority, the depth (four levels at most), the subtask counts and whether it is done. A done task is struck through in `quiet`.
+The touch menu preserves rename, shortlist, scheduling and bin actions. Swipe shortcuts remain available. Checkboxes expose the task title; rename, shortlist, scheduling and bin actions are also available as custom accessibility actions. Existing hierarchy, priority ranking and completion semantics are preserved.
 
-- Do mark the targeted row with `aim` for its whole width.
-- Do keep the check box 48px square to touch, however small it is drawn.
-- Keep the priority size steps (10, 8 and 6dp diameters); do not add borders between task rows.
-- On the phone, hold before swiping right to remove or left to rename. Desktop also exposes context menus and keyboard shortcuts.
+A starred task may retain a small distinct shortlist star in the legacy task list; it is not a second priority dot. The Today workspace uses its menu and All/Do now filter without an additional row marker. This distinction is an implementation choice for 2.0, pending visual review rather than a new universal brand rule.

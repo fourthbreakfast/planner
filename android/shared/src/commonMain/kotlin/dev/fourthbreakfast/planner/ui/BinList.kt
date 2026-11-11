@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,22 +51,7 @@ fun BinBar(count: Int, from: Tab, onEmpty: () -> Unit, onClose: () -> Unit) {
                 .statusBarsPadding()
                 .padding(horizontal = Space.rowPad),
         ) {
-            Tab.entries.forEach { tab ->
-                Box(
-                    contentAlignment = tab.alignment,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = Space.touch)
-                        .padding(horizontal = Space.gutter - Space.rowPad),
-                ) {
-                    if (tab == from) {
-                        ScreenHeading(
-                            text = stringResource(Res.string.bin),
-                            modifier = Modifier.semantics { heading() },
-                        )
-                    }
-                }
-            }
+            ScreenHeading(text = stringResource(Res.string.bin), modifier = Modifier.padding(start = Space.gutter - Space.rowPad).semantics { heading() })
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,

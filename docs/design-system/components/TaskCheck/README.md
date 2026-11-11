@@ -1,5 +1,5 @@
-The shared check box is a sharp `check` square. Unchecked, it has a `stroke-thin` outline. Checked, the square fills and a contrasting tick is cut out of it. Tasks, notes, previews and the formatting toolbar reuse `CheckBoxMark`.
+The shared checkbox is a 16dp square with 2dp corners and a 1.5dp outline. The unchecked state uses the essential control outline token, which stays stronger than structural dividers. The checked state fills with neutral ink and shows a fine contrasting tick. Tasks, notes and formatting controls reuse CheckBoxMark.
 
-The phone touch target is at least `touch`, regardless of drawing size. Desktop targets use `Desk`. Task check boxes provide pressed feedback and a haptic click. Checking a task completes its descendants; unchecking reopens its ancestors.
+The interactive target remains 48dp on touch surfaces. A quiet hover/pressed surface and visible neutral keyboard-focus outline support pointer and keyboard use. Press feedback is restrained; completion also provides a haptic response. Each task checkbox exposes its task title and checkbox state to accessibility services.
 
-Use ink or quiet ink, never a priority color. Keep sharp corners. The filled state and tick provide a signal beyond color alone.
+Use neutral ink, never priority color. The filled square and tick communicate completion independently of color. Existing completion behavior remains: completing a task completes descendants; reopening a task reopens ancestors.

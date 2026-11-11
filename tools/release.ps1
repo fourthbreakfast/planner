@@ -1,4 +1,4 @@
-# Builds the signed phone apk, Windows setup and legacy MSI, and publishes them as one GitHub release.
+# Builds the signed phone apk and Windows setup, and publishes them as one GitHub release.
 #   .\tools\release.ps1 0.1.0
 # Requires native GitHub CLI (gh), signed in, and Inno Setup 6; no WSL is needed.
 # The working tree must be clean and the version tag must already exist on the release repository at this HEAD.
@@ -90,15 +90,14 @@ try {
         if ($LASTEXITCODE) { throw 'building Syncthing failed' }
         $env:PLANNER_SYNCTHING = "$root\android\desktop\build\syncthing\resources\windows\syncthing.exe"
         .\gradlew.bat ktlintCheck :core:test :sync:test :shared:desktopTest :desktop:test testDebugUnitTest lintDebug `
-            assembleRelease :desktop:packageMsi :desktop:packageSetup --no-configuration-cache --console=plain
+            assembleRelease :desktop:packageSetup --no-configuration-cache --console=plain
         if ($LASTEXITCODE) { throw 'the build failed' }
     } finally { Pop-Location }
 
     $apk = "$root\android\app\build\outputs\apk\release\planner-$Version.apk"
     Move-Item -Force "$root\android\app\build\outputs\apk\release\app-release.apk" $apk
     $setup = "$root\android\desktop\build\setup\planner-$Version-setup.exe"
-    $msi = "$root\android\desktop\build\compose\binaries\main\msi\planner-$Version.msi"
-    foreach ($artifact in @($apk, $setup, $msi)) {
+    foreach ($artifact in @($apk, $setup)) {
         if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) { throw "missing release artifact: $artifact" }
     }
 
@@ -112,7 +111,7 @@ try {
     } else {
         Write-Host "no section for $Version in CHANGELOG.md, using github's own notes"
     }
-    gh release create $tag $apk $setup $msi --repo $repository --verify-tag --title "planner $Version" @notes
+    gh release create $tag $apk $setup --repo $repository --verify-tag --title "planner $Version" @notes
     if ($LASTEXITCODE) { throw 'publishing failed' }
     Write-Host "published v$Version"
 } finally {

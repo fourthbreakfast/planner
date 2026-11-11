@@ -1,6 +1,8 @@
 package dev.fourthbreakfast.planner.notes
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -306,22 +308,43 @@ private fun LineMarker(mark: LineMark, number: Int?, top: Dp, height: Dp, onTogg
 @Composable
 private fun Toolbar(state: NoteEditState) {
     val kind = state.kind
+    var pointerSelection by remember { mutableStateOf<TextRange?>(null) }
+    fun activate(action: () -> Unit) {
+        val selection = pointerSelection
+        pointerSelection = null
+        if (selection != null) state.change(state.value.copy(selection = selection))
+        action()
+        if (selection != null) state.focusRequest++
+    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(Space.x1),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Space.rowPad),
+            .padding(horizontal = Space.rowPad)
+            .pointerInput(state) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    // Capture before a toolbar button can take focus and collapse the field's selection.
+                    pointerSelection = state.value.selection
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Final)
+                    } while (event.changes.any { it.pressed })
+                    pointerSelection = null
+                }
+            },
     ) {
-        ToolButton("«", stringResource(Res.string.less_indent), false, Modifier.weight(1f)) { state.push(-1) }
-        ToolButton("»", stringResource(Res.string.more_indent), false, Modifier.weight(1f)) { state.push(1) }
+        ToolButton("«", stringResource(Res.string.less_indent), false, Modifier.weight(1f)) { activate { state.push(-1) } }
+        ToolButton("»", stringResource(Res.string.more_indent), false, Modifier.weight(1f)) { activate { state.push(1) } }
         Spacer(Modifier.width(Space.x2))
-        ToolButton("1.", stringResource(Res.string.numbered_list), kind == LineKind.NUMBER, Modifier.weight(1f)) { state.setKind(LineKind.NUMBER) }
-        ToolButton("•", stringResource(Res.string.bulleted_list), kind == LineKind.BULLET, Modifier.weight(1f)) { state.setKind(LineKind.BULLET) }
-        ToolButton("", stringResource(Res.string.checklist), kind == LineKind.CHECK, Modifier.weight(1f), box = true) { state.setKind(LineKind.CHECK) }
+        ToolButton("1.", stringResource(Res.string.numbered_list), kind == LineKind.NUMBER, Modifier.weight(1f)) { activate { state.setKind(LineKind.NUMBER) } }
+        ToolButton("•", stringResource(Res.string.bulleted_list), kind == LineKind.BULLET, Modifier.weight(1f)) { activate { state.setKind(LineKind.BULLET) } }
+        ToolButton("", stringResource(Res.string.checklist), kind == LineKind.CHECK, Modifier.weight(1f), box = true) {
+            activate { state.setKind(LineKind.CHECK) }
+        }
         Spacer(Modifier.width(Space.x2))
-        ToolButton("b", stringResource(Res.string.bold), state.isOn(BOLD), Modifier.weight(1f), BOLD) { state.toggle(BOLD) }
-        ToolButton("i", stringResource(Res.string.italic), state.isOn(ITALIC), Modifier.weight(1f), ITALIC) { state.toggle(ITALIC) }
-        ToolButton("u", stringResource(Res.string.underline), state.isOn(UNDERLINE), Modifier.weight(1f), UNDERLINE) { state.toggle(UNDERLINE) }
+        ToolButton("b", stringResource(Res.string.bold), state.isOn(BOLD), Modifier.weight(1f), BOLD) { activate { state.toggle(BOLD) } }
+        ToolButton("i", stringResource(Res.string.italic), state.isOn(ITALIC), Modifier.weight(1f), ITALIC) { activate { state.toggle(ITALIC) } }
+        ToolButton("u", stringResource(Res.string.underline), state.isOn(UNDERLINE), Modifier.weight(1f), UNDERLINE) { activate { state.toggle(UNDERLINE) } }
     }
 }
 

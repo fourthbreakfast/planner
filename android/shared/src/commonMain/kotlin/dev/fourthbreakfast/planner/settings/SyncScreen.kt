@@ -3,6 +3,8 @@ package dev.fourthbreakfast.planner.settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,8 +42,14 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -52,23 +61,29 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.sync_anywhere
+import dev.fourthbreakfast.planner.resources.sync_anywhere_detail
 import dev.fourthbreakfast.planner.resources.sync_asks
+import dev.fourthbreakfast.planner.resources.sync_cancel_pairing
+import dev.fourthbreakfast.planner.resources.sync_code_copied
 import dev.fourthbreakfast.planner.resources.sync_connected
+import dev.fourthbreakfast.planner.resources.sync_copy_full_code
 import dev.fourthbreakfast.planner.resources.sync_credit
 import dev.fourthbreakfast.planner.resources.sync_let_in
 import dev.fourthbreakfast.planner.resources.sync_name
 import dev.fourthbreakfast.planner.resources.sync_not_found
 import dev.fourthbreakfast.planner.resources.sync_now
 import dev.fourthbreakfast.planner.resources.sync_pair
+import dev.fourthbreakfast.planner.resources.sync_pairing
 import dev.fourthbreakfast.planner.resources.sync_refuse
 import dev.fourthbreakfast.planner.resources.sync_remove
 import dev.fourthbreakfast.planner.resources.sync_scan
-import dev.fourthbreakfast.planner.resources.sync_syncing
+import dev.fourthbreakfast.planner.resources.sync_short_code_hint
 import dev.fourthbreakfast.planner.resources.sync_this_device
 import dev.fourthbreakfast.planner.resources.sync_title
 import dev.fourthbreakfast.planner.resources.sync_type_code
 import dev.fourthbreakfast.planner.resources.sync_unavailable
 import dev.fourthbreakfast.planner.resources.sync_waiting
+import dev.fourthbreakfast.planner.resources.sync_waiting_local
 import dev.fourthbreakfast.planner.sync.SyncControls
 import dev.fourthbreakfast.planner.sync.pairText
 import dev.fourthbreakfast.planner.sync.shortId
@@ -90,6 +105,7 @@ private const val SYNCTHING = "https://syncthing.net"
 fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Unit)?, failed: String, onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val links = LocalUriHandler.current
+    val clipboard = LocalClipboardManager.current
     DisposableEffect(controller) {
         controller.openPairing()
         onDispose { controller.closePairing() }
@@ -98,14 +114,38 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
     val scope = rememberCoroutineScope()
     var code by rememberSaveable { mutableStateOf("") }
     var notFound by remember { mutableStateOf(false) }
-    var syncing by remember { mutableStateOf(false) }
+    var pending by remember { mutableStateOf<PairingRequest?>(null) }
+    var pairing by remember { mutableStateOf(false) }
+    var copiedCode by remember { mutableStateOf<String?>(null) }
     var anywhere by remember { mutableStateOf(controller.anywhere) }
     val colors = MaterialTheme.colorScheme
 
-    fun pair(text: String) {
+    fun pair(text: String, request: PairingRequest = PairingRequest(text)) {
+        if (pairing || text.isBlank()) return
+        pending = request
+        pairing = true
+        notFound = false
         scope.launch {
-            notFound = !controller.pairWith(text)
-            if (!notFound) code = ""
+            try {
+                val success = controller.pairWith(text)
+                // Edits cancel the pending retry and preserve any newly entered text.
+                if (pending === request) {
+                    notFound = !success
+                    if (success) {
+                        code = ""
+                        pending = null
+                    }
+                }
+            } finally {
+                pairing = false
+            }
+        }
+    }
+
+    LaunchedEffect(state.nearby, pending, notFound, pairing) {
+        val request = pending
+        if (request != null && notFound && !pairing) {
+            request.discoveredRetry(state.nearby)?.let { pair(it, request) }
         }
     }
 
@@ -119,39 +159,79 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
         ) {
-            if (!controller.available || state.failed) {
-                Line(if (controller.available) failed else stringResource(Res.string.sync_unavailable), null)
+            if (!controller.available) {
+                Line(stringResource(Res.string.sync_unavailable), null)
                 return@Column
             }
+            if (state.failed) Line(failed, null)
             Line(stringResource(Res.string.sync_this_device), if (state.myId.isEmpty()) "…" else shortId(state.myId))
             NameLine(stringResource(Res.string.sync_name), controller.deviceName, controller::renameThisDevice)
             if (state.myId.isNotEmpty()) {
-                QrCode(pairText(state.myId, state.addresses), Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
+                val fullCode = pairText(state.myId, state.addresses)
+                QrCode(fullCode, Modifier.padding(horizontal = Space.gutter, vertical = Space.x2).size(176.dp))
+                Setting(stringResource(if (copiedCode == fullCode) Res.string.sync_code_copied else Res.string.sync_copy_full_code), null) {
+                    clipboard.setText(AnnotatedString(fullCode))
+                    copiedCode = fullCode
+                }
             }
-            if (scan != null) Setting(stringResource(Res.string.sync_scan), null) { scan(::pair) }
+            Text(
+                stringResource(Res.string.sync_short_code_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Space.gutter, vertical = Space.x2),
+            )
+            if (scan != null) Setting(stringResource(Res.string.sync_scan), null) { if (!pairing) scan { pair(it) } }
+            val codeLabel = stringResource(Res.string.sync_type_code)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(start = Space.gutter, end = Space.rowPad),
             ) {
                 Box(Modifier.weight(1f)) {
                     if (code.isEmpty()) {
-                        Text(stringResource(Res.string.sync_type_code), style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
+                        Text(codeLabel, style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
                     }
                     BasicTextField(
                         value = code,
                         onValueChange = {
-                            code = it.uppercase()
+                            // Preserve address metadata in pasted full pairing codes (?addr=...).
+                            code = it
                             notFound = false
+                            pending = null
                         },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.titleMedium.copy(color = colors.onBackground),
                         cursorBrush = SolidColor(colors.onBackground),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (code.isNotBlank()) pair(code) }),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = codeLabel }
+                            .onPreviewKeyEvent { event ->
+                                if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.NumPadEnter)) {
+                                    pair(code)
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
                     )
                 }
-                QuietButton(stringResource(if (notFound) Res.string.sync_not_found else Res.string.sync_pair), code.isNotBlank()) { pair(code) }
+                val pairLabel = when {
+                    pairing -> Res.string.sync_pairing
+                    notFound -> Res.string.sync_not_found
+                    else -> Res.string.sync_pair
+                }
+                QuietButton(stringResource(pairLabel), code.isNotBlank() && !pairing) { pair(code) }
+            }
+            if (notFound && pending?.localCode != null) {
+                Text(
+                    stringResource(Res.string.sync_waiting_local),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Space.gutter, vertical = Space.x2),
+                )
+                Setting(stringResource(Res.string.sync_cancel_pairing), null) {
+                    pending = null
+                    notFound = false
+                }
             }
             for (asking in state.asking) {
                 Row(
@@ -188,14 +268,8 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                 }
             }
             if (state.peers.isNotEmpty()) {
-                Setting(stringResource(Res.string.sync_now), if (syncing) stringResource(Res.string.sync_syncing) else null) {
-                    if (!syncing) {
-                        syncing = true
-                        scope.launch {
-                            controller.syncNow()
-                            syncing = false
-                        }
-                    }
+                Setting(stringResource(Res.string.sync_now), syncStatusText(state)) {
+                    if (!controller.state.value.syncing) scope.launch { controller.syncNow() }
                 }
             }
             Setting(
@@ -205,6 +279,12 @@ fun SyncScreen(controller: SyncControls, scan: ((onCode: (String) -> Unit) -> Un
                 anywhere = !anywhere
                 controller.chooseAnywhere(anywhere)
             }
+            Text(
+                text = stringResource(Res.string.sync_anywhere_detail),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Space.gutter, vertical = Space.x2),
+            )
             Text(
                 text = stringResource(Res.string.sync_credit),
                 style = MaterialTheme.typography.labelMedium,
@@ -260,10 +340,10 @@ private fun NameLine(label: String, name: String, onRename: (String) -> Unit) {
 private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: Boolean = false, onRename: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
     var field by remember(name) { mutableStateOf(TextFieldValue(name)) }
-    val text = field.text
+    var focused by remember { mutableStateOf(false) }
     val focus = LocalFocusManager.current
     fun accept() {
-        if (text != name) onRename(text)
+        if (field.text != name) onRename(field.text)
         focus.clearFocus()
     }
     BasicTextField(
@@ -278,6 +358,17 @@ private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: B
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { accept() }),
         modifier = modifier
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    val selectName = !focused
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Final)
+                    } while (event.changes.any { it.pressed })
+                    // A text field places its caret on release, after focus was acquired.
+                    if (selectName && focused) field = field.copy(selection = TextRange(0, field.text.length))
+                }
+            }
             .onPreviewKeyEvent { event ->
                 when {
                     event.type != KeyEventType.KeyDown -> false
@@ -290,11 +381,12 @@ private fun NameField(name: String, modifier: Modifier = Modifier, endAligned: B
                 }
             }
             .onFocusChanged {
+                focused = it.isFocused
                 // the whole name is chosen when it is touched, so typing replaces it
                 if (it.isFocused) {
                     field = field.copy(selection = TextRange(0, field.text.length))
-                } else if (text != name) {
-                    onRename(text)
+                } else if (field.text != name) {
+                    onRename(field.text)
                 }
             },
     )

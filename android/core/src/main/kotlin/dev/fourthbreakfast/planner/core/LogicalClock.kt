@@ -25,9 +25,18 @@ class LogicalClock(private val wall: () -> Long = System::currentTimeMillis) {
 }
 
 /** The newest change already saved, for the clock to start from after the app starts. */
-suspend fun newestChange(tasks: TaskStore, events: EventStore, notes: NoteStore, ledger: SyncLedger): Long = maxOf(
+suspend fun newestChange(
+    tasks: TaskStore,
+    events: EventStore,
+    notes: NoteStore,
+    ledger: SyncLedger,
+    habits: Store<Habit>? = null,
+    habitChecks: Store<HabitCheck>? = null,
+): Long = maxOf(
     tasks.all().maxOfOrNull { it.updatedAt } ?: 0,
     events.all().maxOfOrNull { it.updatedAt } ?: 0,
     notes.all().maxOfOrNull { it.updatedAt } ?: 0,
     ledger.gone().maxOfOrNull { it.at } ?: 0,
+    habits?.all()?.maxOfOrNull { it.updatedAt } ?: 0,
+    habitChecks?.all()?.maxOfOrNull { it.updatedAt } ?: 0,
 )

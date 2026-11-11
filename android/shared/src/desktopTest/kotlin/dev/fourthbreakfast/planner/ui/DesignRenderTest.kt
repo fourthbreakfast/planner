@@ -2,11 +2,15 @@ package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.use
 import dev.fourthbreakfast.planner.Requests
 import dev.fourthbreakfast.planner.UiSettings
-import dev.fourthbreakfast.planner.agenda.AgendaScreen
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.agenda.today
 import dev.fourthbreakfast.planner.core.Event
@@ -23,13 +27,16 @@ import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.Tasks
 import dev.fourthbreakfast.planner.core.formatBody
 import dev.fourthbreakfast.planner.notes.NoteEditor
-import dev.fourthbreakfast.planner.notes.NotesScreen
 import dev.fourthbreakfast.planner.notes.NotesViewModel
-import dev.fourthbreakfast.planner.tasks.TaskList
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -57,18 +64,38 @@ private class RenderPrefs : Prefs {
 /** Opt-in reference screenshots use fixtures only, never a person's database or preferences. */
 class DesignRenderTest {
     @Test
-    fun renderTabsAtNormalAndLargeFontSizes() {
+    fun renderTabsAtNormalAndLargeFontSizes() = runBlocking(Dispatchers.Main) {
         val folder = System.getenv("PLANNER_RENDER")?.let(::File)
-        assumeTrue(folder != null)
-        folder!!.mkdirs()
+        folder?.mkdirs()
+        fun SemanticsNode.descendants(): List<SemanticsNode> = listOf(this) + children.flatMap { it.descendants() }
         for (fontScale in listOf(1f, 2f)) {
             for (tab in Tab.entries) {
-                ImageComposeScene(720, 160, Density(2f, fontScale)) {
-                    PlannerTheme { TabBar(tab, {}) }
+                var chosen: Tab? = null
+                ImageComposeScene(720, 512, Density(2f, fontScale)) {
+                    PlannerTheme { TabBar(tab, { chosen = it }) }
                 }.use { scene ->
-                    repeat(3) { scene.render(it * 100_000_000L) }
-                    File(folder, "tabs-$fontScale-${tab.name.lowercase()}.png")
-                        .writeBytes(scene.render(500_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+                    repeat(3) {
+                        scene.render(it * 100_000_000L)
+                        delay(15)
+                    }
+                    val tabs = scene.semanticsOwners.flatMap { it.rootSemanticsNode.descendants() }
+                        .filter { it.config.getOrNull(SemanticsProperties.Role) == Role.Tab }
+                    assertEquals(5, tabs.size)
+                    assertEquals(1, tabs.count { it.config.getOrNull(SemanticsProperties.Selected) == true })
+                    tabs.forEachIndexed { index, node ->
+                        val bounds = node.boundsInRoot
+                        assertTrue("Every tab needs 48dp touch targets", bounds.width >= 96f && bounds.height >= 96f)
+                        assertTrue(
+                            "All destinations must be visible without scrolling",
+                            bounds.left >= 0f && bounds.right <= 720f && bounds.top >= 0f && bounds.bottom <= 512f,
+                        )
+                        assertTrue(node.config[SemanticsActions.OnClick].action!!.invoke())
+                        assertEquals(Tab.entries[index], chosen)
+                    }
+                    if (folder != null) {
+                        File(folder, "tabs-$fontScale-${tab.name.lowercase()}.png")
+                            .writeBytes(scene.render(500_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+                    }
                 }
             }
         }
@@ -122,7 +149,7 @@ class DesignRenderTest {
         }
         val notes = NotesViewModel(Notes(noteStore), prefs)
         for ((theme, dark) in listOf("dark" to true, "light" to false)) {
-            for (screen in listOf("tasks", "agenda", "notes", "editor")) {
+            for (screen in listOf("today", "tasks", "agenda", "notes", "editor")) {
                 val owner = object : androidx.lifecycle.LifecycleOwner {
                     override val lifecycle = androidx.lifecycle.LifecycleRegistry.createUnsafe(this).apply {
                         currentState = androidx.lifecycle.Lifecycle.State.RESUMED
@@ -136,10 +163,8 @@ class DesignRenderTest {
                     ) {
                         PlannerTheme(darkTheme = dark) {
                             when (screen) {
-                                "tasks" -> TaskList(tasks, 0, {}, {}, {}, taskModel)
-                                "agenda" -> AgendaScreen(agenda, {}, {}, {})
-                                "notes" -> NotesScreen(notes, {}, {}, {}, {})
-                                else -> NoteEditor(packing, {}, false, { _, _, base, done -> done(base) }, {})
+                                "editor" -> NoteEditor(packing, {}, false, { _, _, base, done -> done(base) }, {})
+                                else -> dev.fourthbreakfast.planner.PlannerScreen(taskModel, agenda, notes) {}
                             }
                         }
                     }
@@ -147,6 +172,18 @@ class DesignRenderTest {
                     repeat(10) {
                         scene.render(it * 100_000_000L)
                         Thread.sleep(100)
+                    }
+                    if (screen in listOf("tasks", "agenda", "notes")) {
+                        fun SemanticsNode.allNodes(): List<SemanticsNode> = listOf(this) + children.flatMap { it.allNodes() }
+                        val destination = scene.semanticsOwners.flatMap { it.rootSemanticsNode.allNodes() }.first {
+                            it.config.getOrNull(SemanticsProperties.Role) == Role.Tab &&
+                                it.config.getOrNull(SemanticsProperties.Text)?.any { value -> value.text.equals(screen, ignoreCase = true) } == true
+                        }
+                        assertTrue(destination.config[SemanticsActions.OnClick].action!!.invoke())
+                        repeat(10) {
+                            scene.render(1_000_000_000L + it * 100_000_000L)
+                            Thread.sleep(100)
+                        }
                     }
                     File(folder, "phone-$screen-$theme.png").writeBytes(scene.render(2_000_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes)
                 }

@@ -38,7 +38,7 @@ RestartApplications=no
 Source: "{#Source}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 
 [Icons]
-Name: "{autoprograms}\planner"; Filename: "{app}\planner.exe"
+Name: "{autoprograms}\planner"; Filename: "{app}\planner.exe"; AppUserModelID: "fourthbreakfast.planner"
 
 [Run]
 Filename: "{app}\planner.exe"; Description: "open planner"; Flags: nowait postinstall skipifsilent

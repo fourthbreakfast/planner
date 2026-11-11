@@ -12,7 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
@@ -41,12 +40,14 @@ import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.agenda.AgendaBin
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
 import dev.fourthbreakfast.planner.agenda.EventEditor
+import dev.fourthbreakfast.planner.agenda.TaskScheduleEditor
 import dev.fourthbreakfast.planner.agenda.WhichTimesChooser
-import dev.fourthbreakfast.planner.agenda.movedDraft
 import dev.fourthbreakfast.planner.agenda.today
 import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.core.Task
 import dev.fourthbreakfast.planner.core.binEntries
+import dev.fourthbreakfast.planner.habits.HabitsScreen
+import dev.fourthbreakfast.planner.habits.HabitsViewModel
 import dev.fourthbreakfast.planner.notes.NoteEditor
 import dev.fourthbreakfast.planner.notes.NotesBin
 import dev.fourthbreakfast.planner.notes.NotesViewModel
@@ -65,6 +66,7 @@ enum class Section { TASKS, AGENDA, NOTES }
 
 /** What slides in from the right over the dashboard, if anything. */
 sealed interface Panel {
+    data class TaskSchedule(val id: String) : Panel
     data class NoteOpen(val id: String) : Panel
 
     // [occurrence] is the day of the time of a repeating event that was opened
@@ -79,10 +81,12 @@ sealed interface Panel {
     data object Search : Panel
 
     data object Settings : Panel
+    data object Habits : Panel
 }
 
 /** Where the dashboard is: which section has the keyboard, what is selected in each, and what panel is open. */
 class DashboardState {
+    var destination by mutableStateOf(dev.fourthbreakfast.planner.ui.Tab.TODAY)
     var focused by mutableStateOf(Section.TASKS)
     var panel by mutableStateOf<Panel?>(null)
     var selectedTask by mutableStateOf<String?>(null)
@@ -98,6 +102,10 @@ class DashboardState {
 
     /** Bumped to put the cursor in the add line. */
     var focusAdd by mutableIntStateOf(0)
+
+    var editingTask by mutableStateOf(false)
+    var draggingTask by mutableStateOf(false)
+    var shortlistOnly by mutableStateOf(false)
 
     // what each column shows, in order, for the arrow keys
     var visibleTasks: List<String> = emptyList()
@@ -121,7 +129,7 @@ class DashboardState {
 /**
  * What the keyboard can do on the dashboard. Returns whether the key was used. The control shortcuts are taken before
  * anything else sees them ([plainKeys] false); the plain keys, arrows, enter, space, delete and f2, only once a text
- * field had its turn and left them ([plainKeys] true), so typing in a field never moves or bins a task.
+ * field had its turn and left them ([plainKeys] true). All dashboard commands pause while an editor or panel owns focus.
  */
 fun handleDashboardKey(
     event: KeyEvent,
@@ -133,20 +141,47 @@ fun handleDashboardKey(
     allTasks: () -> List<Task>,
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
+    // Editors own the keyboard, including shortcuts and keys a text field leaves unconsumed at its boundaries.
+    if (state.panel != null || state.renamingTask != null || state.editingTask || state.draggingTask) return false
     val ctrl = event.isCtrlPressed
+    if (!ctrl &&
+        state.destination !in
+        setOf(dev.fourthbreakfast.planner.ui.Tab.TASKS, dev.fourthbreakfast.planner.ui.Tab.AGENDA, dev.fourthbreakfast.planner.ui.Tab.NOTES)
+    ) {
+        return false
+    }
     if (ctrl == plainKeys) return false
     when {
-        ctrl && event.key == Key.One -> state.focused = Section.TASKS
-        ctrl && event.key == Key.Two -> state.focused = Section.AGENDA
-        ctrl && event.key == Key.Three -> state.focused = Section.NOTES
+        ctrl && event.key == Key.One -> {
+            state.focused = Section.TASKS
+            state.destination = dev.fourthbreakfast.planner.ui.Tab.TODAY
+        }
+        ctrl && event.key == Key.Two -> {
+            state.focused = Section.TASKS
+            state.destination = dev.fourthbreakfast.planner.ui.Tab.TASKS
+        }
+        ctrl && event.key == Key.Three -> {
+            state.focused = Section.TASKS
+            state.destination = dev.fourthbreakfast.planner.ui.Tab.HABITS
+        }
+        ctrl && event.key == Key.Four -> {
+            state.focused = Section.AGENDA
+            state.destination = dev.fourthbreakfast.planner.ui.Tab.AGENDA
+        }
+        ctrl && event.key == Key.Five -> {
+            state.focused = Section.NOTES
+            state.destination = dev.fourthbreakfast.planner.ui.Tab.NOTES
+        }
         ctrl && event.key == Key.F -> state.panel = Panel.Search
         ctrl && event.key == Key.Comma -> state.panel = Panel.Settings
         ctrl && event.key == Key.N -> when (state.focused) {
-            Section.TASKS -> state.focusAdd++
+            Section.TASKS -> {
+                state.destination = dev.fourthbreakfast.planner.ui.Tab.TASKS
+                state.focusAdd++
+            }
             Section.AGENDA -> state.newEvent(null)
             Section.NOTES -> notes.add { state.openNote(it) }
         }
-        state.panel != null || state.renamingTask != null -> return false
         event.key == Key.DirectionDown || event.key == Key.DirectionUp -> {
             val step = if (event.key == Key.DirectionDown) 1 else -1
             fun next(ids: List<String>, current: String?) = ids.getOrNull((ids.indexOf(current) + step).coerceIn(0, (ids.size - 1).coerceAtLeast(0)))
@@ -184,6 +219,8 @@ fun Dashboard(
     tasksViewModel: TasksViewModel,
     agendaViewModel: AgendaViewModel,
     notesViewModel: NotesViewModel,
+    habits: HabitsViewModel? = null,
+    sync: DesktopSync? = null,
     settings: @Composable (onClose: () -> Unit) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -214,31 +251,7 @@ fun Dashboard(
         }
     }
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background)) {
-        Row(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                TaskColumn(allTasks, taskBin.size, state, tasksViewModel)
-            }
-            Divider()
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                val events = allEvents.filterNot { it.inBin }
-                AgendaColumn(
-                    events,
-                    allEvents.count { it.inBin },
-                    state,
-                    onRemove = { state.eventToRemove = it },
-                    onEmptyBin = agendaViewModel::emptyBin,
-                    onMove = { event, from, day ->
-                        // a repeating event moves only the time that was dragged; the others stay
-                        agendaViewModel.save(event.id, from, movedDraft(event, from, day), onlyThisTime = event.repeat != Repeat.NONE)
-                        state.chosenDay = day
-                    },
-                )
-            }
-            Divider()
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                NoteColumn(allNotes.filterNot { it.inBin }, allNotes.count { it.inBin }, state, notesViewModel)
-            }
-        }
+        DesktopWorkspace(state, allTasks, allEvents, allNotes, tasksViewModel, agendaViewModel, notesViewModel, habits, sync)
 
         // leaving a note, however the panel changes: an empty one made here goes, and the app starts with none left over
         var lastNote by remember { mutableStateOf<String?>(null) }
@@ -276,6 +289,9 @@ fun Dashboard(
             Box(Modifier.width(min(Desk.panel, maxWidth * 0.7f)).fillMaxHeight().background(colors.background)) {
                 val close = { state.panel = null }
                 when (panel) {
+                    is Panel.TaskSchedule -> allTasks.firstOrNull { it.id == panel.id && !it.inBin }?.let { task ->
+                        key(task.id) { TaskScheduleEditor(task, agendaViewModel, close) }
+                    }
                     is Panel.NoteOpen -> allNotes.firstOrNull { it.id == panel.id }?.let { note ->
                         key(note.id) {
                             NoteEditor(
@@ -292,6 +308,12 @@ fun Dashboard(
                         key(panel) {
                             EventEditor(
                                 initial = editing,
+                                onCompleteTask = editing?.takeIf { it.taskId != null }?.let { event ->
+                                    {
+                                        agendaViewModel.completeTask(event.id)
+                                        close()
+                                    }
+                                },
                                 occurrence = panel.occurrence,
                                 newDay = panel.day,
                                 onSave = { draft, onlyThisTime ->
@@ -318,6 +340,7 @@ fun Dashboard(
                         }
                     }, onClose = close)
                     Panel.Settings -> settings(close)
+                    Panel.Habits -> habits?.let { HabitsScreen(it, close) }
                     null -> Unit
                 }
             }
@@ -327,6 +350,7 @@ fun Dashboard(
             when (val request = requests.pending) {
                 Launch.NewTask -> {
                     state.focused = Section.TASKS
+                    state.destination = dev.fourthbreakfast.planner.ui.Tab.TASKS
                     state.focusAdd++
                 }
                 Launch.NewEvent -> state.newEvent(null)

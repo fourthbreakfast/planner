@@ -14,12 +14,13 @@ fun scheduledReminders(events: List<Event>, now: Long, zone: ZoneId = ZoneId.sys
 
 /**
  * The moment, in milliseconds since 1970, to remind about an event, or null when it has no reminder. The day and
- * time are read as written on the wall clock of [zone], so a reminder follows the phone to a new time zone.
+ * time of manual/floating events follow the wall clock of [zone]. Absolute subscribed events retain their source instant.
  */
 fun reminderAt(event: Event, zone: ZoneId = ZoneId.systemDefault(), from: Long = System.currentTimeMillis()): Long? {
-    val start = event.minute ?: return null
     val before = event.reminder ?: return null
     val offset = before * 60_000L
+    event.calendarStartInstant?.takeIf { event.readOnly }?.let { return it - offset }
+    val start = event.minute ?: return null
     fun at(day: Long) = LocalDate.ofEpochDay(day).atTime(start / 60, start % 60).atZone(zone).toInstant().toEpochMilli() - offset
     if (event.repeat == Repeat.NONE) return at(event.day)
     // a repeating event reminds about its next time whose reminder is not past [from]

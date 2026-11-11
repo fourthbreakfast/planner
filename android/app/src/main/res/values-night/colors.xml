@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="app_page">#FF191919</color>
-    <color name="widget_page">#FF191919</color>
-    <color name="widget_ink">#FFE6E6E4</color>
-    <color name="widget_quiet">#FF9B9B9B</color>
-    <color name="widget_line">#FF2F2F2F</color>
+    <color name="app_page">#FF171719</color>
+    <color name="widget_page">#FF171719</color>
+    <color name="widget_ink">#FFE8E8ED</color>
+    <color name="widget_quiet">#FFAAAAB3</color>
+    <color name="widget_line">#FF3D3D43</color>
 </resources>

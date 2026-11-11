@@ -15,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +32,7 @@ import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
 import dev.fourthbreakfast.planner.ui.theme.PlannerTheme
+import java.awt.AWTException
 import java.awt.GraphicsEnvironment
 import java.awt.MouseInfo
 import java.awt.Point
@@ -54,6 +58,8 @@ sealed interface TrayEntry {
  */
 class AppTray(private val onOpen: () -> Unit, private val onMenu: (Point) -> Unit) {
     private var icon: TrayIcon? = null
+    var available by mutableStateOf(false)
+        private set
 
     fun install(tooltip: String) {
         if (!SystemTray.isSupported() || icon != null) return
@@ -67,18 +73,27 @@ class AppTray(private val onOpen: () -> Unit, private val onMenu: (Point) -> Uni
                 }
             },
         )
-        SystemTray.getSystemTray().add(shown)
-        icon = shown
+        try {
+            SystemTray.getSystemTray().add(shown)
+            icon = shown
+            available = true
+        } catch (_: AWTException) {
+            available = false
+        } catch (_: SecurityException) {
+            available = false
+        }
     }
 
     fun remove() {
         icon?.let { SystemTray.getSystemTray().remove(it) }
         icon = null
+        available = false
     }
 
     /** A message from the icon, as the reminders use. */
     fun say(title: String, text: String) {
-        icon?.displayMessage(title, text, TrayIcon.MessageType.INFO)
+        val shown = icon
+        if (shown != null) shown.displayMessage(title, text, TrayIcon.MessageType.INFO) else DesktopPlatform.notify(title, text)
     }
 }
 

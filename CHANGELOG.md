@@ -1,6 +1,24 @@
-# changelog
+# Changelog
 
 what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
+
+## 2.0.0
+
+- introduce a compact, text-first Today workspace and consistent Today, Tasks, Habits, Agenda and Notes navigation
+- replace segmented headings and all-interface monospace with a restrained shared type scale, neutral graphite surfaces and red/yellow/green accents
+- align page labels with content text, simplify task creation and sidebar settings, and use quieter inset dividers
+- rebuild the README, development guide and project design system around the new interface
+
+- save a “do now” task shortlist and show only its tasks and subtasks
+- schedule existing tasks on the agenda, sharing their completion state
+- add a separate habits section with weekday schedules, completion history, streaks and archive
+- subscribe to read-only HTTPS/webcal calendars, with manual/background refresh, recurrence support and offline copies
+- clarify task nesting and drag destinations, keep all phone tabs visible, and improve touch and accessibility controls
+- preserve multiline note selections when using formatting tools; let Enter save agenda forms without interrupting note new lines
+- start weeks on Monday, omit repeated all-day labels, and use a simpler pin
+- put Sync now directly in settings, show multi-device completion status, and improve pairing and network recovery
+- restore window size and improve Windows taskbar identity and second-launch focus
+- add Linux packaging and platform integrations, remove new MSI builds, and restore WinGet manifest generation
 
 ## 1.2.1
 

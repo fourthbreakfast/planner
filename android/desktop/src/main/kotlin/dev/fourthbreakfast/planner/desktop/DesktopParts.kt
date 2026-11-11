@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,14 +29,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.fourthbreakfast.planner.resources.Res
@@ -43,8 +49,6 @@ import dev.fourthbreakfast.planner.resources.cancel
 import dev.fourthbreakfast.planner.resources.confirm_empty_bin
 import dev.fourthbreakfast.planner.resources.delete_forever
 import dev.fourthbreakfast.planner.ui.QuietButton
-import dev.fourthbreakfast.planner.ui.SegmentNumber
-import dev.fourthbreakfast.planner.ui.SegmentText
 import dev.fourthbreakfast.planner.ui.binIcon
 import dev.fourthbreakfast.planner.ui.pinIcon
 import dev.fourthbreakfast.planner.ui.plus
@@ -75,12 +79,18 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().heightIn(min = Desk.row).padding(start = Space.gutter, end = Desk.inset),
     ) {
-        SegmentText(
-            name,
-            if (focused) colors.onBackground else colors.onSurfaceVariant,
-            modifier = Modifier.semantics { heading() },
-        )
-        if (count != null) SegmentNumber(count, colors.onSurfaceVariant, Modifier.padding(start = Space.x3))
+        if (count != null) {
+            Text(
+                "$count " + when (name.lowercase()) {
+                    "agenda" -> "upcoming"
+                    "tasks", "do now" -> "open"
+                    else -> name.lowercase()
+                },
+                color = colors.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = Space.x3),
+            )
+        }
         Box(Modifier.weight(1f))
         actions()
     }
@@ -90,16 +100,38 @@ fun ColumnHeader(name: String, count: Int?, focused: Boolean, actions: @Composab
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HeaderButton(label: String, onClick: () -> Unit, onLongClick: (() -> Unit)? = null, draw: DrawScope.(Color) -> Unit) {
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
+    val colors = MaterialTheme.colorScheme
     val hover = remember { MutableInteractionSource() }
+    val focused by hover.collectIsFocusedAsState()
     val hovered by hover.collectIsHoveredAsState()
+    val pressed by hover.collectIsPressedAsState()
+    val ink = if (focused || pressed) colors.onSurface else colors.onSurfaceVariant
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(Desk.button)
-            .background(if (hovered) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+            .clip(RoundedCornerShape(Space.radius))
+            .background(if (hovered || pressed) colors.secondaryContainer else Color.Transparent)
+            .drawBehind {
+                if (focused) {
+                    val line = Space.strokeThin.toPx()
+                    drawRoundRect(
+                        colors.onSurface,
+                        topLeft = Offset(line / 2, line / 2),
+                        size = Size(size.width - line, size.height - line),
+                        cornerRadius = CornerRadius(Space.radius.toPx()),
+                        style = Stroke(line),
+                    )
+                }
+            }
             .hoverable(hover)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .combinedClickable(
+                interactionSource = hover,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
             .semantics { contentDescription = label },
     ) {
         Canvas(Modifier.size(Desk.icon)) { draw(ink) }

@@ -59,6 +59,7 @@ import dev.fourthbreakfast.planner.resources.add_note
 import dev.fourthbreakfast.planner.resources.copy_note
 import dev.fourthbreakfast.planner.resources.note_copied
 import dev.fourthbreakfast.planner.resources.notes_count
+import dev.fourthbreakfast.planner.resources.notes_title
 import dev.fourthbreakfast.planner.resources.nothing_written
 import dev.fourthbreakfast.planner.resources.open_note
 import dev.fourthbreakfast.planner.resources.pinned
@@ -93,7 +94,14 @@ private const val PREVIEW_LINES = 8
 
 /** The notes: one on top of another in the order they were put, with a touch opening one to write in. */
 @Composable
-fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks: () -> Unit, onOpenSettings: () -> Unit, onOpenSearch: () -> Unit) {
+fun NotesScreen(
+    viewModel: NotesViewModel,
+    onShowAgenda: () -> Unit,
+    onShowTasks: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onShowHabits: () -> Unit = {},
+) {
     val settings = LocalServices.current.settings
     val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val notes = remember(everything) { everything.filterNot { it.inBin } }
@@ -184,6 +192,7 @@ fun NotesScreen(viewModel: NotesViewModel, onShowAgenda: () -> Unit, onShowTasks
                 snackbarHost = snackbarHost,
                 onShowAgenda = onShowAgenda,
                 onShowTasks = onShowTasks,
+                onShowHabits = onShowHabits,
                 onOpenSettings = onOpenSettings,
                 onOpenSearch = onOpenSearch,
                 onOpenBin = { binOpen = true },
@@ -205,6 +214,7 @@ private fun NotesList(
     snackbarHost: SnackbarHostState,
     onShowAgenda: () -> Unit,
     onShowTasks: () -> Unit,
+    onShowHabits: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenBin: () -> Unit,
@@ -250,7 +260,7 @@ private fun NotesList(
             .fillMaxSize()
             .sweepAndHold(
                 enabled = true,
-                onSweepLeft = null,
+                onSweepLeft = onShowHabits,
                 onSweepRight = onShowAgenda,
                 rowAt = { at -> (list.rowKeyAt(at, listBounds) as? String)?.takeIf { it != END_KEY } },
                 swipe = swipe,
@@ -283,9 +293,11 @@ private fun NotesList(
                     selected = Tab.NOTES,
                     onSelect = {
                         when (it) {
+                            Tab.TODAY -> onShowTasks()
                             Tab.TASKS -> onShowTasks()
                             Tab.AGENDA -> onShowAgenda()
                             Tab.NOTES -> Unit
+                            Tab.HABITS -> onShowHabits()
                         }
                     },
                     onLongPress = onOpenSettings,
@@ -297,7 +309,7 @@ private fun NotesList(
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
                     TitleWithCount(
-                        title = null,
+                        title = stringResource(Res.string.notes_title).replaceFirstChar { it.uppercase() },
                         count = notes.size,
                         countLabel = pluralStringResource(Res.plurals.notes_count, notes.size, notes.size),
                         modifier = Modifier.weight(1f),

@@ -11,18 +11,19 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import androidx.room.Room
@@ -33,6 +34,7 @@ import dev.fourthbreakfast.planner.PlannerDatabase
 import dev.fourthbreakfast.planner.Requests
 import dev.fourthbreakfast.planner.UiSettings
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
+import dev.fourthbreakfast.planner.habits.HabitsViewModel
 import dev.fourthbreakfast.planner.isDark
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.resources.Res
@@ -58,25 +60,20 @@ import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
 
-/** Where the app keeps its database and its Syncthing: %APPDATA%\planner on Windows. */
-private fun dataFolder(): File {
-    // PLANNER_DATA points a trial run somewhere else, so it never touches the real data
-    System.getenv("PLANNER_DATA")?.let { return File(it).apply { mkdirs() } }
-    val base = System.getenv("APPDATA")?.let(::File) ?: File(System.getProperty("user.home"), ".config")
-    return File(base, "planner").apply { mkdirs() }
-}
+/** App data: %APPDATA%\planner on Windows, XDG data home on Linux; PLANNER_DATA isolates dev runs. */
+private fun dataFolder(): File = DesktopPlatform.dataFolder()
 
 /** The Syncthing that ships beside the app, in the folder compose puts the app's own resources in. */
-private fun bundledSyncthing(): File? = System.getProperty("compose.application.resources.dir")
-    ?.let { File(it, "syncthing.exe") }
-    ?.takeIf { it.exists() }
+private fun bundledSyncthing(): File? = DesktopPlatform.syncthingBinary()
 
 /** Everything the window needs, made once. Tests give it a folder and preferences of their own. */
 internal class DesktopApp(
@@ -95,8 +92,10 @@ internal class DesktopApp(
     val tasksViewModel = TasksViewModel(data.tasks)
     val agendaViewModel = AgendaViewModel(data.events)
     val notesViewModel = NotesViewModel(data.notes, prefs)
+    val habitsViewModel = HabitsViewModel(data.habits)
     val settings = UiSettings(prefs)
     val services = PlannerServices(Requests(), settings, prefs)
+    val windowGeometry = WindowGeometryStore(prefs)
     val backStack = BackStack()
     val sync = DesktopSync(
         bundledSyncthing(),
@@ -106,12 +105,12 @@ internal class DesktopApp(
         prefs,
         scope,
     )
-    val dashboard = DashboardState()
+    val dashboard = DashboardState().apply { shortlistOnly = prefs.getBoolean("tasks_shortlist", false) }
 
     // the tasks as they are now, for the keys that act on the selected one
     val tasks = tasksViewModel.all.stateIn(scope, SharingStarted.Eagerly, emptyList())
     val version: String = System.getProperty("jpackage.app-version") ?: "dev"
-    val updates = Updates(prefs, version, File(folder, "updates"), pick = { it.setup })
+    val updates = Updates(prefs, version, File(folder, "updates"), pick = { if (DesktopPlatform.isLinux) it.deb else it.setup })
 }
 
 /**
@@ -119,21 +118,48 @@ internal class DesktopApp(
  * window only hides it, so reminders and sync go on; quitting is in the tray's menu.
  */
 fun main(args: Array<String>) {
+    WindowsIdentity.install()
     val instance = SingleInstance(dataFolder())
     if (!instance.claim()) return
     val app = DesktopApp()
     // closing down in any ordinary way stops syncthing too, so it does not stay behind with its database open
-    Runtime.getRuntime().addShutdownHook(Thread { runBlocking { withTimeoutOrNull(5_000) { app.sync.stop() } } })
+    Runtime.getRuntime().addShutdownHook(
+        Thread {
+            try {
+                runBlocking { withTimeoutOrNull(5_000) { app.sync.stop() } }
+            } finally {
+                instance.close()
+            }
+        },
+    )
     // started with windows, it waits in the tray
     val startHidden = "--tray" in args
     application {
-        val windowState = rememberWindowState(size = DpSize(1280.dp, 820.dp))
+        val availableSize = remember { availableWindowSize() }
+        val geometry = remember { app.windowGeometry.restore(availableSize) }
+        val windowState = rememberWindowState(
+            size = geometry.size,
+            placement = if (geometry.maximized) WindowPlacement.Maximized else WindowPlacement.Floating,
+        )
+        LaunchedEffect(windowState) {
+            snapshotFlow { Triple(windowState.size, windowState.placement, windowState.isMinimized) }.collectLatest { (size, placement, minimized) ->
+                delay(250)
+                app.windowGeometry.save(size, placement, minimized)
+            }
+        }
+        DisposableEffect(windowState) {
+            onDispose { app.windowGeometry.save(windowState.size, windowState.placement, windowState.isMinimized) }
+        }
         var visible by remember { mutableStateOf(!startHidden) }
+        var revealRequest by remember { mutableIntStateOf(0) }
         val scope = rememberCoroutineScope()
         LaunchedEffect(Unit) {
             instance.listen {
-                visible = true
-                windowState.isMinimized = false
+                scope.launch {
+                    visible = true
+                    windowState.isMinimized = false
+                    revealRequest++
+                }
             }
         }
         var menuAt by remember { mutableStateOf<Point?>(null) }
@@ -144,6 +170,7 @@ fun main(args: Array<String>) {
                 onOpen = {
                     visible = true
                     windowState.isMinimized = false
+                    revealRequest++
                 },
                 onMenu = { menuAt = it },
             )
@@ -157,9 +184,16 @@ fun main(args: Array<String>) {
             reminders.begin()
             app.updates.checkIfDue()
         }
+        LaunchedEffect(Unit) {
+            while (true) {
+                app.data.calendars.refreshDue()
+                delay(dev.fourthbreakfast.planner.core.CalendarSubscriptions.REFRESH_MILLIS)
+            }
+        }
         fun show(launch: Launch? = null) {
             visible = true
             windowState.isMinimized = false
+            revealRequest++
             launch?.let { app.services.requests.ask(it) }
         }
         fun quit() {
@@ -167,12 +201,15 @@ fun main(args: Array<String>) {
             runBlocking { withTimeoutOrNull(10_000) { app.sync.stop() } }
             exitApplication()
         }
+        fun closeWindow() {
+            if (tray.available) visible = false else quit()
+        }
 
         // restart to update: this app goes first, so nothing the installer replaces is in use; the installer runs on its
         // own with only its progress showing, and starts planner again when it is done
         fun install(ready: UpdateState.Ready) {
             try {
-                ProcessBuilder(ready.file.path, "/SILENT", "/NORESTART", "/SUPPRESSMSGBOXES").start()
+                ProcessBuilder(DesktopPlatform.installerCommand(ready.file)).start()
             } catch (_: IOException) {
                 // the installer could not be started: the app stays, and the update is still offered
                 return
@@ -181,6 +218,7 @@ fun main(args: Array<String>) {
         }
         DisposableEffect(Unit) {
             tray.install("planner")
+            if (!tray.available) visible = true
             onDispose { tray.remove() }
         }
         TrayMenu(
@@ -197,7 +235,7 @@ fun main(args: Array<String>) {
             onDismiss = { menuAt = null },
         )
         Window(
-            onCloseRequest = { visible = false },
+            onCloseRequest = ::closeWindow,
             visible = visible,
             state = windowState,
             title = "planner",
@@ -215,7 +253,13 @@ fun main(args: Array<String>) {
                 }
             },
         ) {
-            window.minimumSize = Dimension(900, 560)
+            LaunchedEffect(visible, revealRequest) {
+                if (visible) {
+                    window.toFront()
+                    window.requestFocus()
+                }
+            }
+            window.minimumSize = Dimension(minOf(900, availableSize.width.value.toInt()), minOf(560, availableSize.height.value.toInt()))
             val frame = remember { NativeFrame() }
             LaunchedEffect(Unit) { frame.install(window, Desk.edge.value.toInt()) }
             CompositionLocalProvider(LocalServices provides app.services, LocalBackStack provides app.backStack) {
@@ -232,17 +276,25 @@ fun main(args: Array<String>) {
                     CompositionLocalProvider(LocalContextMenuRepresentation provides menus) {
                         Box(Modifier.fillMaxSize().background(colors.background)) {
                             Column(Modifier.fillMaxSize()) {
-                                TitleBar(windowState, frame, onClose = { visible = false }) {
-                                    TitleStatus(app.sync, app.updates, onUpdate = ::install, onSettings = { app.dashboard.panel = Panel.Settings })
-                                }
+                                TitleBar(windowState, frame, onClose = ::closeWindow)
                                 Box(Modifier.weight(1f)) {
                                     Dashboard(
                                         app.dashboard,
                                         app.tasksViewModel,
                                         app.agendaViewModel,
                                         app.notesViewModel,
+                                        habits = app.habitsViewModel,
+                                        sync = app.sync,
                                     ) { onClose ->
-                                        DesktopSettings(app.data.backups, app.sync, app.updates, app.version, onClose, install = ::install)
+                                        DesktopSettings(
+                                            app.data.backups,
+                                            app.sync,
+                                            app.updates,
+                                            app.version,
+                                            onClose,
+                                            install = ::install,
+                                            calendars = app.data.calendars,
+                                        )
                                     }
                                 }
                             }

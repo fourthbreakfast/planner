@@ -16,8 +16,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import dev.fourthbreakfast.planner.calendar.CalendarSubscriptionsScreen
 import dev.fourthbreakfast.planner.core.Backups
+import dev.fourthbreakfast.planner.core.CalendarSubscriptions
 import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.calendar_subscriptions
 import dev.fourthbreakfast.planner.resources.desktop_guide
 import dev.fourthbreakfast.planner.resources.export_tasks
 import dev.fourthbreakfast.planner.resources.guide_title
@@ -53,9 +56,22 @@ import org.jetbrains.compose.resources.stringResource
 
 /** The computer's settings: sync, a backup to a file and back, the theme, updates, and the list of shortcuts. */
 @Composable
-fun DesktopSettings(backups: Backups, sync: DesktopSync, updates: Updates, version: String, onClose: () -> Unit, install: (UpdateState.Ready) -> Unit) {
+fun DesktopSettings(
+    backups: Backups,
+    sync: DesktopSync,
+    updates: Updates,
+    version: String,
+    onClose: () -> Unit,
+    install: (UpdateState.Ready) -> Unit,
+    calendars: CalendarSubscriptions? = null,
+) {
     var guideOpen by rememberSaveable { mutableStateOf(false) }
     var syncOpen by rememberSaveable { mutableStateOf(false) }
+    var calendarsOpen by rememberSaveable { mutableStateOf(false) }
+    if (calendarsOpen && calendars != null) {
+        CalendarSubscriptionsScreen(calendars) { calendarsOpen = false }
+        return
+    }
     if (guideOpen) {
         Guide(Res.array.desktop_guide, onClose = { guideOpen = false })
         return
@@ -97,6 +113,7 @@ fun DesktopSettings(backups: Backups, sync: DesktopSync, updates: Updates, versi
             Setting(stringResource(Res.string.export_tasks), null, ::export)
             Setting(stringResource(Res.string.import_tasks), null) { import(calendar = false) }
             Setting(stringResource(Res.string.import_calendar), null) { import(calendar = true) }
+            if (calendars != null) Setting(stringResource(Res.string.calendar_subscriptions), null) { calendarsOpen = true }
             ThemeSetting(settings)
             if (StartWithWindows.possible) {
                 var startOn by remember { mutableStateOf(StartWithWindows.on) }

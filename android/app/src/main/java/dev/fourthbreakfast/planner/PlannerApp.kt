@@ -7,6 +7,7 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.room.Room
 import dev.fourthbreakfast.planner.backup.AutoBackup
+import dev.fourthbreakfast.planner.calendar.CalendarRefresh
 import dev.fourthbreakfast.planner.reminders.Reminders
 import dev.fourthbreakfast.planner.sync.SyncController
 import dev.fourthbreakfast.planner.ui.AndroidPrefs
@@ -57,11 +58,13 @@ class PlannerApp : Application() {
     }
 
     val syncController: SyncController by lazy { SyncController(this, data.sync, data.changes, scope) }
+    val calendarRefresh by lazy { CalendarRefresh(this, data.calendars, scope) }
     private val autoBackup by lazy { AutoBackup(this, data.backups, settings) }
 
     override fun onCreate() {
         super.onCreate()
         setUpShortcuts()
+        scope.launch { data.calendars.hasLocalSubscriptions.collect { calendarRefresh.schedule(it) } }
         // the alarms follow the agenda: every change to an event sets or takes away its alarm
         scope.launch { data.events.all.collect { reminders.sync(it) } }
         // and the widget on the home screen follows the events and the tasks

@@ -188,6 +188,18 @@ class NoteEditStateTest {
     }
 
     @Test
+    fun bulletsApplyToAReversedMixedSelectionAndKeepItSelected() {
+        val s = state(line("first"), line("second", LineKind.NUMBER), line("third", LineKind.CHECK), line("last"))
+        s.select(19, 0) // stop at the start of "last": it must stay plain
+        val selection = s.value.selection
+        s.setKind(LineKind.BULLET)
+        assertEquals(listOf(LineKind.BULLET, LineKind.BULLET, LineKind.BULLET, LineKind.PLAIN), s.lines().map { it.kind })
+        assertEquals(selection, s.value.selection)
+        s.setKind(LineKind.BULLET)
+        assertTrue(s.lines().all { it.kind == LineKind.PLAIN })
+    }
+
+    @Test
     fun pushingStopsAtBothEnds() {
         val s = state(line("a"))
         s.push(-1)

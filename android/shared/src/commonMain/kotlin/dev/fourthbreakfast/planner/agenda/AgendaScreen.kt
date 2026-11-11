@@ -51,7 +51,7 @@ import dev.fourthbreakfast.planner.core.Event
 import dev.fourthbreakfast.planner.core.occurrences
 import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.add_event
-import dev.fourthbreakfast.planner.resources.all_day
+import dev.fourthbreakfast.planner.resources.agenda_title
 import dev.fourthbreakfast.planner.resources.earlier
 import dev.fourthbreakfast.planner.resources.nothing_planned
 import dev.fourthbreakfast.planner.resources.open_event
@@ -86,7 +86,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /** The agenda: what is coming up, soonest first, with everything about each event on view. */
 @Composable
-fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNotes: () -> Unit, onOpenSettings: () -> Unit) {
+fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNotes: () -> Unit, onOpenSettings: () -> Unit, onShowHabits: () -> Unit = {}) {
     val everything by viewModel.all.collectAsStateWithLifecycle(initialValue = emptyList())
     val events = remember(everything) { everything.filterNot { it.inBin } }
     val binned = remember(everything) { everything.filter { it.inBin }.sortedByDescending { it.deletedAt } }
@@ -105,6 +105,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
     val undoLabel = stringResource(Res.string.undo)
 
     fun moveToBinWithUndo(id: String) {
+        if (events.any { it.id == id && it.readOnly }) return
         viewModel.moveToBin(id)
         scope.launch { if (snackbarHost.showUndo(binnedMessage, undoLabel)) viewModel.restore(id) }
     }
@@ -151,6 +152,12 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
         when {
             shown == 1 -> EventEditor(
                 initial = if (editorMode == 1) null else editing,
+                onCompleteTask = editing?.takeIf { it.taskId != null }?.let { event ->
+                    {
+                        viewModel.completeTask(event.id)
+                        editorMode = 0
+                    }
+                },
                 occurrence = editingDay.takeIf { editorMode == 2 },
                 newDay = newDay,
                 onSave = { draft, onlyThisTime ->
@@ -172,6 +179,7 @@ fun AgendaScreen(viewModel: AgendaViewModel, onShowTasks: () -> Unit, onShowNote
                 snackbarHost = snackbarHost,
                 onShowTasks = onShowTasks,
                 onShowNotes = onShowNotes,
+                onShowHabits = onShowHabits,
                 onOpenSettings = onOpenSettings,
                 onOpenBin = { binOpen = true },
                 onEmptyBin = viewModel::emptyBin,
@@ -199,6 +207,7 @@ private fun AgendaList(
     snackbarHost: SnackbarHostState,
     onShowTasks: () -> Unit,
     onShowNotes: () -> Unit,
+    onShowHabits: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenBin: () -> Unit,
     onEmptyBin: () -> Unit,
@@ -234,7 +243,7 @@ private fun AgendaList(
                 // only events can be held, the day headings cannot
                 rowAt = { at ->
                     // a row's key is the event and the day of that time of it
-                    (list.rowKeyAt(at, listBounds) as? String)?.takeIf { key -> events.any { it.id == key.substringBefore('@') } }
+                    (list.rowKeyAt(at, listBounds) as? String)?.takeIf { key -> events.any { it.id == key.substringBefore('@') && !it.readOnly } }
                 },
                 swipe = swipe,
                 onSwipedRight = { key -> onRemove(key.substringBefore('@')) },
@@ -251,9 +260,11 @@ private fun AgendaList(
                     selected = Tab.AGENDA,
                     onSelect = {
                         when (it) {
+                            Tab.TODAY -> onShowTasks()
                             Tab.TASKS -> onShowTasks()
                             Tab.NOTES -> onShowNotes()
                             Tab.AGENDA -> Unit
+                            Tab.HABITS -> onShowHabits()
                         }
                     },
                     onLongPress = onOpenSettings,
@@ -265,7 +276,7 @@ private fun AgendaList(
                         .padding(start = Space.gutter, end = Space.rowPad),
                 ) {
                     TitleWithCount(
-                        title = null,
+                        title = stringResource(Res.string.agenda_title).replaceFirstChar { it.uppercase() },
                         count = upcoming,
                         countLabel = pluralStringResource(Res.plurals.upcoming_events, upcoming, upcoming),
                         modifier = Modifier.weight(1f),
@@ -408,12 +419,16 @@ private fun EventRow(
         removeLabel = removeLabel,
         renameLabel = "",
         modifier = modifier.semantics {
-            customActions = listOf(
-                CustomAccessibilityAction(removeLabel) {
-                    onRemove()
-                    true
-                },
-            )
+            customActions = if (event.readOnly) {
+                emptyList()
+            } else {
+                listOf(
+                    CustomAccessibilityAction(removeLabel) {
+                        onRemove()
+                        true
+                    },
+                )
+            }
         },
     ) {
         Row(
@@ -427,7 +442,7 @@ private fun EventRow(
             val textScale = LocalDensity.current.fontScale.coerceIn(1f, 2f)
             Column(Modifier.width((if (is24Hour) Space.timeColumn else Space.timeColumn12) * textScale).padding(end = Space.x2)) {
                 Text(
-                    text = event.minute?.let { timeText(it, is24Hour) } ?: stringResource(Res.string.all_day),
+                    text = event.minute?.let { timeText(it, is24Hour) }.orEmpty(),
                     style = if (event.minute != null) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
                     color = if (event.minute != null) quiet else colors.onSurfaceVariant,
                     maxLines = 1,
@@ -446,6 +461,7 @@ private fun EventRow(
             }
             Column(Modifier.weight(1f)) {
                 Text(text = event.title, style = MaterialTheme.typography.bodyLarge, color = quiet)
+                event.calendarName?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant) }
                 if (event.location.isNotEmpty()) {
                     Text(text = event.location, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }

@@ -27,6 +27,12 @@ data class EventEntity(
     val repeatUntil: Long?,
     // the days left out of a repeating event, written as numbers with commas between
     @ColumnInfo(defaultValue = "") val skipDays: String,
+    val taskId: String?,
+    val calendarSourceId: String?,
+    val calendarName: String?,
+    @ColumnInfo(defaultValue = "0") val calendarGeneration: Long,
+    val calendarStartInstant: Long?,
+    val calendarEndInstant: Long?,
 )
 
 fun EventEntity.toEvent() = Event(
@@ -34,6 +40,8 @@ fun EventEntity.toEvent() = Event(
     Repeat.entries.firstOrNull { it.name == repeat } ?: Repeat.NONE,
     repeatUntil,
     skipDays.split(',').mapNotNull { it.toLongOrNull() }.toSet(),
+    taskId,
+    calendarSourceId, calendarName, calendarGeneration, calendarStartInstant, calendarEndInstant,
 )
 
 fun Event.toEntity() = EventEntity(
@@ -41,6 +49,8 @@ fun Event.toEntity() = EventEntity(
     repeat.name,
     repeatUntil,
     skipDays.sorted().joinToString(","),
+    taskId,
+    calendarSourceId, calendarName, calendarGeneration, calendarStartInstant, calendarEndInstant,
 )
 
 @Dao

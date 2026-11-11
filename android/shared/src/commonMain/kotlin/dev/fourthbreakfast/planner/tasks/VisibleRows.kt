@@ -9,6 +9,7 @@ import dev.fourthbreakfast.planner.core.height
 import dev.fourthbreakfast.planner.core.siblings
 import dev.fourthbreakfast.planner.core.sorted
 import dev.fourthbreakfast.planner.core.subtree
+import kotlin.math.roundToInt
 
 sealed interface ListRow {
     val key: String
@@ -55,18 +56,46 @@ data class Drop(val destination: Destination, val depth: Int)
  * the middle of a row puts the task inside it, at the end, and a line between two rows puts it just above the
  * lower one, at that row's depth. Below the very last row it becomes the last main task.
  */
-fun resolveDrop(rows: List<ListRow>, tasks: List<Task>, taskId: String, targetKey: String, zone: DropZone): Drop? {
-    if (targetKey == EndRow.key) return Drop(Destination(), 0)
+fun resolveDrop(rows: List<ListRow>, tasks: List<Task>, taskId: String, targetKey: String, zone: DropZone, desiredDepth: Int? = null): Drop? {
+    if (tasks.none { it.id == taskId }) return null
+    if (targetKey == EndRow.key && desiredDepth == null) return Drop(Destination(), 0)
     val moving = subtree(tasks, taskId).mapTo(HashSet()) { it.id }
     // the task being moved is out of the way: it does not count as a neighbour of anything
     val visible = rows.filter { it !is TaskNode || it.task.id !in moving }
-    val index = visible.indexOfFirst { it.key == targetKey }
+    val targetIsEnd = targetKey == EndRow.key
+    val index = if (targetIsEnd) visible.indexOfLast { it is TaskNode } else visible.indexOfFirst { it.key == targetKey }
+    if (targetIsEnd && index < 0) return Drop(Destination(), 0)
     if (index < 0) return null
     val target = visible[index] as? TaskNode ?: return null
     // the deepest level this task, with everything inside it, can land on
     val deepest = MAX_DEPTH - height(tasks, taskId)
     fun fits(depth: Int, drop: Drop) = if (depth <= deepest) drop else null
     fun above(row: TaskNode) = fits(row.depth, Drop(Destination(row.task.parentId, beforeId = row.task.id), row.depth))
+    // At an insertion edge, horizontal travel selects which enclosing branch the task sits beside.
+    // The old edge behavior remains available to callers that do not request a level.
+    if (desiredDepth != null && (zone != DropZone.INTO || targetIsEnd)) {
+        val edge = if (targetIsEnd) DropZone.AFTER else zone
+        val requested = desiredDepth.coerceAtLeast(0).coerceAtMost(deepest)
+        if (edge == DropZone.AFTER && requested > target.depth) {
+            return fits(target.depth + 1, Drop(Destination(parentId = target.task.id), target.depth + 1))
+        }
+        var anchor = target
+        val byId = visible.filterIsInstance<TaskNode>().associateBy { it.task.id }
+        while (anchor.depth > requested) {
+            anchor = byId[anchor.task.parentId] ?: break
+        }
+        return fits(
+            anchor.depth,
+            Drop(
+                Destination(
+                    parentId = anchor.task.parentId,
+                    beforeId = anchor.task.id.takeIf { edge == DropZone.BEFORE },
+                    afterId = anchor.task.id.takeIf { edge == DropZone.AFTER },
+                ),
+                anchor.depth,
+            ),
+        )
+    }
     return when (zone) {
         DropZone.BEFORE -> above(target)
         DropZone.INTO -> fits(target.depth + 1, Drop(Destination(parentId = target.task.id), target.depth + 1))
@@ -128,6 +157,30 @@ fun dropZoneAt(fraction: Float): DropZone = when {
     fraction < 0.28f -> DropZone.BEFORE
     fraction > 0.72f -> DropZone.AFTER
     else -> DropZone.INTO
+}
+
+/** A small dead band prevents a trembling pointer from flashing between nesting and insertion. */
+fun stableDropZone(fraction: Float, previous: DropZone?): DropZone = when {
+    previous == DropZone.BEFORE && fraction < 0.34f -> DropZone.BEFORE
+    previous == DropZone.AFTER && fraction > 0.66f -> DropZone.AFTER
+    previous == DropZone.INTO && fraction in 0.22f..0.78f -> DropZone.INTO
+    else -> dropZoneAt(fraction)
+}
+
+/** Preserve the level at the grab point, then move one level for each indentation travelled horizontally. */
+fun dragDepth(sourceDepth: Int, horizontalTravel: Float, indentation: Float, previous: Int? = null): Int {
+    if (indentation <= 0f || !horizontalTravel.isFinite()) return sourceDepth
+    val level = sourceDepth + horizontalTravel / indentation
+    if (previous != null && level in previous - 0.65f..previous + 0.65f) return previous
+    return level.roundToInt().coerceAtLeast(0)
+}
+
+/** Smooth edge scrolling, measured in pixels per frame, with no jump when entering the edge band. */
+fun dragScrollSpeed(y: Float, height: Float, edge: Float, maximum: Float): Float = when {
+    height <= 0f || edge <= 0f || y !in 0f..height -> 0f
+    y < edge -> -maximum * ((edge - y) / edge).coerceIn(0f, 1f)
+    y > height - edge -> maximum * ((y - (height - edge)) / edge).coerceIn(0f, 1f)
+    else -> 0f
 }
 
 /**

@@ -41,12 +41,12 @@ import dev.fourthbreakfast.planner.core.Repeat
 import dev.fourthbreakfast.planner.core.customReminderMinutes
 import dev.fourthbreakfast.planner.core.reminderAmount
 import dev.fourthbreakfast.planner.resources.Res
-import dev.fourthbreakfast.planner.resources.all_day
 import dev.fourthbreakfast.planner.resources.back
 import dev.fourthbreakfast.planner.resources.cancel
 import dev.fourthbreakfast.planner.resources.every_time
 import dev.fourthbreakfast.planner.resources.hour
 import dev.fourthbreakfast.planner.resources.minute
+import dev.fourthbreakfast.planner.resources.no_time
 import dev.fourthbreakfast.planner.resources.only_this_time
 import dev.fourthbreakfast.planner.resources.reminder_at
 import dev.fourthbreakfast.planner.resources.reminder_custom
@@ -80,10 +80,10 @@ import org.jetbrains.compose.resources.stringResource
 
 private const val LAST_MINUTE = 24 * 60 - 1
 
-/** "09:30", "09:30 – 10:45", or "all day". Twelve hour clocks get "am" and "pm". */
+/** "09:30", "09:30 – 10:45", or "no time". Twelve hour clocks get "am" and "pm". */
 @Composable
 fun timeRangeText(start: Int?, end: Int?, is24Hour: Boolean): String = when {
-    start == null -> stringResource(Res.string.all_day)
+    start == null -> stringResource(Res.string.no_time)
     end == null -> timeText(start, is24Hour)
     else -> timeText(start, is24Hour) + " – " + timeText(end, is24Hour)
 }
@@ -310,7 +310,7 @@ fun TimeChooser(initialStart: Int?, initialEnd: Int?, onSet: (start: Int?, end: 
 
     ChooserPanel(onDismiss = onCancel) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf(0 to Res.string.all_day, 1 to Res.string.time_start, 2 to Res.string.time_start_end).forEach { (value, text) ->
+            listOf(0 to Res.string.no_time, 1 to Res.string.time_start, 2 to Res.string.time_start_end).forEach { (value, text) ->
                 Text(
                     text = stringResource(text),
                     style = MaterialTheme.typography.labelLarge,
@@ -388,7 +388,7 @@ fun DayChooser(
     val locale = Locale.getDefault()
     var chosen by remember { mutableStateOf(initialDay ?: today) }
     var month by remember { mutableStateOf(YearMonth.from(LocalDate.ofEpochDay(initialDay ?: today))) }
-    val first = firstDayOfWeek(locale)
+    val first = firstDayOfWeek()
     val cells = monthCells(month, first)
 
     ChooserPanel(onDismiss = onCancel) {

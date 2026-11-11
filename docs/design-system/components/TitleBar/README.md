@@ -1,5 +1,5 @@
-Screen names use segmented lettering, with seven-segment counts and established controls alongside them. Keep the row readable at larger text sizes; phone controls have a `touch` target. Desktop column headers use compact `Desk` geometry.
+Page names and task content share the same 16sp/24sp SansSerif scale. A page name may use medium weight, while hierarchy comes from spacing, alignment and secondary metadata. There are no segmented display headings or oversized branding inside the workspace.
 
-The single task count covers open top-level tasks. Per-task progress remains beside each parent. The agenda counts upcoming events, each repeating series once. Notes show their active count. Bin screens retain their section's position in the phone tab row, show the bin count and offer a back action.
+Today is shown alone as the page name. Dates belong in task metadata and the agenda. Counts use quiet proportional text with tabular numerals, rather than seven-segment drawings. Shared controls keep generous touch targets and explicit accessible names.
 
-Counters are drawn as seven-segment digits; body labels use IBM Plex Sans and ordinary headings use IBM Plex Mono. Search belongs to notes; every section has its own bin. Holding a bin button asks once before emptying it.
+The platform shell owns navigation and toolbars. Sync and settings remain separate footer actions on desktop. Search, bins, restore and permanent deletion retain their functional contracts. Existing component previews below this directory are historical until refreshed against the 2.0 renderer.

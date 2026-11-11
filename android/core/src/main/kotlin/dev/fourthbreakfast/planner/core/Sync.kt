@@ -35,6 +35,8 @@ class Sync(
     private val notes: NoteStore,
     private val ledger: SyncLedger,
     private val transactions: TransactionRunner = StoreTransactionRunner(tasks),
+    private val habits: Store<Habit>? = null,
+    private val habitChecks: Store<HabitCheck>? = null,
     private val clock: () -> Long = System::currentTimeMillis,
     // every time in another device's file is told to the clock, so this device's next change lands after it
     private val saw: (Long) -> Unit = {},
@@ -46,21 +48,36 @@ class Sync(
         ledger: SyncLedger,
         clock: () -> Long,
         saw: (Long) -> Unit = {},
-    ) : this(tasks, events, notes, ledger, StoreTransactionRunner(tasks), clock, saw)
+    ) : this(tasks, events, notes, ledger, StoreTransactionRunner(tasks), clock = clock, saw = saw)
 
-    suspend fun snapshot(): String = transactions.transaction { encodeBackup(tasks.all(), events.all(), notes.all(), ledger.gone()) }
+    suspend fun snapshot(): String = transactions.transaction {
+        encodeBackup(tasks.all(), events.all(), notes.all(), ledger.gone(), habits?.all().orEmpty(), habitChecks?.all().orEmpty())
+    }
 
     /** Takes in another device's snapshot and returns how many things changed here. */
     suspend fun merge(text: String): Int {
         // a file from a newer version of the app is still read: what this version does not know of is left alone
         val other = decodeBackup(text, acceptNewer = true)
-        (other.tasks.map { it.updatedAt } + other.events.map { it.updatedAt } + other.notes.map { it.updatedAt } + other.gone.map { it.at })
+        (
+            other.tasks.map { it.updatedAt } + other.events.map { it.updatedAt } + other.notes.map { it.updatedAt } + other.gone.map { it.at } +
+                other.habits.map { it.updatedAt } + other.habitChecks.map { it.updatedAt }
+            )
             .maxOrNull()?.let(saw)
         return transactions.transaction {
             val known = ledger.gone().associate { it.id to it.at }
             val incomingGone = other.gone.groupBy { it.id }.mapValues { (_, marks) -> marks.maxOf { it.at } }
             val newGone = incomingGone.filter { (id, at) -> (known[id] ?: Long.MIN_VALUE) < at }
-            val gone = known + newGone
+            val gone = (known + newGone).toMutableMap()
+            // Unsubscribing removes a source, not just the occurrences currently inside its rolling window.
+            // This also rejects later snapshots from a subscribed device that was offline during removal.
+            val removedCalendarEvents = events.all().filter { it.removedByCalendar(gone) }
+            if (removedCalendarEvents.isNotEmpty()) {
+                events.delete(removedCalendarEvents)
+                for (event in removedCalendarEvents) {
+                    val sourceTime = gone.getValue(event.calendarSourceId!!)
+                    gone[event.id] = maxOf(gone[event.id] ?: Long.MIN_VALUE, sourceTime)
+                }
+            }
             val agreed = ledger.agreed()
             val nowAgreed = HashMap<String, Long>()
             val conflicts = ArrayList<Note>()
@@ -75,7 +92,7 @@ class Sync(
                 agreed = nowAgreed,
             ) + mergeKind(
                 store = events,
-                incoming = other.events,
+                incoming = other.events.filterNot { it.removedByCalendar(gone) },
                 id = Event::id,
                 updatedAt = Event::updatedAt,
                 tieKey = { it.copy(skipDays = it.skipDays.sorted().toCollection(LinkedHashSet())).toString() },
@@ -99,6 +116,20 @@ class Sync(
                 },
             )
             if (conflicts.isNotEmpty()) notes.insert(conflicts)
+            val habitChanges = habits?.let { store ->
+                mergeKind(
+                    store,
+                    other.habits,
+                    Habit::id,
+                    Habit::updatedAt,
+                    { it.copy(weekdays = it.weekdays.sorted().toCollection(LinkedHashSet())).toString() },
+                    gone,
+                    nowAgreed,
+                )
+            } ?: 0
+            val checkChanges = habitChecks?.let { store ->
+                mergeKind(store, other.habitChecks, HabitCheck::id, HabitCheck::updatedAt, HabitCheck::toString, gone, nowAgreed)
+            } ?: 0
             // the marks keep the time things were deleted on the device that deleted them. deleting them here wrote this
             // device's time over them, which would make a later change on a third device look older than the delete
             if (gone.isNotEmpty()) ledger.addGone(gone.map { (id, at) -> Gone(id, at) })
@@ -110,7 +141,7 @@ class Sync(
             }
             val moved = nowAgreed.filter { (id, at) -> agreed[id] != at }
             if (moved.isNotEmpty()) ledger.setAgreed(moved)
-            changed + conflicts.size + loose.size
+            changed + conflicts.size + loose.size + habitChanges + checkChanges + removedCalendarEvents.size
         }
     }
 

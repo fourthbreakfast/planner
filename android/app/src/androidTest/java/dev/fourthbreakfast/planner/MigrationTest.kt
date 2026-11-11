@@ -27,6 +27,32 @@ class MigrationTest {
 
     private fun upgrade() = helper.runMigrationsAndValidate(NAME, latest, true)
 
+    @Test
+    fun shortlistAndTaskSchedulesSurviveLaterUpgrades() {
+        helper.createDatabase(NAME, 14).use {
+            it.execSQL(
+                "INSERT INTO tasks (id, title, done, createdAt, updatedAt, parentId, priority, deletedAt, position, starred) " +
+                    "VALUES ('t', 'planned task', 0, 1, 2, NULL, 0, NULL, 0, 1)",
+            )
+            it.execSQL(
+                "INSERT INTO events (id, title, day, minute, location, notes, createdAt, updatedAt, repeat, skipDays, taskId) " +
+                    "VALUES ('e', 'planned task', 20000, 600, '', '', 1, 2, 'NONE', '', 't')",
+            )
+        }
+        upgrade().use {
+            assertEquals("1", it.single("SELECT starred FROM tasks WHERE id = 't'"))
+            assertEquals("t", it.single("SELECT taskId FROM events WHERE id = 'e'"))
+            assertEquals("0", it.single("SELECT count(*) FROM habits"))
+            assertEquals("0", it.single("SELECT count(*) FROM habit_checks"))
+            assertEquals("0", it.single("SELECT count(*) FROM calendar_subscriptions"))
+            assertEquals("", it.single("SELECT ifnull(calendarSourceId, '') FROM events WHERE id = 'e'"))
+            assertEquals("", it.single("SELECT ifnull(calendarName, '') FROM events WHERE id = 'e'"))
+            assertEquals("0", it.single("SELECT calendarGeneration FROM events WHERE id = 'e'"))
+            assertEquals("", it.single("SELECT ifnull(calendarStartInstant, '') FROM events WHERE id = 'e'"))
+            assertEquals("", it.single("SELECT ifnull(calendarEndInstant, '') FROM events WHERE id = 'e'"))
+        }
+    }
+
     private fun SupportSQLiteDatabase.single(sql: String): String = query(sql).use {
         assertEquals(1, it.count)
         it.moveToFirst()

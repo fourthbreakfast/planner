@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: android
@@ -28,19 +28,44 @@ jobs:
           java-version: 21
       - uses: android-actions/setup-android@v3
         with:
-          packages: platform-tools
+          packages: platform-tools platforms;android-37 build-tools;36.0.0
       - uses: gradle/actions/setup-gradle@v4
       - name: style
         run: ./gradlew ktlintCheck --console=plain
       - name: a syncthing for the sync tests
         run: |
-          cd ../third_party/syncthing
-          go run build.go assets
-          CGO_ENABLED=0 go build -tags noupgrade -ldflags=-checklinkname=0 -o "$RUNNER_TEMP/syncthing" ./cmd/syncthing
-          echo "PLANNER_SYNCTHING=$RUNNER_TEMP/syncthing" >> "$GITHUB_ENV"
+          ./gradlew :desktop:syncthingLinux --max-workers=1 --console=plain
+          printf 'PLANNER_SYNCTHING=%s\n' "$PWD/desktop/build/syncthing-linux/resources/linux/syncthing" >> "$GITHUB_ENV"
       - name: tests
         run: ./gradlew :core:test :sync:test :shared:desktopTest :desktop:test testDebugUnitTest --console=plain
       - name: app
         run: ./gradlew assembleDebug assembleRelease lintDebug --console=plain
-      - name: windows app
+      - name: desktop app
         run: ./gradlew :desktop:compileKotlin --console=plain
+      - name: Linux packaging tools
+        run: sudo apt-get update && sudo apt-get install -y fakeroot libnotify-bin xdg-utils xvfb
+      - name: Linux packages
+        run: bash ../tools/package-linux.sh
+      - name: start the packaged Linux app on an isolated display
+        run: |
+          version=$(sed -n 's/^plannerVersion=//p' gradle.properties | tr -d '\r')
+          deb="desktop/build/linux/planner-$version-linux-x64.deb"
+          test "$(dpkg-deb --field "$deb" Architecture)" = amd64
+          test "$(dpkg-deb --field "$deb" Package)" = fourthbreakfast-planner
+          dpkg-deb --extract "$deb" "$RUNNER_TEMP/planner-linux-package"
+          test -x "$RUNNER_TEMP/planner-linux-package/opt/fourthbreakfast-planner/lib/app/resources/syncthing"
+          "$RUNNER_TEMP/planner-linux-package/opt/fourthbreakfast-planner/lib/app/resources/syncthing" --version
+          export PLANNER_DATA="$RUNNER_TEMP/planner-linux-smoke"
+          export PLANNER_PREFS=dev/fourthbreakfast/planner-linux-ci
+          set +e
+          xvfb-run --auto-servernum timeout --signal=TERM 15s "$RUNNER_TEMP/planner-linux-package/opt/fourthbreakfast-planner/bin/planner" > "$RUNNER_TEMP/planner-linux-smoke.log" 2>&1
+          status=$?
+          set -e
+          if [ "$status" != 124 ]; then cat "$RUNNER_TEMP/planner-linux-smoke.log"; exit 1; fi
+          test -s "$PLANNER_DATA/planner.db"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            android/desktop/build/linux/*.deb
+            android/desktop/build/portable/*.tar.gz

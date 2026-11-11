@@ -21,6 +21,7 @@ data class TaskEntity(
     @ColumnInfo(defaultValue = "0") val priority: Int,
     val deletedAt: Long?,
     @ColumnInfo(defaultValue = "0") val position: Double,
+    @ColumnInfo(defaultValue = "0") val starred: Boolean,
 )
 
 fun TaskEntity.toTask() = Task(
@@ -33,6 +34,7 @@ fun TaskEntity.toTask() = Task(
     priority = Priority.entries.getOrElse(priority) { Priority.NONE },
     deletedAt = deletedAt,
     position = position,
+    starred = starred,
 )
 
 fun Task.toEntity() = TaskEntity(
@@ -45,6 +47,7 @@ fun Task.toEntity() = TaskEntity(
     priority = priority.ordinal,
     deletedAt = deletedAt,
     position = position,
+    starred = starred,
 )
 
 @Dao

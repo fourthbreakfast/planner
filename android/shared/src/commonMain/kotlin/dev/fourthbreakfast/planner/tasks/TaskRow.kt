@@ -1,16 +1,22 @@
 package dev.fourthbreakfast.planner.tasks
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -41,10 +48,17 @@ import dev.fourthbreakfast.planner.resources.Res
 import dev.fourthbreakfast.planner.resources.aim_at_task
 import dev.fourthbreakfast.planner.resources.remove_task
 import dev.fourthbreakfast.planner.resources.rename
+import dev.fourthbreakfast.planner.resources.schedule_task
+import dev.fourthbreakfast.planner.resources.shortlist_add
+import dev.fourthbreakfast.planner.resources.shortlist_remove
+import dev.fourthbreakfast.planner.resources.task_actions
 import dev.fourthbreakfast.planner.resources.task_progress
 import dev.fourthbreakfast.planner.ui.BackHandler
+import dev.fourthbreakfast.planner.ui.DrawnIconButton
 import dev.fourthbreakfast.planner.ui.RowSwipe
 import dev.fourthbreakfast.planner.ui.SwipeRow
+import dev.fourthbreakfast.planner.ui.starIcon
+import dev.fourthbreakfast.planner.ui.theme.PriorityMedium
 import dev.fourthbreakfast.planner.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
@@ -88,13 +102,18 @@ internal fun TaskRow(
     onDoneChange: (Boolean) -> Unit,
     onCyclePriority: () -> Unit,
     onRemove: () -> Unit,
+    onToggleStar: () -> Unit = {},
+    onSchedule: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val task = node.task
     val removeLabel = stringResource(Res.string.remove_task)
     val renameLabel = stringResource(Res.string.rename)
     val aimLabel = stringResource(Res.string.aim_at_task)
+    val shortlistLabel = stringResource(if (task.starred) Res.string.shortlist_remove else Res.string.shortlist_add)
+    val scheduleLabel = stringResource(Res.string.schedule_task)
     val colors = MaterialTheme.colorScheme
+    var actionsOpen by remember(task.id) { mutableStateOf(false) }
     SwipeRow(
         key = task.id,
         swipe = swipe,
@@ -110,19 +129,34 @@ internal fun TaskRow(
                     onStartRename()
                     true
                 },
-            )
+                CustomAccessibilityAction(shortlistLabel) {
+                    onToggleStar()
+                    true
+                },
+            ) + if (onSchedule != null) {
+                listOf(
+                    CustomAccessibilityAction(scheduleLabel) {
+                        onSchedule()
+                        true
+                    },
+                )
+            } else {
+                emptyList()
+            }
         },
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(Space.radius))
                 .background(if (aimed || dragging) colors.secondaryContainer else colors.background)
                 .dropHint(dropHint, dropDepth)
                 .clickable(enabled = !renaming, onClickLabel = aimLabel, onClick = onAim)
                 .padding(horizontal = Space.rowPad),
         ) {
             Spacer(Modifier.width(Space.indent * node.depth))
+            TaskCheck(task.done, colors.onBackground, task.title, onDoneChange)
             PriorityMarker(task.priority, onCyclePriority)
             if (renaming) {
                 RenameField(
@@ -130,7 +164,7 @@ internal fun TaskRow(
                     style = MaterialTheme.typography.bodyLarge,
                     onRename = onRename,
                     onCancel = onCancelRename,
-                    modifier = Modifier.weight(1f).padding(vertical = Space.x3),
+                    modifier = Modifier.weight(1f).padding(vertical = Space.x2),
                 )
             } else {
                 Text(
@@ -138,7 +172,7 @@ internal fun TaskRow(
                     style = MaterialTheme.typography.bodyLarge,
                     textDecoration = if (task.done) TextDecoration.LineThrough else null,
                     color = if (task.done) colors.onSurfaceVariant else colors.onBackground,
-                    modifier = Modifier.weight(1f).padding(vertical = Space.x3),
+                    modifier = Modifier.weight(1f).padding(vertical = Space.x2),
                 )
             }
             if (node.childCount > 0) {
@@ -148,7 +182,46 @@ internal fun TaskRow(
                     color = colors.onSurfaceVariant,
                 )
             }
-            TaskCheck(task.done, colors.onBackground, onDoneChange)
+            if (task.starred) Canvas(Modifier.size(Space.x3)) { starIcon(PriorityMedium, true) }
+            Box {
+                DrawnIconButton(stringResource(Res.string.task_actions), { actionsOpen = true }) { ink ->
+                    for (i in -1..1) {
+                        drawCircle(
+                            ink,
+                            radius = size.minDimension * 0.075f,
+                            center = Offset(
+                                size.width / 2 + i * size.width * 0.28f,
+                                size.height / 2,
+                            ),
+                        )
+                    }
+                }
+                DropdownMenu(expanded = actionsOpen, onDismissRequest = { actionsOpen = false }) {
+                    DropdownMenuItem(text = { Text(stringResource(Res.string.rename)) }, onClick = {
+                        actionsOpen = false
+                        onStartRename()
+                    })
+                    DropdownMenuItem(
+                        text = { Text(stringResource(if (task.starred) Res.string.shortlist_remove else Res.string.shortlist_add)) },
+                        onClick = {
+                            actionsOpen = false
+                            onToggleStar()
+                        },
+                    )
+                    if (onSchedule !=
+                        null
+                    ) {
+                        DropdownMenuItem(text = { Text(stringResource(Res.string.schedule_task)) }, onClick = {
+                            actionsOpen = false
+                            onSchedule()
+                        })
+                    }
+                    DropdownMenuItem(text = { Text(removeLabel) }, onClick = {
+                        actionsOpen = false
+                        onRemove()
+                    })
+                }
+            }
         }
     }
 }

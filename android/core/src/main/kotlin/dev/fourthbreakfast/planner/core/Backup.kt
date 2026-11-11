@@ -3,22 +3,37 @@ package dev.fourthbreakfast.planner.core
 /** A file that is not a planner backup, or is damaged. */
 class BackupException(message: String) : Exception(message)
 
-private const val BACKUP_VERSION = 5
+private const val BACKUP_VERSION = 8
 
 /**
  * What a backup file holds. Version 1 files have no events, versions 1 and 2 have no notes, and only versions 4 and later
  * have [gone]: what was deleted for good, which sync files carry and an import ignores.
  */
-data class Backup(val tasks: List<Task>, val events: List<Event>, val notes: List<Note> = emptyList(), val gone: List<Gone> = emptyList())
+data class Backup(
+    val tasks: List<Task>,
+    val events: List<Event>,
+    val notes: List<Note> = emptyList(),
+    val gone: List<Gone> = emptyList(),
+    val habits: List<Habit> = emptyList(),
+    val habitChecks: List<HabitCheck> = emptyList(),
+)
 
 /** Every task, the bin included, every event and every note, as a json file a person can read and keep. */
-fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: List<Note> = emptyList(), gone: List<Gone> = emptyList()): String = buildString {
+fun encodeBackup(
+    tasks: List<Task>,
+    events: List<Event> = emptyList(),
+    notes: List<Note> = emptyList(),
+    gone: List<Gone> = emptyList(),
+    habits: List<Habit> = emptyList(),
+    habitChecks: List<HabitCheck> = emptyList(),
+): String = buildString {
     append("{\n  \"app\": \"planner\",\n  \"version\": ").append(BACKUP_VERSION).append(",\n  \"tasks\": [")
     tasks.forEachIndexed { index, task ->
         if (index > 0) append(',')
         append("\n    {\"id\": ").append(quoted(task.id))
         append(", \"title\": ").append(quoted(task.title))
         append(", \"done\": ").append(task.done)
+        append(", \"starred\": ").append(task.starred)
         append(", \"createdAt\": ").append(task.createdAt)
         append(", \"updatedAt\": ").append(task.updatedAt)
         append(", \"parentId\": ").append(task.parentId?.let(::quoted) ?: "null")
@@ -46,6 +61,12 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
         append(", \"repeat\": ").append(quoted(event.repeat.name))
         append(", \"repeatUntil\": ").append(event.repeatUntil ?: "null")
         append(", \"skipDays\": [").append(event.skipDays.sorted().joinToString(", ")).append(']')
+        append(", \"taskId\": ").append(event.taskId?.let(::quoted) ?: "null")
+        append(", \"calendarSourceId\": ").append(event.calendarSourceId?.let(::quoted) ?: "null")
+        append(", \"calendarName\": ").append(event.calendarName?.let(::quoted) ?: "null")
+        append(", \"calendarGeneration\": ").append(event.calendarGeneration)
+        append(", \"calendarStartInstant\": ").append(event.calendarStartInstant ?: "null")
+        append(", \"calendarEndInstant\": ").append(event.calendarEndInstant ?: "null")
         append('}')
     }
     append(if (events.isEmpty()) "]" else "\n  ]")
@@ -68,7 +89,30 @@ fun encodeBackup(tasks: List<Task>, events: List<Event> = emptyList(), notes: Li
         if (index > 0) append(',')
         append("\n    {\"id\": ").append(quoted(mark.id)).append(", \"at\": ").append(mark.at).append('}')
     }
-    append(if (gone.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
+    append(if (gone.isEmpty()) "]" else "\n  ]")
+    append(",\n  \"habits\": [")
+    habits.forEachIndexed { index, habit ->
+        if (index > 0) append(',')
+        append("\n    {\"id\": ").append(quoted(habit.id))
+        append(", \"title\": ").append(quoted(habit.title))
+        append(", \"startDay\": ").append(habit.startDay)
+        append(", \"weekdays\": [").append(habit.weekdays.sorted().joinToString(", ")).append(']')
+        append(", \"createdAt\": ").append(habit.createdAt)
+        append(", \"updatedAt\": ").append(habit.updatedAt)
+        append(", \"deletedAt\": ").append(habit.deletedAt ?: "null").append('}')
+    }
+    append(if (habits.isEmpty()) "]" else "\n  ]")
+    append(",\n  \"habitChecks\": [")
+    habitChecks.forEachIndexed { index, check ->
+        if (index > 0) append(',')
+        append("\n    {\"id\": ").append(quoted(check.id))
+        append(", \"habitId\": ").append(quoted(check.habitId))
+        append(", \"day\": ").append(check.day)
+        append(", \"done\": ").append(check.done)
+        append(", \"createdAt\": ").append(check.createdAt)
+        append(", \"updatedAt\": ").append(check.updatedAt).append('}')
+    }
+    append(if (habitChecks.isEmpty()) "]\n}\n" else "\n  ]\n}\n")
 }
 
 /**
@@ -88,6 +132,7 @@ fun decodeBackup(text: String, acceptNewer: Boolean = false): Backup {
             id = task["id"] as? String ?: throw BackupException("a task has no id"),
             title = task["title"] as? String ?: throw BackupException("a task has no title"),
             done = task["done"] == true,
+            starred = task["starred"] == true,
             createdAt = createdAt,
             updatedAt = task["updatedAt"]?.let { number(it).toLong() } ?: createdAt,
             parentId = task["parentId"] as? String,
@@ -117,6 +162,12 @@ fun decodeBackup(text: String, acceptNewer: Boolean = false): Backup {
             repeat = Repeat.entries.firstOrNull { it.name == event["repeat"] } ?: Repeat.NONE,
             repeatUntil = event["repeatUntil"]?.let { number(it).toLong() },
             skipDays = (event["skipDays"] as? List<*>).orEmpty().map { number(it).toLong() }.toSet(),
+            taskId = event["taskId"] as? String,
+            calendarSourceId = event["calendarSourceId"] as? String,
+            calendarName = event["calendarName"] as? String,
+            calendarGeneration = event["calendarGeneration"]?.let { number(it).toLong() } ?: 0,
+            calendarStartInstant = event["calendarStartInstant"]?.let { number(it).toLong() },
+            calendarEndInstant = event["calendarEndInstant"]?.let { number(it).toLong() },
         )
     }
     // versions 1 and 2 were made before notes existed
@@ -139,7 +190,38 @@ fun decodeBackup(text: String, acceptNewer: Boolean = false): Backup {
         val mark = entry as? Map<*, *> ?: throw BackupException("damaged mark")
         Gone(mark["id"] as? String ?: throw BackupException("a mark has no id"), number(mark["at"]).toLong())
     }
-    return Backup(taskList, events, notes, gone)
+    val habits = (root["habits"] as? List<*>).orEmpty().map { entry ->
+        val habit = entry as? Map<*, *> ?: throw BackupException("damaged habit")
+        val createdAt = number(habit["createdAt"]).toLong()
+        val days = (habit["weekdays"] as? List<*>)?.map { number(it).toInt() }?.toSet() ?: (1..7).toSet()
+        if (days.isEmpty() || days.any { it !in 1..7 }) throw BackupException("invalid habit schedule")
+        Habit(
+            id = habit["id"] as? String ?: throw BackupException("a habit has no id"),
+            title = habit["title"] as? String ?: throw BackupException("a habit has no title"),
+            startDay = calendarDay(habit["startDay"]),
+            weekdays = days,
+            createdAt = createdAt,
+            updatedAt = habit["updatedAt"]?.let { number(it).toLong() } ?: createdAt,
+            deletedAt = habit["deletedAt"]?.let { number(it).toLong() },
+        )
+    }
+    val checks = (root["habitChecks"] as? List<*>).orEmpty().map { entry ->
+        val check = entry as? Map<*, *> ?: throw BackupException("damaged habit completion")
+        val createdAt = number(check["createdAt"]).toLong()
+        HabitCheck(
+            id = check["id"] as? String ?: throw BackupException("a completion has no id"),
+            habitId = check["habitId"] as? String ?: throw BackupException("a completion has no habit"),
+            day = calendarDay(check["day"]),
+            done = check["done"] == true,
+            createdAt = createdAt,
+            updatedAt = check["updatedAt"]?.let { number(it).toLong() } ?: createdAt,
+        )
+    }
+    return Backup(taskList, events, notes, gone, habits, checks)
+}
+
+private fun calendarDay(value: Any?): Long = number(value).toLong().also { day ->
+    if (runCatching { java.time.LocalDate.ofEpochDay(day) }.isFailure) throw BackupException("invalid calendar day")
 }
 
 private fun number(value: Any?): Number = value as? Number ?: throw BackupException("damaged number")

@@ -12,6 +12,16 @@ class AgendaViewModel(private val events: Events) : ViewModel() {
     /** Every event, the bin included. */
     val all: Flow<List<Event>> = events.all
 
+    fun scheduleTask(taskId: String, draft: EventDraft) {
+        viewModelScope.launch {
+            events.scheduleTask(taskId, draft.day, draft.minute, draft.endMinute, draft.reminder, draft.location, draft.notes, draft.endDay)
+        }
+    }
+
+    fun completeTask(eventId: String) {
+        viewModelScope.launch { events.completeTask(eventId) }
+    }
+
     fun add(draft: EventDraft) {
         viewModelScope.launch {
             events.add(

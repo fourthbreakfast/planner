@@ -1,6 +1,33 @@
 <resources>
+    <string name="today_title">Today</string>
     <string name="app_name">planner</string>
     <string name="clear_target">clear</string>
+    <string name="shortlist_add">do now</string>
+    <string name="shortlist_remove">remove from do now</string>
+    <string name="shortlist_show">show do now only</string>
+    <string name="shortlist_all">show all tasks</string>
+    <string name="schedule_task">schedule task</string>
+    <string name="complete_task">done</string>
+    <string name="scheduled_task_hint">Scheduled task. Rename it in tasks; marking it done here completes the original task.</string>
+    <string name="task_actions">task actions</string>
+    <string name="habits_title">habits</string>
+    <string name="habit_add">add habit</string>
+    <string name="habit_active">active</string>
+    <string name="habit_archived">archived</string>
+    <string name="habit_archive">archive</string>
+    <string name="habits_empty">No habits here yet.</string>
+    <string name="habit_progress">%1$d day streak · best %2$d</string>
+    <string name="habit_streak_hint">Streaks count scheduled days. You have until the end of today to keep yours going.</string>
+    <string name="habit_days">scheduled days</string>
+    <string name="habit_not_scheduled">not scheduled</string>
+    <string name="habit_completed">completed</string>
+    <string name="habit_incomplete">not completed</string>
+    <string name="drop_inside">inside: %1$s</string>
+    <string name="drop_before">before: %1$s</string>
+    <string name="drop_after">after: %1$s</string>
+    <string name="drop_at_root">main task</string>
+    <string name="drag_depth_hint">Move left or right to choose the level</string>
+    <string name="open_update_installer">open update installer</string>
     <string name="add_task_hint">add a task</string>
     <string name="add_inside_hint">add inside: %1$s</string>
     <string name="remove_task">move to bin</string>
@@ -44,6 +71,11 @@
     <string name="sync_waiting">waiting</string>
     <string name="sync_now">sync now</string>
     <string name="sync_syncing">syncing</string>
+    <string name="sync_current">up to date on all devices</string>
+    <string name="sync_offline">waiting for devices</string>
+    <string name="sync_attention">sync needs attention</string>
+    <string name="sync_anywhere_detail">On by default for new setups. Public discovery and relay servers help paired devices connect across networks. Your planner data stays encrypted; these services can see connection metadata. Turn off for local-network-only sync.</string>
+    <string name="sync_schedule">Sync runs continuously while planner is open. On the phone, background sync is scheduled about every 15 minutes; Android may delay it to save battery.</string>
     <string name="sync_remove">remove</string>
     <string name="sync_asks">%1$s asks to sync</string>
     <string name="sync_let_in">let in</string>
@@ -75,7 +107,7 @@
     <string name="close_task">close what is inside</string>
     <string name="start_with_windows">start with windows, in the tray</string>
     <string-array name="desktop_guide">
-        <item>ctrl+1, ctrl+2, ctrl+3|go to tasks, agenda or notes</item>
+        <item>Ctrl+1–5|Go to Today, Tasks, Habits, Agenda or Notes</item>
         <item>ctrl+n|a new task, event or note, in the part you are in</item>
         <item>up and down|choose a task, an event or a note</item>
         <item>enter|open it, or rename a task</item>
@@ -147,6 +179,7 @@
     <string name="every_time">every time</string>
     <string name="until_day">until %1$s</string>
     <string name="all_day">all day</string>
+    <string name="no_time">no time</string>
     <string name="event_location">location</string>
     <string name="event_notes">notes</string>
     <string name="event_reminder">reminder</string>
@@ -234,4 +267,38 @@
     <string name="priority_high">high priority</string>
     <string name="change_priority">change priority</string>
     <string name="task_progress">%1$d/%2$d</string>
+    <string name="calendar_subscriptions">calendar subscriptions</string>
+    <string name="calendar_add">add calendar</string>
+    <string name="calendar_refresh">refresh</string>
+    <string name="calendar_remove">remove</string>
+    <string name="calendar_source_remote">refreshed on another device</string>
+    <string name="calendar_https_hint">Use the HTTPS or webcal URL you use in ICSx5. For calendars that require sign-in, use a private feed URL.</string>
+    <string name="calendar_window_hint">Recurring events cover the past year and next two years. Refresh updates that window; the original calendar stays unchanged.</string>
+    <string name="calendar_privacy_hint">Feed URLs and cached responses stay on this device. Subscribed events sync with your other devices.</string>
+    <string name="calendar_url">calendar URL</string>
+    <string name="calendar_name">name</string>
+    <string name="calendar_empty">No calendar subscriptions yet.</string>
+    <string name="calendar_never">not refreshed yet</string>
+    <string name="calendar_refreshing">refreshing</string>
+    <string name="calendar_last_updated">updated %1$s</string>
+    <string name="calendar_error_url">Use a valid HTTPS or webcal URL without an embedded username or password.</string>
+    <string name="calendar_error_invalid">This response is not a valid calendar. The last good events have been kept.</string>
+    <string name="calendar_error_unsupported">This feed uses a calendar rule or time zone planner cannot represent safely. The last good events have been kept.</string>
+    <string name="calendar_error_large">This calendar is too large to refresh safely. The last good events have been kept.</string>
+    <string name="calendar_error_network">Could not reach this calendar. Try again when connected.</string>
+    <string name="calendar_error_auth">This calendar needs authentication. Use a private subscription URL from the provider.</string>
+    <string name="calendar_error_server">The calendar server could not complete the request. Try again later.</string>
+    <string name="calendar_remove_title">remove calendar?</string>
+    <string name="calendar_remove_message">Remove this calendar and its subscribed events from planner on your synced devices? The original calendar is unchanged.</string>
+    <string name="calendar_read_only">Read-only subscribed calendar. Make changes in the original calendar.</string>
+    <string name="habit_history_show">show history</string>
+    <string name="habit_history_hide">hide history</string>
+    <string name="habit_history_expanded">history expanded</string>
+    <string name="habit_history_collapsed">history collapsed</string>
+    <string name="sync_copy_full_code">copy full pairing code</string>
+    <string name="sync_code_copied">full pairing code copied</string>
+    <string name="sync_short_code_hint">The 7-letter code works on the same local network. Across networks, scan the QR code or copy the full pairing code, with Sync anywhere on at both ends.</string>
+    <string name="sync_pairing">pairing…</string>
+    <string name="sync_waiting_local">Not found yet. Keep both sync screens open on the same network; planner will retry when this device appears. Editing the code cancels the retry.</string>
+    <string name="sync_cancel_pairing">cancel retry</string>
 </resources>

@@ -1,5 +1,7 @@
 package dev.fourthbreakfast.planner.core
 
+import java.util.UUID
+
 /** Saves and brings back everything the app keeps: the tasks, the bin, the agenda and the notes. */
 class Backups(
     private val tasks: TaskStore,
@@ -7,12 +9,16 @@ class Backups(
     private val notes: NoteStore,
     private val ledger: SyncLedger? = null,
     private val transactions: TransactionRunner = StoreTransactionRunner(tasks),
+    private val habits: Store<Habit>? = null,
+    private val habitChecks: Store<HabitCheck>? = null,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     constructor(tasks: TaskStore, events: EventStore, notes: NoteStore, ledger: SyncLedger?, clock: () -> Long) :
-        this(tasks, events, notes, ledger, StoreTransactionRunner(tasks), clock)
+        this(tasks, events, notes, ledger, StoreTransactionRunner(tasks), clock = clock)
 
-    suspend fun export(): String = transactions.transaction { encodeBackup(tasks.all(), events.all(), notes.all()) }
+    suspend fun export(): String = transactions.transaction {
+        encodeBackup(tasks.all(), events.all(), notes.all(), habits = habits?.all().orEmpty(), habitChecks = habitChecks?.all().orEmpty())
+    }
 
     /**
      * Adds what a backup holds and the app does not, and returns how many things that was. It never changes
@@ -24,10 +30,31 @@ class Backups(
         return transactions.transaction {
             val now = clock()
             val addedTasks = importTasks(backup.tasks.distinctBy { it.id }.map { it.copy(updatedAt = now) })
-            val addedEvents = importEvents(backup.events.distinctBy { it.id }.map { it.copy(updatedAt = now) })
+            val knownTasks = tasks.all().mapTo(HashSet()) { it.id }
+            val knownEvents = events.all().mapTo(HashSet()) { it.id }
+            val restoredEvents = backup.events.distinctBy { it.id }.filterNot { it.id in knownEvents }.map { event ->
+                if (event.readOnly) {
+                    // A backup has no private feed credentials. Restore a stable, editable snapshot, never revive its source.
+                    event.forDisplay().copy(
+                        id = UUID.nameUUIDFromBytes("planner-restored-calendar:${event.id}".toByteArray(Charsets.UTF_8)).toString(),
+                        calendarSourceId = null,
+                        calendarName = null,
+                        calendarGeneration = 0,
+                        taskId = null,
+                        updatedAt = now,
+                        calendarStartInstant = null,
+                        calendarEndInstant = null,
+                    )
+                } else {
+                    event.copy(taskId = event.taskId?.takeIf { it in knownTasks }, updatedAt = now)
+                }
+            }
+            val addedEvents = importEvents(restoredEvents)
             val addedNotes = importNotes(backup.notes.distinctBy { it.id }.map { it.copy(updatedAt = now) })
-            ledger?.forgetGone(addedTasks + addedEvents + addedNotes)
-            addedTasks.size + addedEvents.size + addedNotes.size
+            val addedHabits = importNew(habits, backup.habits.map { it.copy(updatedAt = now) }, Habit::id)
+            val addedChecks = importNew(habitChecks, backup.habitChecks.map { it.copy(updatedAt = now) }, HabitCheck::id)
+            ledger?.forgetGone(addedTasks + addedEvents + addedNotes + addedHabits + addedChecks)
+            addedTasks.size + addedEvents.size + addedNotes.size + addedHabits.size + addedChecks.size
         }
     }
 
@@ -68,5 +95,13 @@ class Backups(
         val added = incoming.filterNot { it.id in existing }
         if (added.isNotEmpty()) notes.insert(added)
         return added.map { it.id }
+    }
+
+    private suspend fun <T> importNew(store: Store<T>?, incoming: List<T>, id: (T) -> String): List<String> {
+        store ?: return emptyList()
+        val existing = store.all().mapTo(HashSet(), id)
+        val added = incoming.distinctBy(id).filterNot { id(it) in existing }
+        if (added.isNotEmpty()) store.insert(added)
+        return added.map(id)
     }
 }

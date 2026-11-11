@@ -43,6 +43,19 @@ class UpdatesTest {
     }
 
     @Test
+    fun linuxInstallersAreRecognizedSeparatelyFromWindowsSetup() {
+        val digest = "ab".repeat(32)
+        val release = parseRelease(
+            """{"tag_name":"v2.0.0","assets":[
+              {"name":"planner_2.0.0_amd64.deb","digest":"sha256:$digest","browser_download_url":"https://github.com/x/planner.deb"}
+            ]}""",
+        )!!
+        assertEquals("https://github.com/x/planner.deb", release.deb?.url)
+        assertEquals(digest, release.deb?.sha256)
+        assertNull(release.setup)
+    }
+
+    @Test
     fun somethingElseIsNoRelease() {
         assertNull(parseRelease("""{"message": "Not Found"}"""))
         assertNull(parseRelease("not json"))

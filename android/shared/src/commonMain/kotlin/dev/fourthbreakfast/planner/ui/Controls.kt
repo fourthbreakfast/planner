@@ -2,8 +2,13 @@ package dev.fourthbreakfast.planner.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -12,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -33,6 +42,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -130,8 +140,9 @@ fun TitleWithCount(title: String?, count: Int, countLabel: String, modifier: Mod
                 modifier = Modifier.semantics { heading() },
             )
         }
-        SegmentNumber(
-            value = count,
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .padding(start = if (title != null) Space.x3 else 0.dp)
@@ -170,7 +181,7 @@ fun QuietButton(label: String, onClick: () -> Unit) = QuietButton(label, true, o
 /** A quiet button that can be switched off, shown fainter while it is. */
 @Composable
 fun QuietButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick, enabled = enabled) {
+    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = Space.touch)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
@@ -180,8 +191,7 @@ fun QuietButton(label: String, enabled: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * A check box as a small drawing, the same one for tasks and notes: a sharp square outline, and once checked the square
- * is filled with a tick cut out of it.
+ * A fine square checkbox with subtle corners. Its drawing is separate from the larger interactive hit target.
  */
 @Composable
 fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.size(Space.check)) {
@@ -191,26 +201,33 @@ fun CheckBoxMark(checked: Boolean, ink: Color, modifier: Modifier = Modifier.siz
         val side = minOf(size.width, size.height, Space.check.toPx())
         val corner = Offset((size.width - side) / 2, (size.height - side) / 2)
         val line = Space.strokeThin.toPx()
+        val radius = CornerRadius(Space.radiusCheck.toPx())
         if (checked) {
-            drawRect(ink, topLeft = corner, size = Size(side, side))
+            drawRoundRect(ink, topLeft = corner, size = Size(side, side), cornerRadius = radius)
             val tick = Path().apply {
                 moveTo(corner.x + side * 0.24f, corner.y + side * 0.53f)
                 lineTo(corner.x + side * 0.43f, corner.y + side * 0.72f)
                 lineTo(corner.x + side * 0.77f, corner.y + side * 0.29f)
             }
-            drawPath(tick, cutout, style = Stroke(line * 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(tick, cutout, style = Stroke(line * 1.15f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         } else {
-            drawRect(ink, topLeft = corner + Offset(line / 2, line / 2), size = Size(side - line, side - line), style = Stroke(line))
+            drawRoundRect(
+                ink,
+                topLeft = corner + Offset(line / 2, line / 2),
+                size = Size(side - line, side - line),
+                cornerRadius = radius,
+                style = Stroke(line),
+            )
         }
     }
 }
 
-/** A diagonal pin with a squared cap and pointed needle; filled only while pinned. Shared by every surface. */
+/** A restrained pushpin: one rounded outline and a straight needle, filled only while pinned. */
 fun DrawScope.pinIcon(ink: Color, filled: Boolean) {
     val unit = size.minDimension / 21f
     val centre = Offset(size.width / 2, size.height / 2)
 
-    // Rotate the same 24-unit drawing clockwise, keeping it centred in any icon slot.
+    // Keep the familiar diagonal silhouette centred in the icon slot.
     fun point(x: Float, y: Float): Offset {
         val dx = x - 12f
         val dy = y - 12f
@@ -224,18 +241,39 @@ fun DrawScope.pinIcon(ink: Color, filled: Boolean) {
         close()
     }
     val head = polygon(
-        8f to 3f, 16f to 3f, 16f to 5f, 14f to 5f, 14f to 10f,
-        17f to 13f, 17f to 15f, 7f to 15f, 7f to 13f,
-        10f to 10f, 10f to 5f, 8f to 5f,
+        9f to 4f,
+        15f to 4f,
+        15f to 9f,
+        18f to 13f,
+        18f to 14f,
+        6f to 14f,
+        6f to 13f,
+        9f to 9f,
     )
-    if (filled) drawPath(head, ink) else drawPath(head, ink, style = Stroke(unit * 1.8f, join = StrokeJoin.Miter))
-    drawPath(polygon(11.25f to 15f, 12.75f to 15f, 12f to 22f), ink)
+    if (filled) drawPath(head, ink) else drawPath(head, ink, style = Stroke(unit * 1.65f, join = StrokeJoin.Round))
+    drawLine(ink, point(12f, 14f), point(12f, 21f), unit * 1.65f, StrokeCap.Round)
 }
 
 /** The pin, in a touch square: outlined to pin the note, filled while it is pinned. */
 @Composable
 fun PinButton(pinned: Boolean, onClick: () -> Unit) {
     DrawnIconButton(stringResource(if (pinned) Res.string.unpin else Res.string.pin), onClick) { ink -> pinIcon(ink, pinned) }
+}
+
+/** A familiar shortlist marker, independent of a task's priority. */
+fun DrawScope.starIcon(ink: Color, filled: Boolean) {
+    val centre = Offset(size.width / 2, size.height / 2)
+    val radius = size.minDimension * 0.44f
+    val path = Path().apply {
+        for (i in 0 until 10) {
+            val angle = -Math.PI / 2 + i * Math.PI / 5
+            val length = if (i % 2 == 0) radius else radius * 0.46f
+            val point = centre + Offset(cos(angle).toFloat(), sin(angle).toFloat()) * length
+            if (i == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y)
+        }
+        close()
+    }
+    if (filled) drawPath(path, ink) else drawPath(path, ink, style = Stroke(Space.strokeThin.toPx(), join = StrokeJoin.Round))
 }
 
 /** A plain cog for the settings: six blunt teeth on a body with flat sides between them, and a round hole, in one thin line. */
@@ -266,12 +304,31 @@ fun SettingsButton(onClick: () -> Unit) {
 /** A small drawn icon in a touch square, quiet, read out as [label]. The drawing gets the ink to draw in. */
 @Composable
 fun DrawnIconButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, draw: DrawScope.(ink: Color) -> Unit) {
-    val ink = MaterialTheme.colorScheme.onSurfaceVariant
+    val colors = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val hovered by interaction.collectIsHoveredAsState()
+    val pressed by interaction.collectIsPressedAsState()
+    val ink = if (pressed || focused) colors.onSurface else colors.onSurfaceVariant
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(Space.touch)
-            .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(Space.radius))
+            .background(if (pressed || hovered) colors.surfaceVariant else Color.Transparent)
+            .drawBehind {
+                if (focused) {
+                    val line = Space.strokeThin.toPx()
+                    drawRoundRect(
+                        colors.onSurface,
+                        topLeft = Offset(line / 2, line / 2),
+                        size = Size(size.width - line, size.height - line),
+                        cornerRadius = CornerRadius(Space.radius.toPx()),
+                        style = Stroke(line),
+                    )
+                }
+            }
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
     ) {
         Canvas(Modifier.size(Space.icon)) { draw(ink) }

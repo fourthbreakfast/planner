@@ -20,5 +20,6 @@ kotlin {
 
 dependencies {
     api(libs.kotlinx.coroutines.core)
+    implementation("org.dmfs:lib-recur:0.17.1")
     testImplementation(libs.junit)
 }

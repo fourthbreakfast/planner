@@ -4,6 +4,7 @@ import dev.fourthbreakfast.planner.core.Sync
 import dev.fourthbreakfast.planner.ui.Prefs
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -39,10 +42,14 @@ abstract class SyncRunner(
     private val keys: SyncPrefKeys,
     private val defaultName: String,
     protected val scope: CoroutineScope,
+    ports: Ports = Ports(),
     private val log: (String) -> Unit,
 ) : SyncControls {
-    private val syncthing = binary?.let { Syncthing(it, File(root, "home"), File(root, "share"), log = log) }
+    private val syncthing = binary?.let { Syncthing(it, File(root, "home"), File(root, "share"), ports = ports, log = log) }
     private val lock = Mutex()
+    private val manualSync = Mutex()
+    private val generation = AtomicLong(0)
+    private val published = AtomicLong(-1)
     private var files: DeviceFiles? = null
     private var loop: Job? = null
     private val current = MutableStateFlow(SyncState())
@@ -57,7 +64,7 @@ abstract class SyncRunner(
 
     override val available: Boolean get() = binary?.exists() == true
 
-    override val anywhere: Boolean get() = prefs.getBoolean(keys.anywhere, false)
+    override val anywhere: Boolean get() = prefs.getBoolean(keys.anywhere, true)
 
     override val deviceName: String get() = prefs.getString(keys.name) ?: defaultName
 
@@ -150,16 +157,20 @@ abstract class SyncRunner(
         return true
     }
 
-    override suspend fun syncNow() {
-        ensureRunning()
-        val syncthing = syncthing ?: return
-        val files = files ?: return
-        quietly("sync now") {
-            files.publish()
-            syncthing.rescan()
-            files.takeIn()
-            files.carryNames(syncthing, deviceName)
-            refresh()
+    override suspend fun syncNow() = manualSync.withLock {
+        current.update { it.copy(syncing = true, upToDate = false) }
+        try {
+            ensureRunning()
+            val syncthing = syncthing ?: return@withLock
+            val files = files ?: return@withLock
+            quietly("sync now") {
+                publish(syncthing, files)
+                files.takeIn()
+                files.carryNames(syncthing, deviceName)
+                refresh()
+            }
+        } finally {
+            current.update { it.copy(syncing = false) }
         }
     }
 
@@ -194,12 +205,13 @@ abstract class SyncRunner(
                 // a program of its own that would not start is no reason for the app to stop
                 log("could not start: $e")
                 syncthing.stop()
-                current.value = current.value.copy(failed = true)
+                current.update { it.copy(failed = true, upToDate = false) }
                 return
             }
             afterStart()
+            published.set(-1)
             val files = DeviceFiles(syncthing.folder, syncthing.myId, sync).also { this.files = it }
-            current.value = SyncState(running = true, myId = syncthing.myId, addresses = syncthing.addresses())
+            current.update { it.copy(running = true, myId = syncthing.myId, addresses = syncthing.addresses(), failed = false, upToDate = false) }
             loop = scope.launch { run(syncthing, files) }
         }
     }
@@ -208,11 +220,15 @@ abstract class SyncRunner(
     @OptIn(FlowPreview::class)
     private suspend fun run(syncthing: Syncthing, files: DeviceFiles) = coroutineScope {
         launch {
-            quietly("publish") { files.publish() }
-            changes.debounce(1_000).collect { quietly("publish") { files.publish() } }
+            quietly("publish") { publish(syncthing, files) }
+            changes.onEach {
+                generation.incrementAndGet()
+                current.update { it.copy(upToDate = false) }
+            }.debounce(1_000).collect { quietly("publish") { publish(syncthing, files) } }
         }
         while (isActive) {
             quietly("turn") {
+                if (published.get() != generation.get()) publish(syncthing, files)
                 files.takeIn()
                 files.carryNames(syncthing, deviceName)
                 refresh()
@@ -221,16 +237,33 @@ abstract class SyncRunner(
         }
     }
 
+    private suspend fun publish(syncthing: Syncthing, files: DeviceFiles) {
+        val version = generation.get()
+        files.publish()
+        syncthing.rescan()
+        published.set(version)
+    }
+
     /** Shows the devices as they are now: the paired ones, and while pairing, the ones nearby and the ones asking. */
     protected suspend fun refresh() {
         val syncthing = syncthing ?: return
         val peers = syncthing.peers()
         paired = peers.isNotEmpty()
-        current.value = current.value.copy(
-            peers = peers,
-            nearby = if (pairing) syncthing.nearby() else emptyList(),
-            asking = if (pairing) syncthing.asking() else emptyList(),
-        )
+        val version = generation.get()
+        val complete = peers.isNotEmpty() && peers.all { it.connected } && published.get() == version && syncthing.settled()
+        val nearby = if (pairing) syncthing.nearby() else emptyList()
+        val asking = if (pairing) syncthing.asking() else emptyList()
+        val addresses = syncthing.addresses()
+        current.update {
+            it.copy(
+                peers = peers,
+                addresses = addresses,
+                nearby = nearby,
+                asking = asking,
+                failed = false,
+                upToDate = complete && generation.get() == version,
+            )
+        }
     }
 
     /** Stops Syncthing, letting it close its database first. */
@@ -240,13 +273,27 @@ abstract class SyncRunner(
             loop = null
             files = null
             syncthing?.stop()
-            current.value = current.value.copy(running = false)
+            current.update { it.copy(running = false, peers = it.peers.map { peer -> peer.copy(connected = false) }, upToDate = false) }
             afterStop()
         }
     }
 
-    /** Whether everything has been sent to and taken from every connected device, for a short run to end on. */
-    protected suspend fun settled(): Boolean = state.value.peers.any { it.connected } && syncthing?.settled() == true
+    /** Wire completion precedes the app's next poll: commit received files before a short run can stop that poll. */
+    protected suspend fun settled(): Boolean = manualSync.withLock {
+        val syncthing = syncthing ?: return@withLock false
+        val files = files ?: return@withLock false
+        try {
+            if (syncthing.peers().none { it.connected } || !syncthing.settled()) return@withLock false
+            files.takeIn()
+            // Publish the committed snapshot and its acknowledgements before declaring this background run finished.
+            publish(syncthing, files)
+            refresh()
+            syncthing.peers().any { it.connected } && syncthing.settled() && published.get() == generation.get()
+        } catch (failure: IOException) {
+            current.update { it.copy(failed = true, upToDate = false) }
+            throw failure
+        }
+    }
 
     /**
      * Runs [block], one part of sync named [what], letting a failure to reach Syncthing or the shared folder pass: Syncthing
@@ -258,6 +305,7 @@ abstract class SyncRunner(
             block()
             lastFailure = null
         } catch (e: IOException) {
+            current.update { it.copy(failed = true, upToDate = false) }
             val failure = "$what: $e"
             if (failure != lastFailure) log(failure)
             lastFailure = failure

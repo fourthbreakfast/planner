@@ -4,8 +4,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Every spacing and size a screen uses, in dp, on a 4dp grid. Screens take their numbers from here
- * and never write their own, so the design system (docs/design-system/tokens.json) and the app agree.
+ * Shared semantic spacing on a 4dp grid, following the P21 text-first workspace.
  */
 object Space {
     /** Empty room left under the last row of any list: a third of the screen, never less than [endRow]. */
@@ -22,6 +21,8 @@ object Space {
     val x4 = 16.dp
     val x5 = 20.dp
     val x6 = 24.dp
+    val x8 = 32.dp
+    val radius = x1
 
     // roles
     /** Left edge of text on every screen. */
@@ -41,19 +42,19 @@ object Space {
 
     // marks
     val icon = 20.dp
-    val check = 14.dp
+    val check = 16.dp
 
     /** The room a list mark takes before a line of a note. */
     val markWidth = 26.dp
     val dot = 8.dp
 
     /** Radii of filled priority dots; documentation tokens describe their diameters. */
-    val dotHighRadius = 5.dp
-    val dotMediumRadius = 4.dp
+    val dotHighRadius = 4.dp
+    val dotMediumRadius = 3.5.dp
     val dotLowRadius = 3.dp
-    val dotLane = 40.dp
-    val modeDot = 10.dp
-    val radiusCheck = 3.dp
+    val dotLane = 32.dp
+    val modeDot = 8.dp
+    val radiusCheck = 2.dp
     val strokeThin = 1.5.dp
     val strokeThick = 2.dp
 

@@ -1,10 +1,14 @@
-The marks that show where a dragged task will land: a 2px `ink` line along the top or bottom edge of a row, or the whole row lit with `aim` for "nest inside this one". The dragged row itself follows the finger at 92% opacity, on `aim`, with the `lift` shadow.
+The marks that show where a dragged task will land: a 2px `ink` line with a small leading dot along an insertion edge, or the whole row lit with `aim` for "nest inside this one". A translucent, noninteractive text preview follows the pointer; the original row stays in place at reduced opacity so the list geometry remains stable.
 
-The line starts where the dropped task's dot would sit: `space-1` plus one `indent` for each level of depth. Every place means one thing, and sideways movement means nothing: the middle of a row puts the task inside it, at the end, and a line between two rows puts it just above the lower one, at that row's depth. The task then snaps back among its own colour: dropped above all the reds, a yellow becomes the first yellow. The line shows that place and not the finger's: it stays at the top of the yellows however far up the task is dragged. A small haptic tick fires every time the drop spot changes.
+The line starts at the selected tree depth. The middle of a row nests inside it. Near an edge, left and right travel selects whether the dropped task sits beside that row or beside one of its enclosing branches. Moving right below a row may append a child; moving left can move outside a parent without splitting its subtree. Small dead bands around zone and depth boundaries prevent flicker.
 
-The invisible row at the end of the list (`end-row` tall) takes anything dropped far down and makes it top-level and last, drawn as a line at the left edge.
+Priority still ranks siblings: dropped above all the reds, a yellow becomes the first yellow. The line shows the actual ranked destination, rather than promising the pointer's unranked position. A short inside/before/after caption names the destination and reminds people that horizontal travel chooses the level. The caption has a polite accessibility announcement. A small haptic tick fires when the phone's destination changes.
+
+The end area appends at the selected level of the final branch; pulling fully left makes a main task. Near viewport edges, scrolling accelerates gradually. The desktop gesture is owned by the list so the source row scrolling out of view cannot cancel it. Escape on desktop or Back on the phone cancels the drag.
 
 The consumer provides the drop target, the depth and the zone (before, inside or after).
 
 - Do draw the line over the row, never between rows, so nothing shifts.
 - Don't use a priority color for any of these.
+- Draw the insertion line above the text preview, so the preview cannot conceal it.
+- Disable reparenting in the isolated shortlist: omitted ancestors are context, not valid tree boundaries.

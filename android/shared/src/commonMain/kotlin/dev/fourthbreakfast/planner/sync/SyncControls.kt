@@ -13,7 +13,20 @@ data class SyncState(
     /** Devices asking to sync, waiting for a yes or a no. */
     val asking: List<Peer> = emptyList(),
     val failed: Boolean = false,
+    /** True only after local publication, scan, receipt, and completion with every paired device. */
+    val upToDate: Boolean = false,
+    val syncing: Boolean = false,
 )
+
+enum class SyncHealth { UNPAIRED, OFFLINE, WORKING, CURRENT, ERROR }
+
+val SyncState.health: SyncHealth get() = when {
+    failed -> SyncHealth.ERROR
+    peers.isEmpty() -> SyncHealth.UNPAIRED
+    !running || peers.any { !it.connected } -> SyncHealth.OFFLINE
+    upToDate && !syncing -> SyncHealth.CURRENT
+    else -> SyncHealth.WORKING
+}
 
 /** What the sync screen can ask of the device's sync, which runs differently on a phone and a computer. */
 interface SyncControls {

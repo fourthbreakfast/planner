@@ -12,6 +12,17 @@ class MonthGridTest {
     private fun day(text: String) = LocalDate.parse(text).toEpochDay()
 
     @Test
+    fun calendarStartsOnMondayEvenInASundayFirstLocale() {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.US)
+            assertEquals(DayOfWeek.MONDAY, firstDayOfWeek())
+        } finally {
+            Locale.setDefault(original)
+        }
+    }
+
+    @Test
     fun aMonthStartsOnItsWeekday() {
         // november 2026 starts on a sunday
         val cells = monthCells(YearMonth.of(2026, 11), DayOfWeek.MONDAY)

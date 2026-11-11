@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -29,7 +30,9 @@ import com.journeyapps.barcodescanner.ScanOptions
 import dev.fourthbreakfast.planner.PlannerApp
 import dev.fourthbreakfast.planner.backup.folderName
 import dev.fourthbreakfast.planner.backup.rememberBackupFiles
+import dev.fourthbreakfast.planner.calendar.CalendarSubscriptionsScreen
 import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.calendar_subscriptions
 import dev.fourthbreakfast.planner.resources.export_tasks
 import dev.fourthbreakfast.planner.resources.guide_title
 import dev.fourthbreakfast.planner.resources.import_calendar
@@ -57,6 +60,11 @@ fun SettingsScreen(onClose: () -> Unit) {
     val app = context.applicationContext as PlannerApp
     var guideOpen by rememberSaveable { mutableStateOf(false) }
     var syncOpen by rememberSaveable { mutableStateOf(false) }
+    var calendarsOpen by rememberSaveable { mutableStateOf(false) }
+    if (calendarsOpen) {
+        CalendarSubscriptionsScreen(app.data.calendars) { calendarsOpen = false }
+        return
+    }
     if (guideOpen) {
         Guide(onClose = { guideOpen = false })
         return
@@ -98,6 +106,7 @@ fun SettingsScreen(onClose: () -> Unit) {
             Setting(stringResource(Res.string.export_tasks), null, backup.export)
             Setting(stringResource(Res.string.import_tasks), null, backup.import)
             Setting(stringResource(Res.string.import_calendar), null, backup.importCalendar)
+            Setting(stringResource(Res.string.calendar_subscriptions), null) { calendarsOpen = true }
             Setting(
                 label = stringResource(Res.string.setting_toolbar),
                 value = stringResource(if (settings.toolbarAbove) Res.string.toolbar_keyboard else Res.string.toolbar_top),
@@ -127,7 +136,9 @@ fun SettingsScreen(onClose: () -> Unit) {
 private fun PhoneSyncScreen(app: PlannerApp, onClose: () -> Unit) {
     val context = LocalContext.current
     // Android 17 asks before an app may use the home network; sync cannot reach the other device without it
-    var networkAllowed by remember { mutableStateOf(context.checkSelfPermission(LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED) }
+    var networkAllowed by remember {
+        mutableStateOf(Build.VERSION.SDK_INT < 37 || context.checkSelfPermission(LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED)
+    }
     val allowNetwork = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { networkAllowed = it }
     LaunchedEffect(Unit) { if (!networkAllowed) allowNetwork.launch(LOCAL_NETWORK) }
     var onCode by remember { mutableStateOf<((String) -> Unit)?>(null) }

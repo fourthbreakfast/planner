@@ -1,5 +1,8 @@
 package dev.fourthbreakfast.planner.core
 
+import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -28,8 +31,33 @@ data class Event(
     val repeatUntil: Long? = null,
     /** Days a repeating event leaves out: one time of it that was deleted, or changed into an event of its own. */
     val skipDays: Set<Long> = emptySet(),
+    /** A scheduled task. Completion belongs to the task, not to a second copy of it. */
+    val taskId: String? = null,
+    /** Subscription provenance is synced; the private feed URL is kept only on the refreshing device. */
+    val calendarSourceId: String? = null,
+    val calendarName: String? = null,
+    val calendarGeneration: Long = 0,
+    /** Absolute subscribed times; storage/sync wall fields are canonical UTC. Floating/all-day dates leave these null. */
+    val calendarStartInstant: Long? = null,
+    val calendarEndInstant: Long? = null,
 ) {
     val inBin: Boolean get() = deletedAt != null
+    val readOnly: Boolean get() = calendarSourceId != null
+}
+
+/** Display projection never mutates the canonical event sent through sync. Manual/floating times stay as written. */
+fun Event.forDisplay(zone: ZoneId = ZoneId.systemDefault()): Event {
+    val instant = calendarStartInstant?.takeIf { readOnly } ?: return this
+    val start = Instant.ofEpochMilli(instant).atZone(zone).toLocalDateTime()
+    val end = calendarEndInstant?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDateTime() }
+    val firstDay = start.toLocalDate().toEpochDay()
+    val lastDay = end?.let { it.toLocalDate().toEpochDay() - if (it.toLocalTime() == LocalTime.MIDNIGHT) 1 else 0 }
+    return copy(
+        day = firstDay,
+        minute = start.hour * 60 + start.minute,
+        endDay = lastDay?.takeIf { it > firstDay },
+        endMinute = end?.let { it.hour * 60 + it.minute },
+    )
 }
 
 /** How an event comes back. */

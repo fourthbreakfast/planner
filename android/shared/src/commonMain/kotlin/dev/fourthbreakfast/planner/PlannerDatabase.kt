@@ -9,9 +9,15 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.AutoMigrationSpec
 import dev.fourthbreakfast.planner.data.AgreedEntity
+import dev.fourthbreakfast.planner.data.CalendarSubscriptionDao
+import dev.fourthbreakfast.planner.data.CalendarSubscriptionEntity
 import dev.fourthbreakfast.planner.data.EventDao
 import dev.fourthbreakfast.planner.data.EventEntity
 import dev.fourthbreakfast.planner.data.GoneEntity
+import dev.fourthbreakfast.planner.data.HabitCheckDao
+import dev.fourthbreakfast.planner.data.HabitCheckEntity
+import dev.fourthbreakfast.planner.data.HabitDao
+import dev.fourthbreakfast.planner.data.HabitEntity
 import dev.fourthbreakfast.planner.data.NoteDao
 import dev.fourthbreakfast.planner.data.NoteEntity
 import dev.fourthbreakfast.planner.data.SyncDao
@@ -19,12 +25,21 @@ import dev.fourthbreakfast.planner.data.TaskDao
 import dev.fourthbreakfast.planner.data.TaskEntity
 
 object PlannerDatabaseVersion {
-    const val LATEST = 13
+    const val LATEST = 16
 }
 
 @ConstructedBy(PlannerDatabaseConstructor::class)
 @Database(
-    entities = [TaskEntity::class, EventEntity::class, NoteEntity::class, GoneEntity::class, AgreedEntity::class],
+    entities = [
+        TaskEntity::class,
+        EventEntity::class,
+        NoteEntity::class,
+        GoneEntity::class,
+        AgreedEntity::class,
+        HabitEntity::class,
+        HabitCheckEntity::class,
+        CalendarSubscriptionEntity::class,
+    ],
     version = PlannerDatabaseVersion.LATEST,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -46,9 +61,18 @@ object PlannerDatabaseVersion {
         AutoMigration(from = 11, to = 12),
         // repeating events and events over several days: four new columns on events
         AutoMigration(from = 12, to = 13),
+        AutoMigration(from = 13, to = 14),
+        AutoMigration(from = 14, to = 15),
+        AutoMigration(from = 15, to = 16),
     ],
 )
 abstract class PlannerDatabase : RoomDatabase() {
+    abstract fun calendarSubscriptionDao(): CalendarSubscriptionDao
+
+    abstract fun habitDao(): HabitDao
+
+    abstract fun habitCheckDao(): HabitCheckDao
+
     abstract fun taskDao(): TaskDao
 
     abstract fun eventDao(): EventDao

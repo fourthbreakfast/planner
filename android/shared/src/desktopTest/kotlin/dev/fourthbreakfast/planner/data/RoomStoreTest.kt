@@ -45,7 +45,7 @@ class RoomStoreTest {
 
     @Test
     fun everythingComesBackAsItWent() = runBlocking {
-        val task = Task(id = "t", title = "buy milk", createdAt = 1, parentId = "p", deletedAt = 3, position = 2.5)
+        val task = Task(id = "t", title = "buy milk", createdAt = 1, parentId = "p", deletedAt = 3, position = 2.5, starred = true)
         val event = Event(id = "e", title = "class", day = 20_000, minute = 600, createdAt = 1, repeat = Repeat.WEEKLY, skipDays = setOf(20_007, 20_014))
         val note = Note(id = "n", title = "list", body = "p0n eggs", createdAt = 1, pinned = true)
         tasks.insert(listOf(task))

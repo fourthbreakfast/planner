@@ -1,5 +1,18 @@
 package dev.fourthbreakfast.planner.core
 
+/** The saved shortlist includes each chosen open task's subtree, without changing parentage. */
+fun shortlisted(tasks: List<Task>): List<Task> {
+    val active = tasks.filterNot { it.inBin }
+    val children = active.groupBy { it.parentId }
+    val included = HashSet<String>()
+    val waiting = ArrayDeque(active.filter { it.starred && !it.done })
+    while (waiting.isNotEmpty()) {
+        val task = waiting.removeFirst()
+        if (included.add(task.id)) waiting.addAll(children[task.id].orEmpty())
+    }
+    return active.filter { it.id in included }
+}
+
 /** Open tasks come before done ones in every order. Ties keep the order they were placed in. */
 fun sorted(tasks: List<Task>, order: SortOrder): List<Task> {
     val placed = compareBy<Task>({ it.position }, { it.createdAt })

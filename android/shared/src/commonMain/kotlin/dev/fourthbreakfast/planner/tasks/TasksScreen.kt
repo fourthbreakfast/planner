@@ -2,6 +2,8 @@ package dev.fourthbreakfast.planner.tasks
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.scrollBy
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -35,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -45,21 +50,35 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.fourthbreakfast.planner.Launch
 import dev.fourthbreakfast.planner.core.MAX_DEPTH
 import dev.fourthbreakfast.planner.core.SortOrder
 import dev.fourthbreakfast.planner.core.Task
+import dev.fourthbreakfast.planner.core.shortlisted
 import dev.fourthbreakfast.planner.core.subtree
 import dev.fourthbreakfast.planner.resources.Res
+import dev.fourthbreakfast.planner.resources.drag_depth_hint
+import dev.fourthbreakfast.planner.resources.drop_after
+import dev.fourthbreakfast.planner.resources.drop_at_root
+import dev.fourthbreakfast.planner.resources.drop_before
+import dev.fourthbreakfast.planner.resources.drop_inside
 import dev.fourthbreakfast.planner.resources.nothing_to_do
 import dev.fourthbreakfast.planner.resources.open_main_tasks
+import dev.fourthbreakfast.planner.resources.shortlist_all
+import dev.fourthbreakfast.planner.resources.shortlist_show
 import dev.fourthbreakfast.planner.resources.task_removed
 import dev.fourthbreakfast.planner.resources.undo
+import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.BinButton
 import dev.fourthbreakfast.planner.ui.DiscreetMessage
+import dev.fourthbreakfast.planner.ui.DrawnIconButton
 import dev.fourthbreakfast.planner.ui.LocalServices
 import dev.fourthbreakfast.planner.ui.RowSwipe
 import dev.fourthbreakfast.planner.ui.SettingsButton
@@ -71,8 +90,10 @@ import dev.fourthbreakfast.planner.ui.offsetOf
 import dev.fourthbreakfast.planner.ui.rememberKeyboardShown
 import dev.fourthbreakfast.planner.ui.rowKeyAt
 import dev.fourthbreakfast.planner.ui.showUndo
+import dev.fourthbreakfast.planner.ui.starIcon
 import dev.fourthbreakfast.planner.ui.sweepAndHold
 import dev.fourthbreakfast.planner.ui.theme.Space
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -88,8 +109,11 @@ internal fun TaskList(
     onSelectTab: (Tab) -> Unit,
     onOpenSettings: () -> Unit,
     viewModel: TasksViewModel,
+    onScheduleTask: ((Task) -> Unit)? = null,
 ) {
     val prefs = LocalServices.current.prefs
+    var shortlistOnly by rememberSaveable { mutableStateOf(prefs.getBoolean("tasks_shortlist", false)) }
+    val displayed = remember(tasks, shortlistOnly) { if (shortlistOnly) shortlisted(tasks) else tasks }
     val addFocus = remember { FocusRequester() }
     val requests = LocalServices.current.requests
     LaunchedEffect(requests.pending) {
@@ -122,7 +146,7 @@ internal fun TaskList(
     val anyCollapsed = parentIds.any { it !in openIds }
     // siblings are always ranked by priority, and a task with subtasks starts closed
     val held by viewModel.heldPriorities.collectAsStateWithLifecycle()
-    val rows = remember(tasks, parentIds, openIds, held) { arrangeHolding(tasks, held, SortOrder.PRIORITY, parentIds - openIds.toSet()) }
+    val rows = remember(displayed, parentIds, openIds, held) { arrangeHolding(displayed, held, SortOrder.PRIORITY, parentIds - openIds.toSet()) }
     val display = remember(rows) { rows + EndRow }
 
     val list = rememberLazyListState()
@@ -147,10 +171,18 @@ internal fun TaskList(
     }
     var addBarBounds by remember { mutableStateOf(Rect.Zero) }
     var listBounds by remember { mutableStateOf(Rect.Zero) }
+    var contentBounds by remember { mutableStateOf(Rect.Zero) }
+    val density = LocalDensity.current
+    val indentation = with(density) { Space.indent.toPx() }
+    val edgeBand = with(density) { Space.touch.toPx() }
 
     // dragging: the gesture lives on the list, so it survives rows scrolling away
     var dragKey by remember { mutableStateOf<String?>(null) }
     var dragY by remember { mutableFloatStateOf(0f) }
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var startX by remember { mutableFloatStateOf(0f) }
+    var sourceDepth by remember { mutableIntStateOf(0) }
+    var desiredDepth by remember { mutableIntStateOf(0) }
     var grabInRow by remember { mutableFloatStateOf(0f) }
     var dropKey by remember { mutableStateOf<String?>(null) }
     var dropZone by remember { mutableStateOf(DropZone.INTO) }
@@ -171,16 +203,23 @@ internal fun TaskList(
 
     fun updateDropTarget() {
         val row = list.itemAt(dragY)
-        val key = row?.key as? String
-        if (row == null || key == null || key == dragKey) {
+        val last = list.layoutInfo.visibleItemsInfo.lastOrNull()
+        val belowEnd = row == null &&
+            !list.canScrollForward &&
+            last?.key == EndRow.key &&
+            dragY >= last.offset + last.size &&
+            dragY < list.layoutInfo.viewportEndOffset
+        val key = (row?.key as? String) ?: EndRow.key.takeIf { belowEnd }
+        if (key == null || key == dragKey || dragY < 0 || dragY >= list.layoutInfo.viewportSize.height) {
             dropKey = null
             mark = null
             return
         }
-        val fraction = (dragY - row.offset) / row.size
-        dropZone = dropZoneAt(fraction)
+        val fraction = if (row == null) 1f else (dragY - row.offset) / row.size
+        dropZone = stableDropZone(fraction, dropZone.takeIf { dropKey == key })
+        desiredDepth = dragDepth(sourceDepth, dragX - startX, indentation, desiredDepth)
         val moved = dragKey ?: return
-        val drop = resolveDrop(currentRows, currentTasks, moved, key, if (key == EndRow.key) DropZone.BEFORE else dropZone)
+        val drop = resolveDrop(currentRows, currentTasks, moved, key, if (key == EndRow.key) DropZone.AFTER else dropZone, desiredDepth)
         // a place nothing can land on shows nothing
         dropKey = key.takeIf { drop != null }
         val newMark = when {
@@ -201,12 +240,7 @@ internal fun TaskList(
         // near the top or bottom edge the list scrolls under the finger
         while (dragKey != null) {
             val height = list.layoutInfo.viewportSize.height
-            val edge = height * 0.12f
-            val speed = when {
-                dragY < edge -> -14f
-                dragY > height - edge -> 14f
-                else -> 0f
-            }
+            val speed = dragScrollSpeed(dragY, height.toFloat(), edgeBand, edgeBand * 0.25f)
             if (speed != 0f) {
                 list.scrollBy(speed)
                 updateDropTarget()
@@ -223,16 +257,30 @@ internal fun TaskList(
         mark = null
         if (key == null || target == null) return
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-        resolveDrop(currentRows, currentTasks, key, target, dropZone)?.let { drop ->
+        resolveDrop(currentRows, currentTasks, key, target, dropZone, desiredDepth)?.let { drop ->
             // siblings are ranked by priority, so a task snaps back among its own colour
             viewModel.move(key, rankedDestination(currentTasks, key, drop.destination))
             drop.destination.parentId?.let { parent -> openIds = ArrayList(openIds + parent) }
         }
     }
 
+    BackHandler(dragKey != null) {
+        dragKey = null
+        dropKey = null
+        mark = null
+    }
+
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull() ?: continue
+                        if (dragKey != null && change.pressed) dragX = change.position.x - listBounds.left
+                    }
+                }
+            }
             .sweepAndHold(
                 enabled = renamingId == null,
                 onSweepLeft = { onSelectTab(Tab.AGENDA) },
@@ -250,9 +298,15 @@ internal fun TaskList(
                     renamingId = id
                 },
                 onHold = { key, at ->
-                    dragKey = key
-                    dragY = at.y - listBounds.top
-                    grabInRow = dragY - list.offsetOf(key)
+                    if (!shortlistOnly) {
+                        dragKey = key
+                        dragY = at.y - listBounds.top
+                        dragX = at.x - listBounds.left
+                        startX = dragX
+                        sourceDepth = currentRows.filterIsInstance<TaskNode>().firstOrNull { it.key == key }?.depth ?: 0
+                        desiredDepth = sourceDepth
+                        grabInRow = dragY - list.offsetOf(key)
+                    }
                 },
                 onDrag = { dy ->
                     dragY += dy
@@ -291,7 +345,7 @@ internal fun TaskList(
                     if (!it) aimedId = null
                 },
                 onAdd = {
-                    viewModel.add(addText, aimedTask?.id)
+                    viewModel.add(addText, aimedTask?.id, starred = shortlistOnly)
                     aimedTask?.let { openIds = ArrayList(openIds + it.id) }
                     addText = ""
                 },
@@ -301,7 +355,13 @@ internal fun TaskList(
         },
         topBar = {
             Header(
-                openCount = tasks.count { !it.done && it.parentId == null },
+                openCount = rows.filterIsInstance<TaskNode>().count { !it.task.done && it.depth == 0 },
+                shortlistOnly = shortlistOnly,
+                onToggleShortlist = {
+                    shortlistOnly = !shortlistOnly
+                    aimedId = null
+                    prefs.putBoolean("tasks_shortlist", shortlistOnly)
+                },
                 showExpandAll = parentIds.isNotEmpty(),
                 anyCollapsed = anyCollapsed,
                 onToggleAll = {
@@ -321,7 +381,7 @@ internal fun TaskList(
             )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().onGloballyPositioned { contentBounds = it.boundsInRoot() }) {
             LazyColumn(
                 state = list,
                 // otherwise the list takes the finger's movement and cancels the drag
@@ -337,13 +397,10 @@ internal fun TaskList(
                     val hint = mark?.takeIf { it.key == row.key }?.zone
                     val dropDepth = mark?.depth ?: 0
                     val moved = Modifier
-                        .animateItem(placementSpec = reorderSpring())
-                        .then(if (dragging) Modifier.zIndex(1f) else Modifier)
+                        .animateItem(placementSpec = if (dragKey == null) reorderSpring() else null)
                         .graphicsLayer {
                             if (dragging) {
-                                translationY = dragY - grabInRow - list.offsetOf(row.key)
-                                alpha = 0.92f
-                                shadowElevation = 12f
+                                alpha = 0.3f
                             }
                         }
                     when (row) {
@@ -352,7 +409,7 @@ internal fun TaskList(
                                 .fillMaxWidth()
                                 .height(endSpace)
                                 .animateItem()
-                                .dropHint(hint, dropDepth),
+                                .dropHint(hint?.takeIf { it == DropZone.INTO }, dropDepth),
                         )
                         is TaskNode -> {
                             val task = row.task
@@ -378,7 +435,7 @@ internal fun TaskList(
                                 onCancelRename = { renamingId = null },
                                 swipe = swipe,
                                 dragging = dragging,
-                                dropHint = hint,
+                                dropHint = hint?.takeIf { it == DropZone.INTO },
                                 dropDepth = dropDepth,
                                 // typing: a touch picks where the next task goes. Otherwise it opens or closes what is inside
                                 onAim = {
@@ -390,6 +447,8 @@ internal fun TaskList(
                                     }
                                 },
                                 onDoneChange = { viewModel.setDone(task, it) },
+                                onToggleStar = { viewModel.setStarred(task, !task.starred) },
+                                onSchedule = onScheduleTask?.let { schedule -> { schedule(task) } },
                                 onCyclePriority = { viewModel.cyclePriority(task) },
                                 onRemove = {
                                     viewModel.moveToBin(task)
@@ -401,7 +460,61 @@ internal fun TaskList(
                     }
                 }
             }
-            if (tasks.isEmpty()) {
+            dragKey?.let { id ->
+                currentTasks.firstOrNull { it.id == id }?.let { task ->
+                    val minimum = listBounds.top - contentBounds.top
+                    val maximum = (listBounds.bottom - contentBounds.top - edgeBand).coerceAtLeast(minimum)
+                    Text(
+                        task.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.offset {
+                            IntOffset(0, (minimum + dragY - grabInRow).coerceIn(minimum, maximum).roundToInt())
+                        }.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f))
+                            .padding(Space.x3).clearAndSetSemantics {},
+                    )
+                }
+            }
+            val ink = MaterialTheme.colorScheme.onBackground
+            val background = MaterialTheme.colorScheme.background
+            Canvas(Modifier.matchParentSize()) {
+                mark?.takeIf { it.zone != DropZone.INTO }?.let { indicator ->
+                    val item = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == indicator.key }
+                    if (item != null) {
+                        val y = listBounds.top - contentBounds.top + item.offset + if (indicator.zone == DropZone.AFTER) item.size else 0
+                        val x = listBounds.left - contentBounds.left + (Space.rowPad + Space.indent * indicator.depth).toPx()
+                        val end = listBounds.right - contentBounds.left
+                        drawLine(background, Offset(x, y), Offset(end, y), Space.strokeThick.toPx() * 3)
+                        drawLine(ink, Offset(x, y), Offset(end, y), Space.strokeThick.toPx())
+                        drawCircle(ink, Space.strokeThick.toPx() * 1.75f, Offset(x, y))
+                    }
+                }
+            }
+            val movedId = dragKey
+            val target = dropKey
+            if (movedId != null && target != null) {
+                val destination = resolveDrop(currentRows, currentTasks, movedId, target, dropZone, desiredDepth)
+                    ?.let { rankedDestination(currentTasks, movedId, it.destination) }
+                if (destination != null) {
+                    fun title(id: String?) = currentTasks.firstOrNull { it.id == id }?.title.orEmpty()
+                    val label = when {
+                        dropZone == DropZone.INTO && target != EndRow.key -> stringResource(Res.string.drop_inside, title(destination.parentId))
+                        destination.beforeId != null -> stringResource(Res.string.drop_before, title(destination.beforeId))
+                        destination.afterId != null -> stringResource(Res.string.drop_after, title(destination.afterId))
+                        destination.parentId != null -> stringResource(Res.string.drop_inside, title(destination.parentId))
+                        else -> stringResource(Res.string.drop_at_root)
+                    }
+                    Column(
+                        Modifier.align(Alignment.BottomStart).padding(bottom = padding.calculateBottomPadding()).fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant).padding(Space.x2).semantics { liveRegion = LiveRegionMode.Polite },
+                    ) {
+                        Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(Res.string.drag_depth_hint), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            if (displayed.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.nothing_to_do),
                     style = MaterialTheme.typography.bodyMedium,
@@ -422,6 +535,8 @@ private fun reorderSpring() = spring<IntOffset>(
 @Composable
 private fun Header(
     openCount: Int,
+    shortlistOnly: Boolean,
+    onToggleShortlist: () -> Unit,
     showExpandAll: Boolean,
     anyCollapsed: Boolean,
     onToggleAll: () -> Unit,
@@ -444,11 +559,14 @@ private fun Header(
                 .padding(start = Space.gutter, end = Space.rowPad),
         ) {
             TitleWithCount(
-                title = null,
+                title = if (shortlistOnly) "Do now" else "Tasks",
                 count = openCount,
                 countLabel = stringResource(Res.string.open_main_tasks, openCount),
                 modifier = Modifier.weight(1f),
             )
+            DrawnIconButton(stringResource(if (shortlistOnly) Res.string.shortlist_all else Res.string.shortlist_show), onToggleShortlist) {
+                starIcon(it, shortlistOnly)
+            }
             if (showExpandAll) ExpandAllButton(anyCollapsed, onToggleAll)
             BinButton(binCount, onOpenBin, onEmpty = onEmptyBin)
             SettingsButton(onOpenSettings)

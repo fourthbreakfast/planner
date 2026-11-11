@@ -1,9 +1,12 @@
 package dev.fourthbreakfast.planner.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -13,8 +16,17 @@ import androidx.compose.ui.graphics.Color
 private val DarkColorScheme = darkColorScheme(
     primary = AccentDark,
     onPrimary = PageDark,
-    error = ErrorRed,
-    onError = Color.White,
+    primaryContainer = AimDark,
+    onPrimaryContainer = InkDark,
+    inversePrimary = PageDark,
+    error = PriorityHigh,
+    onError = Color(0xFF381615),
+    secondary = QuietDark,
+    onSecondary = PageDark,
+    tertiary = QuietDark,
+    onTertiary = PageDark,
+    tertiaryContainer = AimDark,
+    onTertiaryContainer = InkDark,
     secondaryContainer = AimDark,
     onSecondaryContainer = InkDark,
     background = PageDark,
@@ -25,7 +37,14 @@ private val DarkColorScheme = darkColorScheme(
     onSurfaceVariant = QuietDark,
     surfaceContainer = PanelDark,
     surfaceContainerHigh = PanelDark,
-    outline = LineDark,
+    surfaceContainerLowest = PageDark,
+    surfaceContainerLow = PanelDark,
+    surfaceContainerHighest = AimDark,
+    surfaceBright = PanelDark,
+    surfaceDim = PageDark,
+    surfaceTint = Color.Transparent,
+    outline = ControlOutlineDark,
+    outlineVariant = LineDark,
     inverseSurface = InkDark,
     inverseOnSurface = PageDark,
 )
@@ -33,8 +52,17 @@ private val DarkColorScheme = darkColorScheme(
 private val LightColorScheme = lightColorScheme(
     primary = AccentLight,
     onPrimary = Color.White,
+    primaryContainer = AimLight,
+    onPrimaryContainer = InkLight,
+    inversePrimary = PageLight,
     error = ErrorRed,
     onError = Color.White,
+    secondary = QuietLight,
+    onSecondary = Color.White,
+    tertiary = QuietLight,
+    onTertiary = Color.White,
+    tertiaryContainer = AimLight,
+    onTertiaryContainer = InkLight,
     secondaryContainer = AimLight,
     onSecondaryContainer = InkLight,
     background = PageLight,
@@ -45,7 +73,14 @@ private val LightColorScheme = lightColorScheme(
     onSurfaceVariant = QuietLight,
     surfaceContainer = PanelLight,
     surfaceContainerHigh = PanelLight,
-    outline = LineLight,
+    surfaceContainerLowest = PageLight,
+    surfaceContainerLow = PanelLight,
+    surfaceContainerHighest = AimLight,
+    surfaceBright = PageLight,
+    surfaceDim = PanelLight,
+    surfaceTint = Color.Transparent,
+    outline = ControlOutlineLight,
+    outlineVariant = LineLight,
     inverseSurface = InkLight,
     inverseOnSurface = PageLight,
 )
@@ -53,15 +88,21 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun PlannerTheme(darkTheme: Boolean = isSystemInDarkTheme(), textScale: Float = 1f, content: @Composable () -> Unit) {
     val colors = if (darkTheme) DarkColorScheme else LightColorScheme
-    // Selection follows the quiet ink of the page.
     val selection = TextSelectionColors(
-        handleColor = colors.onSurfaceVariant,
-        backgroundColor = colors.onSurfaceVariant.copy(alpha = 0.3f),
+        handleColor = colors.onSurface,
+        backgroundColor = colors.onSurface.copy(alpha = 0.22f),
     )
     MaterialTheme(
         colorScheme = colors,
         typography = plannerTypography(textScale),
+        shapes = Shapes(
+            extraSmall = RoundedCornerShape(Space.radius),
+            small = RoundedCornerShape(Space.radius),
+            medium = RoundedCornerShape(Space.radius),
+            large = RoundedCornerShape(Space.radius),
+            extraLarge = RoundedCornerShape(Space.radius),
+        ),
     ) {
-        CompositionLocalProvider(LocalTextSelectionColors provides selection, content = content)
+        CompositionLocalProvider(LocalTextSelectionColors provides selection, LocalContentColor provides colors.onBackground, content = content)
     }
 }

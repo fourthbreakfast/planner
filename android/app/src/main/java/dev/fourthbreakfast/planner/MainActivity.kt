@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.fourthbreakfast.planner.agenda.AgendaViewModel
+import dev.fourthbreakfast.planner.habits.HabitsViewModel
 import dev.fourthbreakfast.planner.notes.NotesViewModel
 import dev.fourthbreakfast.planner.settings.SettingsScreen
 import dev.fourthbreakfast.planner.tasks.TasksViewModel
@@ -40,6 +41,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val habitsViewModel: HabitsViewModel by viewModels {
+        viewModelFactory { initializer { HabitsViewModel(app.data.habits) } }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // a turn of the screen keeps the same intent, and it must not act twice
@@ -54,7 +59,7 @@ class MainActivity : ComponentActivity() {
             }
             CompositionLocalProvider(LocalServices provides app.services) {
                 PlannerTheme(darkTheme = dark) {
-                    PlannerScreen(tasksViewModel, agendaViewModel, notesViewModel) { onClose -> SettingsScreen(onClose) }
+                    PlannerScreen(tasksViewModel, agendaViewModel, notesViewModel, habitsViewModel) { onClose -> SettingsScreen(onClose) }
                 }
             }
         }
@@ -83,12 +88,14 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         app.syncController.onInSight()
+        app.calendarRefresh.onInSight()
         app.checkForUpdatesIfDue()
     }
 
     override fun onStop() {
         super.onStop()
         app.syncController.onOutOfSight()
+        app.calendarRefresh.onOutOfSight()
         app.backUpIfDue()
     }
 

@@ -1,161 +1,175 @@
-# building planner
+# Build and develop Planner
 
-the android and windows apps share their data and rules, with a layout of their own. this folder contains both apps and the modules between them.
+This directory contains the Android, Windows and Linux applications, their shared interface and their data rules.
 
-kotlin · compose multiplatform · room · android 8+ · windows 10/11, 64 bit
+[Product overview](../README.md) · [Design system](../docs/design-system/README.md) · [Changelog](../CHANGELOG.md) · [Build CI](../.github/workflows/build.yml)
 
-[app overview](../README.md) · [design system](../docs/design-system) · [release notes](../CHANGELOG.md)
+## Setup
 
-## start here
+Clone the repository with its pinned Syncthing submodule:
 
-clone the repository with `--recurse-submodules`. [syncthing](../third_party/syncthing) is pinned as a submodule and built from source. install go; the build fetches the exact go toolchain requested by syncthing's `go.mod`. it builds without c, so no android ndk is needed.
+```text
+git clone --recurse-submodules https://github.com/fourthbreakfast/planner.git
+cd planner/android
+```
 
-on windows, the scripts in [tools](../tools) prepare a fresh installation: run `install-android-studio.ps1`, then `install-android-sdk.ps1`. for a manual setup, use the pinned versions below.
+For an existing checkout, run `git submodule update --init --recursive` from the repository root.
 
-set `JAVA_HOME` to the jdk bundled with android studio and `ANDROID_HOME` to the sdk directory. the usual paths are:
+Install a JDK and Go. CI uses Java 21, and desktop packaging requests a Temurin 21 toolchain through Gradle. Syncthing's `go.mod` pins its Go toolchain; Go can fetch that version when building. Android additionally requires the SDK packages listed below. No Android NDK is needed: the Syncthing build disables C dependencies.
+
+Android Studio is optional. Set `JAVA_HOME` to your JDK and `ANDROID_HOME` to your Android SDK. A typical Windows installation uses:
 
 ```text
 JAVA_HOME     C:\Program Files\Android\Android Studio\jbr
 ANDROID_HOME  %LOCALAPPDATA%\Android\Sdk
 ```
 
-run commands from this `android` folder in powershell. on linux or macos, replace `.\gradlew.bat` with `./gradlew`.
+The Windows setup helpers are [install-android-studio.ps1](../tools/install-android-studio.ps1) and [install-android-sdk.ps1](../tools/install-android-sdk.ps1). Run the commands below from this `android` directory. On Linux or macOS, replace `.\gradlew.bat` with `./gradlew`.
+
+## Run Android
 
 ```powershell
 .\gradlew.bat assembleDebug -Pdemo
 .\gradlew.bat installDebug -Pdemo
 ```
 
-the second command needs a connected phone with usb debugging enabled. `-Pdemo` installs a separate app called “planner dev”, with its own data. reinstalling preserves that data. use `-Pdemo` in android studio run configurations too.
+Installation requires a connected device with USB debugging enabled. `-Pdemo` creates **Planner dev**, a separate app and database; updating it preserves its data. Use the same flag in Android Studio run configurations.
 
-the bundled android syncthing executable is ARM64. native sync needs an ARM64 phone; an x86_64 emulator can still run the interface and database migration checks.
+If an existing development copy has a different signing key, leave it installed and use `-Pdemo -Pqa` for **Planner QA** (`dev.fourthbreakfast.planner.demo.qa`). This requires `-Pdemo` and assigns separate native sync ports. Build the isolated app and instrumentation APK with:
 
-for windows:
+```powershell
+.\gradlew.bat :app:assembleDebug :app:assembleDebugAndroidTest -Pdemo -Pqa
+```
+
+Selected physical-phone tests can then be invoked directly with `adb`, without uninstalling existing apps. The [phone sync guide](../docs/phone-sync-qa.md) documents device and network scenarios.
+
+The bundled Android Syncthing binary is ARM64. An ARM64 phone is required to exercise native sync; an x86-64 emulator can still cover the interface and database migrations.
+
+## Run and package desktop
+
+### Windows
 
 ```powershell
 .\gradlew.bat :desktop:run
 .\gradlew.bat :desktop:packageSetup --no-configuration-cache
 ```
 
-the pinned Compose packaging tasks need `--no-configuration-cache`; normal builds and tests can keep the cache enabled. packaging also needs [inno setup 6](https://jrsoftware.org/isinfo.php). set `PLANNER_DATA` to a separate folder and `PLANNER_PREFS` to a separate name when trying changes on disposable desktop data and settings.
+Packaging requires [Inno Setup 6](https://jrsoftware.org/isinfo.php). Compose packaging tasks need `--no-configuration-cache`; ordinary builds and tests can keep the cache enabled. The per-user setup includes Java and Syncthing and retains migration support for older MSI installations. New MSI packages are not generated.
 
-## where things live
+### Linux
 
-| module | responsibility |
+On an x86-64 Linux host:
+
+```bash
+bash ./gradlew :desktop:run
+bash ../tools/package-linux.sh
+```
+
+The packaging script requires `fakeroot`, `dpkg-deb` and Python 3. It writes a `.deb` to `desktop/build/linux` and a portable `.tar.gz` to `desktop/build/portable`; both include Java and Linux Syncthing. The Debian package identifier is `fourthbreakfast-planner`, avoiding a collision with GNOME Planner.
+
+Packages target Debian/Ubuntu desktops using X11 or XWayland. Native Wayland has not been verified. The `.deb` declares `libnotify-bin` and `xdg-utils` dependencies for reminders and opening update installers; install them separately for a portable copy. If a desktop has no supported system tray, closing the window exits the application.
+
+### Isolate development data
+
+Set `PLANNER_DATA` to a separate directory and `PLANNER_PREFS` to a separate settings name before running a desktop development build. This keeps trial data apart from an existing installation.
+
+Linux normally uses `$XDG_DATA_HOME/planner`, or `~/.local/share/planner` when unset. An existing database from an earlier source build at `~/.config/planner` continues to be used.
+
+## Project structure
+
+| Module | Responsibility |
 | --- | --- |
-| `core` | plain kotlin rules, independent of android. `Tasks`, `Events` and `Notes` change data through store interfaces. also holds sync merging, the logical clock, backup and calendar import, recurring events, note formatting, reminder times, widget content and search. test fixtures provide the in-memory stores used across modules. |
-| `sync` | plain kotlin shared by both apps. starts the private syncthing process, configures its ports and discovery, writes device files and merges incoming changes through core. `Lan` resolves short pairing codes when broadcasts cannot get through. |
-| `shared` | multiplatform data and shared interface. `PlannerData` wires room, stores, rules, backups and sync. contains tasks, agenda, notes, search, settings, the sync runner and updates. `ui/Platform.kt` provides platform hooks; `ui/theme` holds colour, type and spacing. words and fonts live in `composeResources`. |
-| `app` | android entry point and platform features: navigation requests, pairing camera, background sync, reminders, widget and backup file picker. `res/values/strings.xml` holds words android displays outside the compose screens. |
-| `desktop` | windows entry point, tray, custom window frame, three-column dashboard and side panel. also desktop sync, reminders and installers. `packageSetup` bundles temurin 21 and syncthing; `packageMsi` remains for older clients. |
-| `buildSrc` | `SyncthingBinary`, which builds the pinned syncthing for android and windows. |
+| `core` | Platform-independent task, event, note and habit rules; stores; sync merging; logical clock; backups; calendar import/subscriptions; recurrence; formatting; reminders; widget content and search. Test fixtures provide in-memory stores. |
+| `sync` | Private Syncthing process, discovery and pairing, device snapshot files and incoming merges. `Lan` resolves local short codes when broadcast discovery is unavailable. |
+| `shared` | Compose Multiplatform screens, Room persistence, `PlannerData` service wiring, settings, updates and sync coordination. Platform hooks live in `ui/Platform.kt`; resources live in `composeResources`. |
+| `app` | Android lifecycle, intents, pairing camera, background jobs, reminders, widget and file/folder access. Android-owned copy lives in `res/values/strings.xml`. |
+| `desktop` | Windows/Linux shell, tray, desktop input, native integration, reminders, sync and packaging. |
+| `buildSrc` | `SyncthingBinary`, which builds the pinned source for each target platform. |
 
-## checks
+Follow the [design system](../docs/design-system/README.md) for interface, visual and product-copy work. It distinguishes approved rules from proposals and historical references. Font and third-party licenses live in [docs/licenses](../docs/licenses).
 
-format or check kotlin style:
+## Verification
 
 ```powershell
 .\gradlew.bat ktlintFormat
 .\gradlew.bat ktlintCheck
-```
-
-run the checks that need no phone:
-
-```powershell
 .\gradlew.bat :core:test :sync:test :shared:desktopTest :desktop:test testDebugUnitTest
 ```
 
-these cover rules, sync, the desktop database, list layout and note editing. real syncthing integration tests also need `PLANNER_SYNCTHING` set to a host binary. on windows, build it with:
+These tests cover data rules, merge behavior, the desktop database, layout and editing. Real Syncthing integration tests additionally need `PLANNER_SYNCTHING` pointing to a host binary. On Windows:
 
 ```powershell
 .\gradlew.bat :desktop:syncthingWindows
 $env:PLANNER_SYNCTHING = (Resolve-Path 'desktop\build\syncthing\resources\windows\syncthing.exe').Path
 ```
 
-then run the test command above.
+Then rerun the relevant tests with that environment variable set. Optional Compose screenshot tests use `PLANNER_RENDER` as their output directory.
 
-### database changes
+### Database migrations
 
-room schemas live in `shared/schemas`. each schema change needs a new version, an appropriate migration and coverage in the upgrade tests under `app/src/androidTest`.
+Room schemas are checked in under `shared/schemas`. A released schema change requires a new version, an appropriate migration and upgrade tests under `app/src/androidTest`.
 
 ```powershell
 .\gradlew.bat connectedDebugAndroidTest -Pdemo
 ```
 
-**this command installs and then uninstalls the dev app, including its data.** use an emulator or a device whose dev data is disposable. the task refuses to run without `-Pdemo`.
+This task installs and uninstalls the development app, including its data. Run it on an emulator or a device with disposable development data. The task refuses to run without `-Pdemo`; use the isolated QA package and direct `adb` invocation when existing device data must be preserved.
 
-[build CI](../.github/workflows/build.yml) runs style checks, tests, android lint and debug/release builds on pushes to `main` and pull requests. it does not run device tests; run those before a release that changes the database.
+[Build CI](../.github/workflows/build.yml) runs style checks, tests, Android lint and debug/release builds for pushes to `main` and pull requests. It does not run device tests. Exercise migrations on a device or emulator before releasing a database change.
 
-## releases
+## Releases
 
-`plannerVersion` and `plannerVersionCode` in [gradle.properties](gradle.properties) name both apps. increment the code for every android release and add its notes to the [changelog](../CHANGELOG.md) before tagging.
+`plannerVersion` and `plannerVersionCode` in [gradle.properties](gradle.properties) name the platform builds. Increment the Android version code for every release and update the [changelog](../CHANGELOG.md) before tagging.
 
-pushing the matching `v` tag runs [release CI](../.github/workflows/release.yml), producing a signed apk, windows setup executable and legacy msi.
+A matching `v` tag triggers [release CI](../.github/workflows/release.yml). Windows/Android and Linux jobs run checks, build the signed APK, Windows setup, Linux `.deb` and portable archive, and smoke-test the packaged desktop runtimes. A single publishing job requires both jobs to succeed, creates SHA-256 checksums, verifies uploaded draft assets, then makes the complete release public. A manual workflow run performs the same signed preflight without publication.
 
-local windows publishing uses [tools/release.ps1](../tools/release.ps1), with the same version and artifact set. it needs native github CLI (`gh`) signed in and inno setup 6. the helper requires a clean working tree and an existing tag on `fourthbreakfast/planner` pointing to the checkout's exact `HEAD`; it never creates or pushes a tag.
+After publication, [tools/winget.ps1](../tools/winget.ps1) generates manifests from the published Windows installer. Validate those manifests before catalog submission; generation and Microsoft catalog acceptance are separate steps.
 
-the original signing keystore must exist at `%USERPROFILE%\.planner\release.jks`, with alias `planner`. the helper refuses a missing key or a certificate that differs from [signing-certificate.sha256](signing-certificate.sha256). CI also verifies the built apk against this public pin before publishing. signing credentials stay outside the repository.
+The legacy local Windows helper, [tools/release.ps1](../tools/release.ps1), publishes only APK and Windows setup and assumes an Android Studio installation. It is not the complete 2.0 release path. Use the workflow for production releases across all platforms.
 
-## pinned tools
+Use the original release keystore at `%USERPROFILE%\.planner\release.jks`, alias `planner`. The helper refuses a missing key or a certificate that differs from [signing-certificate.sha256](signing-certificate.sha256); CI verifies the APK against that public pin as well. Signing credentials remain outside the repository.
 
-these versions describe the tested setup. the installation scripts repeat the setup pins; update both together.
+## Toolchain reference
 
-| tool | version |
+The checked-in build files and setup scripts define the pins. Update the scripts and this reference together when changing the setup.
+
+| Setup component | Pin |
 | --- | --- |
-| android studio | `2026.2.2.8` |
-| android sdk command line tools | `16111833` · revision `23.0` |
-| android platform | `android-37.0@2.0.0` |
-| android build tools | `36.0.0@36.0.0` |
-| platform-tools / adb | follows the current release deliberately; does not affect build output |
+| Android Studio, optional | `2026.2.2.8` |
+| Android SDK command-line tools | `16111833`, revision `23.0` |
+| Android platform | `android-37.0@2.0.0` |
+| Android build tools | `36.0.0@36.0.0` |
+| Platform-tools / adb | Follows the current release; not a build-output dependency |
+| CI JDK / packaged desktop runtime | Java 21 / Temurin 21 |
 
-<details>
-<summary>manual windows installation</summary>
-
-```powershell
-winget install --id Google.AndroidStudio --exact --version 2026.2.2.8
-```
-
-download [command line tools 16111833](https://dl.google.com/android/repository/commandlinetools-win-16111833_latest.zip) and unpack them as `cmdline-tools\latest` inside the sdk folder. verify the archive's SHA-256:
+For manual Windows setup, install the pinned Android Studio version with `winget install --id Google.AndroidStudio --exact --version 2026.2.2.8`, or use a standalone JDK and SDK. Unpack [command-line tools 16111833](https://dl.google.com/android/repository/commandlinetools-win-16111833_latest.zip) as `cmdline-tools\latest` within the SDK. The archive SHA-256 is:
 
 ```text
 e5885e2e59038c0778a85fc19f01de7ce7c567c105553f7617b936b1e0e87b2b
 ```
 
-install sdk packages with the android CLI, always disabling metrics:
+Install the packages with metrics disabled:
 
 ```powershell
 android --no-metrics sdk install platform-tools platforms/android-37.0@2.0.0 build-tools/36.0.0@36.0.0
 ```
 
-use `android`, rather than the deprecated `sdkmanager` wrapper, to pass `--no-metrics` explicitly. accept licenses by hand once during android studio's first run. that setup also installs an emulator and system image; the build does not depend on either.
+Use `android` rather than the deprecated `sdkmanager` wrapper to pass `--no-metrics` explicitly. Accept SDK licenses interactively during setup. An emulator and system image are useful for testing but are not build dependencies.
 
-</details>
-
-### project versions
-
-| dependency | pin |
+| Build dependency | Pin |
 | --- | --- |
-| android gradle plugin | `9.5.0` |
-| gradle wrapper | `9.6.0`, with checksum |
-| kotlin | `2.4.21` |
-| compose bom | `2026.09.00` |
-| core-ktx | `1.19.1` |
-| lifecycle | `2.11.0` |
-| activity-compose | `1.13.0` |
-| room | `2.8.5` |
-| ksp | `2.3.13` |
-| kotlinx-coroutines | `1.11.0` |
-| ktlint gradle plugin | `14.2.0` |
-| syncthing / go | `v2.1.7` / `1.26.2` |
-| kotlinx-serialization-json | `1.8.1` |
-| work-runtime-ktx | `2.12.0` |
-| zxing core / android embedded | `3.5.4` / `4.3.0` |
-| compile / target / minimum sdk | `37` / `37` / `26` |
+| Gradle / Android Gradle Plugin | `9.6.0` / `9.5.0` |
+| Kotlin / KSP | `2.4.21` / `2.3.13` |
+| Compose Multiplatform / Material 3 | `1.12.2` / `1.9.0` |
+| Android Compose BOM | `2026.09.00` |
+| Core KTX / Lifecycle / Activity Compose | `1.19.1` / `2.11.0` / `1.13.0` |
+| Room / bundled SQLite | `2.8.5` / `2.7.1` |
+| Coroutines / serialization JSON | `1.11.0` / `1.8.1` |
+| WorkManager | `2.12.0` |
+| ktlint Gradle plugin | `14.2.0` |
+| Syncthing / Go | `v2.1.7` / `1.26.2` |
+| ZXing / Android Embedded | `3.5.4` / `4.3.0` |
+| lib-recur | `0.17.1` |
+| Compile / target / minimum SDK | `37` / `37` / `26` |
 
-ibm plex sans (regular, bold, italic) and ibm plex mono (regular, medium) are bundled in `shared/src/commonMain/composeResources/font`. licenses are kept in [docs/licenses](../docs/licenses). headings and large counts are drawn from digital segments; plex sans carries body text, with plex mono for times and small metadata.
-
-### moving the toolchain forward
-
-change one layer per commit: android studio first, then gradle and agp together, then compile sdk. change target sdk after trying the app on the phone. build from the command line and run on the phone after each step.
-
-last recorded device check: 2026-11-06, moto g84 5g. the signed 1.1.0 update installed and opened successfully; six database migration checks passed on the emulator. built on windows with android studio; no nixos dependency.
+Move the toolchain forward in small steps: update one layer, build from the command line and test the affected platforms before moving to the next. Check the final release's verification record rather than treating an older device run as evidence for a new build.

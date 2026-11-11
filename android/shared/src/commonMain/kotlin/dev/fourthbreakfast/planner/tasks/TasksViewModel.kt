@@ -19,8 +19,12 @@ private const val SETTLE_MILLIS = 1100L
 class TasksViewModel(private val tasks: Tasks) : ViewModel() {
     val all: Flow<List<Task>> = tasks.all
 
-    fun add(title: String, parentId: String?) {
-        viewModelScope.launch { tasks.add(title, parentId) }
+    fun add(title: String, parentId: String?, starred: Boolean = false) {
+        viewModelScope.launch { tasks.add(title, parentId, starred) }
+    }
+
+    fun setStarred(task: Task, starred: Boolean) {
+        viewModelScope.launch { tasks.setStarred(task.id, starred) }
     }
 
     fun rename(id: String, title: String) {

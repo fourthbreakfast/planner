@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,16 +27,25 @@ import dev.fourthbreakfast.planner.resources.guide_title
 import dev.fourthbreakfast.planner.resources.off
 import dev.fourthbreakfast.planner.resources.on
 import dev.fourthbreakfast.planner.resources.setting_theme
+import dev.fourthbreakfast.planner.resources.sync_attention
+import dev.fourthbreakfast.planner.resources.sync_current
 import dev.fourthbreakfast.planner.resources.sync_devices
+import dev.fourthbreakfast.planner.resources.sync_now
+import dev.fourthbreakfast.planner.resources.sync_offline
+import dev.fourthbreakfast.planner.resources.sync_schedule
+import dev.fourthbreakfast.planner.resources.sync_syncing
 import dev.fourthbreakfast.planner.resources.sync_title
 import dev.fourthbreakfast.planner.resources.theme_dark
 import dev.fourthbreakfast.planner.resources.theme_light
 import dev.fourthbreakfast.planner.resources.theme_system
 import dev.fourthbreakfast.planner.sync.SyncControls
+import dev.fourthbreakfast.planner.sync.SyncHealth
+import dev.fourthbreakfast.planner.sync.health
 import dev.fourthbreakfast.planner.ui.BackButton
 import dev.fourthbreakfast.planner.ui.BackHandler
 import dev.fourthbreakfast.planner.ui.ScreenHeading
 import dev.fourthbreakfast.planner.ui.theme.Space
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringArrayResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringArrayResource
@@ -104,10 +114,33 @@ fun Guide(list: StringArrayResource = Res.array.guide, onClose: () -> Unit) {
 @Composable
 fun SyncSetting(sync: SyncControls, onOpen: () -> Unit) {
     if (!sync.available) return
-    val peers = sync.state.collectAsStateWithLifecycle().value.peers.size
+    val state = sync.state.collectAsStateWithLifecycle().value
+    val peers = state.peers.size
+    val scope = rememberCoroutineScope()
     val count = if (peers == 0) null else pluralStringResource(Res.plurals.sync_devices, peers, peers)
     Setting(stringResource(Res.string.sync_title), count, onOpen)
+    if (peers > 0) {
+        Setting(stringResource(Res.string.sync_now), syncStatusText(state)) {
+            if (!sync.state.value.syncing) scope.launch { sync.syncNow() }
+        }
+        Text(
+            stringResource(Res.string.sync_schedule),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Space.gutter, vertical = Space.x2),
+        )
+    }
 }
+
+@Composable
+fun syncStatusText(state: dev.fourthbreakfast.planner.sync.SyncState): String = stringResource(
+    when (state.health) {
+        SyncHealth.ERROR -> Res.string.sync_attention
+        SyncHealth.UNPAIRED, SyncHealth.OFFLINE -> Res.string.sync_offline
+        SyncHealth.CURRENT -> Res.string.sync_current
+        SyncHealth.WORKING -> Res.string.sync_syncing
+    },
+)
 
 /** The theme, which goes round system, light and dark at each touch. */
 @Composable

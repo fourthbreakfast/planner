@@ -10,11 +10,11 @@ private const val VALUE = "planner"
  * since it needs the path of planner.exe, which jpackage hands over.
  */
 object StartWithWindows {
-    private val exe: String? = System.getProperty("jpackage.app-path")
+    private val exe: String? = System.getProperty("jpackage.app-path").takeIf { DesktopPlatform.isWindows }
 
     val possible: Boolean get() = exe != null
 
-    val on: Boolean get() = run("reg", "query", RUN_KEY, "/v", VALUE)
+    val on: Boolean get() = possible && run("reg", "query", RUN_KEY, "/v", VALUE)
 
     fun set(on: Boolean) {
         val path = exe ?: return

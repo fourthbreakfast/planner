@@ -24,8 +24,7 @@ class DesktopSync(binary: File?, root: File, sync: Sync, changes: Flow<Any>, pre
         changes = changes,
         prefs = prefs,
         keys = SyncPrefKeys(anywhere = "sync_anywhere", name = "sync_name", paired = "sync_paired"),
-        // the name windows gives the computer, read without asking the network
-        defaultName = (System.getenv("COMPUTERNAME") ?: "windows").lowercase(),
+        defaultName = DesktopPlatform.deviceName(),
         scope = scope,
         log = logTo(File(root, "home/planner.log")),
     ) {
@@ -37,6 +36,7 @@ class DesktopSync(binary: File?, root: File, sync: Sync, changes: Flow<Any>, pre
 /** What the app did with its Syncthing, and why it would not start, kept beside Syncthing's own log. */
 private fun logTo(file: File): (String) -> Unit = { line ->
     runCatching {
+        file.parentFile.mkdirs()
         if (file.length() > 200_000) file.delete()
         file.appendText("${LocalDateTime.now().withNano(0)} $line\n")
     }
@@ -49,15 +49,20 @@ private fun logTo(file: File): (String) -> Unit = { line ->
  */
 private class LeftBehind(private val home: File) {
     fun stop() {
-        val query = "Get-CimInstance Win32_Process -Filter \"Name='syncthing.exe'\" | " +
-            "Where-Object { \$_.CommandLine -like '*${home.path.replace("'", "''")}*' } | " +
-            "ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }"
-        runCatching {
-            ProcessBuilder("powershell", "-NoProfile", "-NonInteractive", "-Command", query)
-                .redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .start()
-                .waitFor(15, TimeUnit.SECONDS)
+        ProcessHandle.allProcesses().use { processes ->
+            processes.filter { it.pid() != ProcessHandle.current().pid() }.forEach { process ->
+                val info = process.info()
+                if (isPrivateSyncthing(info.command().orElse(null), info.arguments().orElse(null), home)) {
+                    process.destroy()
+                    try {
+                        process.onExit().get(5, TimeUnit.SECONDS)
+                    } catch (_: java.util.concurrent.TimeoutException) {
+                        process.destroyForcibly()
+                    } catch (_: java.util.concurrent.ExecutionException) {
+                        // It exited while its status was being read.
+                    }
+                }
+            }
         }
     }
 }

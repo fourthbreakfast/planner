@@ -1,12 +1,60 @@
 package dev.fourthbreakfast.planner.core
 
+import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /** Everything the app can do with the agenda. */
-class Events(private val store: EventStore, private val clock: () -> Long = System::currentTimeMillis) {
+class Events(private val store: EventStore, private val tasks: TaskStore? = null, private val clock: () -> Long = System::currentTimeMillis) {
+    constructor(store: EventStore, clock: () -> Long) : this(store, null, clock)
+
     /** Every event, the bin included, soonest first. */
-    val all: Flow<List<Event>> = store.observeAll().map(::sortedEvents)
+    val all: Flow<List<Event>> = if (tasks == null) {
+        store.observeAll().map { entries -> sortedEvents(entries.map { it.forDisplay() }) }
+    } else {
+        combine(store.observeAll(), tasks.observeAll()) { events, tasks ->
+            val byId = tasks.associateBy { it.id }
+            sortedEvents(
+                events.mapNotNull { event ->
+                    if (event.taskId == null || event.inBin) {
+                        event.forDisplay()
+                    } else {
+                        byId[event.taskId]?.takeUnless { it.inBin || it.done }?.let { event.copy(title = it.title).forDisplay() }
+                    }
+                },
+            )
+        }
+    }
+
+    /** One schedule per task, with a deterministic id so simultaneous scheduling on two devices converges. */
+    suspend fun scheduleTask(
+        taskId: String,
+        day: Long,
+        minute: Int?,
+        endMinute: Int? = null,
+        reminder: Int? = null,
+        location: String = "",
+        notes: String = "",
+        endDay: Long? = null,
+    ) = store.transaction {
+        val task = tasks?.all()?.firstOrNull { it.id == taskId && !it.inBin } ?: return@transaction
+        val id = UUID.nameUUIDFromBytes("planner-task-schedule:$taskId".toByteArray(Charsets.UTF_8)).toString()
+        val existing = store.all().firstOrNull { it.id == id }
+        val now = clock()
+        val event = Event(
+            id = id, title = task.title, day = day, minute = minute, endMinute = endMinute,
+            reminder = reminder, location = location, notes = notes, createdAt = existing?.createdAt ?: now,
+            updatedAt = now, endDay = endDay, taskId = taskId,
+        ).checked()
+        if (existing == null) store.insert(listOf(event)) else store.update(listOf(event))
+    }
+
+    /** The agenda checks the original task; its schedule disappears until the task is reopened. */
+    suspend fun completeTask(eventId: String) = store.transaction {
+        val taskId = store.all().firstOrNull { it.id == eventId && !it.inBin && !it.readOnly }?.taskId ?: return@transaction
+        tasks?.let { Tasks(it, clock).setDone(taskId, true) }
+    }
 
     /** A blank title is ignored, so an event can never be nameless. */
     suspend fun add(
@@ -56,7 +104,7 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
         store.transaction {
-            val event = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
+            val event = store.all().firstOrNull { it.id == id && !it.inBin && !it.readOnly } ?: return@transaction
             val changed = event.copy(
                 title = trimmed,
                 day = day,
@@ -77,7 +125,7 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
     suspend fun skip(id: String, day: Long) {
         val now = clock()
         store.transaction {
-            val event = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
+            val event = store.all().firstOrNull { it.id == id && !it.inBin && !it.readOnly } ?: return@transaction
             store.update(listOf(event.copy(skipDays = event.skipDays + day, updatedAt = now)))
         }
     }
@@ -100,6 +148,7 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
     ) {
         if (title.isBlank()) return
         store.transaction {
+            if (store.all().none { it.id == id && !it.inBin && !it.readOnly }) return@transaction
             skip(id, day)
             add(title, newDay, minute, location, notes, endMinute, reminder, endDay)
         }
@@ -109,7 +158,7 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
     suspend fun moveToBin(id: String) {
         val now = clock()
         store.transaction {
-            val event = store.all().firstOrNull { it.id == id && !it.inBin } ?: return@transaction
+            val event = store.all().firstOrNull { it.id == id && !it.inBin && !it.readOnly } ?: return@transaction
             store.update(listOf(event.copy(deletedAt = now, updatedAt = now)))
         }
     }
@@ -118,18 +167,18 @@ class Events(private val store: EventStore, private val clock: () -> Long = Syst
     suspend fun restore(id: String) {
         val now = clock()
         store.transaction {
-            val event = store.all().firstOrNull { it.id == id && it.inBin } ?: return@transaction
+            val event = store.all().firstOrNull { it.id == id && it.inBin && !it.readOnly } ?: return@transaction
             store.update(listOf(event.copy(deletedAt = null, updatedAt = now)))
         }
     }
 
     /** Only what is in the bin can be deleted for good. */
     suspend fun deleteForever(id: String) {
-        store.transaction { store.all().firstOrNull { it.id == id && it.inBin }?.let { store.delete(listOf(it)) } }
+        store.transaction { store.all().firstOrNull { it.id == id && it.inBin && !it.readOnly }?.let { store.delete(listOf(it)) } }
     }
 
     suspend fun emptyBin() {
-        store.transaction { store.delete(store.all().filter { it.inBin }) }
+        store.transaction { store.delete(store.all().filter { it.inBin && !it.readOnly }) }
     }
 
     /** The event as the rules let it be kept: times within the day, and only the details that mean something. */

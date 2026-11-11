@@ -1,18 +1,46 @@
 name: release
+run-name: ${{ github.event_name == 'workflow_dispatch' && 'Release preflight (no publication)' || format('Release {0}', github.ref_name) }}
 
-# pushing a tag such as v1.0.1 builds the signed phone apk and the windows installer, and publishes both as a release
-# with that version's part of CHANGELOG.md as its notes. the signing key and its password are the repository's secrets
-# PLANNER_KEYSTORE_B64 (the key file, base64) and PLANNER_KEYSTORE_PASSWORD.
 on:
   push:
     tags: ['v*']
+  # Review the same signed artifacts before tagging. Manual preflights never publish.
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: validate the version and release notes
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^plannerVersion=//p' android/gradle.properties | tr -d '\r')
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid release version'; exit 1; }
+          if [[ "$GITHUB_REF" == refs/tags/* && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "gradle.properties says $version, the tag is $GITHUB_REF_NAME"
+            exit 1
+          fi
+          awk -v v="$version" '/^## /{p = ($2 == v); next} p' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+          grep -q '[^[:space:]]' "$RUNNER_TEMP/release-notes.md" || { echo 'Missing version-specific release notes'; exit 1; }
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+
+  windows-android:
+    needs: version
     runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     defaults:
       run:
         shell: bash
@@ -21,12 +49,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-      - name: the tag has to be the version in gradle.properties
-        run: |
-          declared=$(grep '^plannerVersion=' gradle.properties | cut -d= -f2 | tr -d '\r')
-          if [ "v$declared" != "$GITHUB_REF_NAME" ]; then echo "gradle.properties says $declared, the tag is $GITHUB_REF_NAME"; exit 1; fi
-          echo "VERSION=$declared" >> "$GITHUB_ENV"
-      - name: syncthing names its version from its tags, which a checkout leaves out
+      - name: fetch Syncthing version tags
         run: git -C ../third_party/syncthing fetch --tags --force origin
       - uses: actions/setup-go@v5
         with:
@@ -38,44 +61,235 @@ jobs:
           java-version: 21
       - uses: android-actions/setup-android@v3
         with:
-          packages: platform-tools
+          packages: platform-tools platforms;android-37 build-tools;36.0.0
       - uses: gradle/actions/setup-gradle@v4
-      - name: inno setup, which makes the windows installer
-        run: choco install innosetup --no-progress -y
-      - name: the signing key
+      - name: Inno Setup
+        run: choco upgrade innosetup --no-progress -y
+      - name: build the packaged native engine for real sync tests
+        run: |
+          ./gradlew :desktop:syncthingWindows --max-workers=1 --console=plain
+          printf 'PLANNER_SYNCTHING=%s\n' "$(cygpath -w "$PWD/desktop/build/syncthing/resources/windows/syncthing.exe")" >> "$GITHUB_ENV"
+      - name: checks on Windows, including native sync and desktop interactions
+        run: ./gradlew ktlintCheck :core:test :sync:test :shared:desktopTest :desktop:test :app:testDebugUnitTest :app:lintDebug --max-workers=1 --console=plain
+      - name: restore the original production signing key
         env:
           KEYSTORE_B64: ${{ secrets.PLANNER_KEYSTORE_B64 }}
         run: |
-          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          echo "PLANNER_KEYSTORE=$(cygpath -w "$RUNNER_TEMP/release.jks")" >> "$GITHUB_ENV"
-      - name: build
+          test -n "$KEYSTORE_B64" || { echo 'Production signing key is missing'; exit 1; }
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/planner-release.jks"
+          printf 'PLANNER_KEYSTORE=%s\n' "$(cygpath -w "$RUNNER_TEMP/planner-release.jks")" >> "$GITHUB_ENV"
+      - name: build the signed production APK and Windows setup
         env:
           PLANNER_KEYSTORE_PASSWORD: ${{ secrets.PLANNER_KEYSTORE_PASSWORD }}
-        run: ./gradlew assembleRelease :desktop:packageMsi :desktop:packageSetup --no-configuration-cache --console=plain
-      - name: verify the APK signing certificate
+        run: |
+          test -n "$PLANNER_KEYSTORE_PASSWORD" || { echo 'Production signing password is missing'; exit 1; }
+          ./gradlew :app:assembleRelease :desktop:packageSetup --no-configuration-cache --max-workers=1 --console=plain
+      - name: verify the production APK identity and signing certificate
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $expected = (Get-Content -LiteralPath 'signing-certificate.sha256' -Raw).Trim().ToLowerInvariant()
           if ($expected -notmatch '^[a-f0-9]{64}$') { throw 'Invalid public signing certificate pin' }
-          $apksigner = Join-Path $env:ANDROID_HOME 'build-tools/36.0.0/apksigner.bat'
+          $tools = Join-Path $env:ANDROID_HOME 'build-tools/36.0.0'
+          $apksigner = Join-Path $tools 'apksigner.bat'
           if (-not (Test-Path -LiteralPath $apksigner -PathType Leaf)) { throw 'Pinned Android build-tools apksigner is missing' }
           $verification = & $apksigner verify --print-certs 'app/build/outputs/apk/release/app-release.apk' 2>&1
           if ($LASTEXITCODE) { throw 'APK signature verification failed' }
           $certificates = [regex]::Matches(($verification -join "`n"), '(?m)^Signer #\d+ certificate SHA-256 digest:\s*([a-fA-F0-9]{64})\s*$')
           if ($certificates.Count -ne 1 -or $certificates[0].Groups[1].Value.ToLowerInvariant() -ne $expected) {
-              throw 'APK signing certificate does not match existing installs'
+            throw 'APK signing certificate does not match existing installs'
           }
-      - name: publish
-        env:
-          GH_TOKEN: ${{ github.token }}
+          $badging = & (Join-Path $tools 'aapt.exe') dump badging 'app/build/outputs/apk/release/app-release.apk' 2>&1
+          if ($LASTEXITCODE) { throw 'Could not inspect the production APK' }
+          $identity = [regex]::Match(($badging -join "`n"), "(?m)^package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'")
+          if (-not $identity.Success -or $identity.Groups[1].Value -ne 'dev.fourthbreakfast.planner' -or $identity.Groups[3].Value -ne $env:VERSION) {
+            throw 'Release APK has an unexpected package or version; demo and QA packages must never be published'
+          }
+      - name: smoke-test the packaged Windows runtime on isolated data
+        timeout-minutes: 3
+        shell: pwsh
         run: |
-          apk="app/build/outputs/apk/release/planner-$VERSION.apk"
-          mv app/build/outputs/apk/release/app-release.apk "$apk"
-          msi="desktop/build/compose/binaries/main/msi/planner-$VERSION.msi"
-          test -f "$msi"
-          setup="desktop/build/setup/planner-$VERSION-setup.exe"
-          test -f "$setup"
-          awk -v v="$VERSION" '/^## /{p = ($2 == v); next} p' ../CHANGELOG.md > "$RUNNER_TEMP/notes.md"
-          if [ -s "$RUNNER_TEMP/notes.md" ]; then notes=(--notes-file "$RUNNER_TEMP/notes.md"); else notes=(--generate-notes); fi
-          gh release create "v$VERSION" "$apk" "$setup" "$msi" --title "planner $VERSION" "${notes[@]}"
+          $ErrorActionPreference = 'Stop'
+          $folder = Join-Path $PWD 'desktop/build/compose/binaries/main/app/planner'
+          if (-not (Test-Path -LiteralPath (Join-Path $folder 'app/resources/syncthing.exe'))) { throw 'Bundled Syncthing is missing' }
+          $env:PLANNER_DATA = Join-Path $env:RUNNER_TEMP 'planner-windows-smoke'
+          $env:PLANNER_PREFS = "dev/fourthbreakfast/planner-release-ci/$env:GITHUB_RUN_ID"
+          $process = Start-Process -FilePath (Join-Path $folder 'planner.exe') -ArgumentList '--tray' -WorkingDirectory $folder -WindowStyle Hidden -PassThru
+          try {
+            $deadline = [DateTime]::UtcNow.AddSeconds(30)
+            do {
+              Start-Sleep -Milliseconds 250
+              $process.Refresh()
+              if ($process.HasExited) { throw 'Packaged Windows app exited during startup' }
+            } until ((Test-Path -LiteralPath (Join-Path $env:PLANNER_DATA 'planner.db')) -or [DateTime]::UtcNow -gt $deadline)
+            if (-not (Test-Path -LiteralPath (Join-Path $env:PLANNER_DATA 'planner.db'))) { throw 'Packaged app did not initialize its isolated database' }
+            if (-not (Test-Path -LiteralPath (Join-Path $env:PLANNER_DATA 'planner.pid'))) { throw 'Packaged app did not publish its process identity' }
+            Start-Sleep -Seconds 2
+            $process.Refresh()
+            if ($process.HasExited) { throw 'Packaged app exited after database initialization' }
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) { & taskkill.exe /PID $process.Id /T /F | Out-Null }
+          }
+      - name: stage production assets
+        run: |
+          mkdir -p release-artifacts
+          cp app/build/outputs/apk/release/app-release.apk "release-artifacts/planner-$VERSION.apk"
+          cp "desktop/build/setup/planner-$VERSION-setup.exe" "release-artifacts/planner-$VERSION-setup.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-android
+          path: android/release-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+      - name: remove the temporary signing key
+        if: always()
+        shell: pwsh
+        run: Remove-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'planner-release.jks') -ErrorAction SilentlyContinue
+
+  linux:
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: fetch Syncthing version tags
+        run: git -C ../third_party/syncthing fetch --tags --force origin
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: third_party/syncthing/go.mod
+          cache: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-37 build-tools;36.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Linux packaging and display tools
+        run: sudo apt-get update && sudo apt-get install -y fakeroot libnotify-bin xdg-utils xvfb python3
+      - name: build the packaged native engine for real sync tests
+        run: |
+          ./gradlew :desktop:syncthingLinux --max-workers=1 --console=plain
+          printf 'PLANNER_SYNCTHING=%s\n' "$PWD/desktop/build/syncthing-linux/resources/linux/syncthing" >> "$GITHUB_ENV"
+      - name: checks on Linux, including real native sync
+        run: ./gradlew :core:test :sync:test :shared:desktopTest :desktop:test --max-workers=1 --console=plain
+      - name: build Linux packages
+        run: bash ../tools/package-linux.sh
+      - name: smoke-test the packaged Linux runtime on isolated data
+        run: |
+          deb="desktop/build/linux/planner-$VERSION-linux-x64.deb"
+          test "$(dpkg-deb --field "$deb" Architecture)" = amd64
+          test "$(dpkg-deb --field "$deb" Package)" = fourthbreakfast-planner
+          dpkg-deb --extract "$deb" "$RUNNER_TEMP/planner-linux-package"
+          test -x "$RUNNER_TEMP/planner-linux-package/opt/fourthbreakfast-planner/lib/app/resources/syncthing"
+          "$RUNNER_TEMP/planner-linux-package/opt/fourthbreakfast-planner/lib/app/resources/syncthing" --version
+          export PLANNER_DATA="$RUNNER_TEMP/planner-linux-smoke"
+          export PLANNER_PREFS="dev/fourthbreakfast/planner-release-ci/$GITHUB_RUN_ID"
+          set +e
+          xvfb-run --auto-servernum timeout --signal=TERM 15s "$RUNNER_TEMP/planner-linux-package/opt/fourthbreakfast-planner/bin/planner" > "$RUNNER_TEMP/planner-linux-smoke.log" 2>&1
+          status=$?
+          set -e
+          if [ "$status" != 124 ]; then cat "$RUNNER_TEMP/planner-linux-smoke.log"; exit 1; fi
+          test -s "$PLANNER_DATA/planner.db"
+          tar -tzf "desktop/build/portable/planner-$VERSION-linux-x64.tar.gz" | grep -Fx 'planner/bin/planner'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            android/desktop/build/linux/*.deb
+            android/desktop/build/portable/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    # Only a version-tag push can publish. Manual preflights stop at reviewable signed artifacts.
+    if: github.event_name == 'push'
+    needs: [version, windows-android, linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: validate the complete asset set and generate checksums
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import os
+          version = os.environ['VERSION']
+          root = Path('dist')
+          expected = {f'planner-{version}.apk', f'planner-{version}-setup.exe', f'planner-{version}-linux-x64.deb', f'planner-{version}-linux-x64.tar.gz'}
+          actual = {entry.name for entry in root.iterdir()}
+          if actual != expected:
+              raise SystemExit(f'Unexpected release assets: {actual ^ expected}')
+          lines = []
+          for name in sorted(expected):
+              asset = root / name
+              if not asset.is_file() or asset.stat().st_size == 0:
+                  raise SystemExit(f'Empty or invalid release asset: {name}')
+              with asset.open('rb') as stream:
+                  digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+              lines.append(f'{digest}  {name}\n')
+          (root / 'SHA256SUMS.txt').write_text(''.join(lines))
+          PY
+          awk -v v="$VERSION" '/^## /{p = ($2 == v); next} p' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+          grep -q '[^[:space:]]' "$RUNNER_TEMP/release-notes.md"
+      - name: upload all assets to a draft release
+        shell: bash
+        run: |
+          tag="v$VERSION"
+          if gh release view "$tag" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-is-draft" 2>/dev/null; then
+            test "$(cat "$RUNNER_TEMP/release-is-draft")" = true || { echo 'Refusing to replace an existing public release'; exit 1; }
+            gh release upload "$tag" dist/* --clobber
+            gh release edit "$tag" --title "planner $VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            gh release create "$tag" dist/* --draft --verify-tag --title "planner $VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+      - name: verify uploaded asset sizes and digests
+        shell: bash
+        run: |
+          gh api "repos/$GH_REPO/releases/tags/v$VERSION" > "$RUNNER_TEMP/release-metadata.json"
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          release = json.loads((Path(os.environ['RUNNER_TEMP']) / 'release-metadata.json').read_text())
+          if not release['draft']:
+              raise SystemExit('Expected a draft release before final verification')
+          local = {entry.name: entry for entry in Path('dist').iterdir()}
+          remote = {entry['name']: entry for entry in release['assets']}
+          if local.keys() != remote.keys():
+              raise SystemExit('Uploaded release does not contain exactly the verified asset set')
+          for name, path in local.items():
+              with path.open('rb') as stream:
+                  digest = 'sha256:' + hashlib.file_digest(stream, 'sha256').hexdigest()
+              if remote[name]['size'] != path.stat().st_size or remote[name].get('digest') != digest or remote[name]['state'] != 'uploaded':
+                  raise SystemExit(f'Uploaded asset failed integrity verification: {name}')
+          PY
+      - name: publish the complete verified release
+        shell: bash
+        run: gh release edit "v$VERSION" --draft=false --latest
+
+# WinGet is independent of publication: after success, run tools/winget.ps1 -Version VERSION,
+# validate the generated manifests, then submit them to microsoft/winget-pkgs.

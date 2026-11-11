@@ -30,7 +30,7 @@ private val SHA256 = Regex("[0-9a-fA-F]{64}")
 data class Asset(val url: String, val sha256: String?)
 
 /** A published version, with its phone and windows files. */
-data class Release(val version: String, val apk: Asset?, val msi: Asset?, val setup: Asset? = null)
+data class Release(val version: String, val apk: Asset?, val msi: Asset?, val setup: Asset? = null, val deb: Asset? = null)
 
 /** Whether [candidate] ("0.9.0" or "v0.9.0") is a later version than [current]. */
 fun isNewer(candidate: String, current: String): Boolean {
@@ -59,7 +59,7 @@ fun parseRelease(json: String): Release? {
             ?.removePrefix("sha256:")?.takeIf(SHA256::matches)
         return Asset(url, digest)
     }
-    return Release(tag.removePrefix("v"), asset(".apk"), asset(".msi"), asset("-setup.exe"))
+    return Release(tag.removePrefix("v"), asset(".apk"), asset(".msi"), asset("-setup.exe"), asset(".deb"))
 }
 
 private fun JsonObject.text(name: String): String = (this[name] as? JsonPrimitive)?.takeIf { it.isString }?.content.orEmpty()
@@ -159,11 +159,11 @@ class Updates internal constructor(
             val ready = withContext(Dispatchers.IO) {
                 val checksum = asset.sha256?.takeIf(SHA256::matches) ?: throw IOException("missing checksum")
                 val uri = httpsUri(asset.url) ?: throw IOException("invalid update URL")
-                val extension = uri.path.substringAfterLast('.').takeIf { it in setOf("apk", "msi", "exe") }
+                val extension = uri.path.substringAfterLast('.').takeIf { it in setOf("apk", "msi", "exe", "deb") }
                     ?: throw IOException("invalid installer type")
                 if (!folder.isDirectory && !folder.mkdirs()) throw IOException("cannot create update folder")
                 folder.listFiles().orEmpty().filter {
-                    it.isFile && Regex("planner-update-[0-9]+\\.(part|apk|msi|exe)").matches(it.name)
+                    it.isFile && Regex("planner-update-[0-9]+\\.(part|apk|msi|exe|deb)").matches(it.name)
                 }.forEach { it.delete() }
                 val temp = File.createTempFile("planner-update-", ".part", folder).also { partial = it }
                 val digest = MessageDigest.getInstance("SHA-256")

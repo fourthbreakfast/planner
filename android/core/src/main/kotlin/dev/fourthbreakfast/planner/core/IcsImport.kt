@@ -30,13 +30,13 @@ fun parseIcs(text: String, now: Long, zone: ZoneId = ZoneId.systemDefault()): Li
     }
 }
 
-private class Line(val name: String, val params: Map<String, String>, val value: String)
+internal class Line(val name: String, val params: Map<String, String>, val value: String)
 
 /** One VEVENT: the series it belongs to, the day of the series it stands in for, and the event, or null when cancelled. */
-private class Entry(val uid: String, val recurrenceDay: Long?, val event: Event?)
+internal class Entry(val uid: String, val recurrenceDay: Long?, val event: Event?)
 
 /** Lines carried on from the line before, which starts with a space or a tab, are put back together. */
-private fun unfold(text: String): List<String> {
+internal fun unfold(text: String): List<String> {
     val lines = ArrayList<String>()
     for (raw in text.split("\r\n", "\n", "\r")) {
         if ((raw.startsWith(" ") || raw.startsWith("\t")) && lines.isNotEmpty()) {
@@ -48,7 +48,7 @@ private fun unfold(text: String): List<String> {
     return lines
 }
 
-private fun readLine(raw: String): Line? {
+internal fun readLine(raw: String): Line? {
     val colon = quoteAwareIndex(raw, ':')
     if (colon <= 0) return null
     val head = raw.substring(0, colon).split(';')
@@ -73,7 +73,7 @@ private fun quoteAwareIndex(text: String, c: Char): Int {
 }
 
 /** The lines of every VEVENT, the lines inside an alarm marked apart with the name `ALARM:` before them. */
-private fun eventBlocks(lines: List<String>): List<List<Line>> {
+internal fun eventBlocks(lines: List<String>): List<List<Line>> {
     val blocks = ArrayList<List<Line>>()
     var current: ArrayList<Line>? = null
     var alarm = false
@@ -147,7 +147,7 @@ private fun readTrigger(value: String): Int? {
     return (w.toIntOrNull() ?: 0) * 7 * 1440 + (d.toIntOrNull() ?: 0) * 1440 + (h.toIntOrNull() ?: 0) * 60 + (min.toIntOrNull() ?: 0)
 }
 
-private fun readEvent(lines: List<Line>, now: Long, zone: ZoneId): Entry? {
+internal fun readEvent(lines: List<Line>, now: Long, zone: ZoneId): Entry? {
     fun first(name: String) = lines.firstOrNull { it.name == name }
     val uid = first("UID")?.value?.trim().orEmpty()
     if (first("STATUS")?.value.equals("CANCELLED", true)) {

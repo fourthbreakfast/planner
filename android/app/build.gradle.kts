@@ -6,6 +6,9 @@
 
 val releaseKeystore = providers.environmentVariable("PLANNER_KEYSTORE").orNull
 val releasePassword = providers.environmentVariable("PLANNER_KEYSTORE_PASSWORD").orNull
+val demoBuild = providers.gradleProperty("demo").isPresent
+val qaBuild = providers.gradleProperty("qa").isPresent
+check(!qaBuild || demoBuild) { "The isolated QA package requires -Pdemo -Pqa" }
 
 // the app's own Syncthing, built from the pinned source. Android only runs a program it unpacked itself, as a library
 val syncthingAndroid =
@@ -32,9 +35,9 @@ android {
 
         // -Pdemo installs a second copy named planner dev with its own data, so a change can be tried on the phone
         // without touching the real app, which is signed with the release key and cannot be replaced by a debug build
-        if (providers.gradleProperty("demo").isPresent) {
-            applicationIdSuffix = ".demo"
-            manifestPlaceholders["appLabel"] = "planner dev"
+        if (demoBuild) {
+            applicationIdSuffix = if (qaBuild) ".demo.qa" else ".demo"
+            manifestPlaceholders["appLabel"] = if (qaBuild) "planner qa" else "planner dev"
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

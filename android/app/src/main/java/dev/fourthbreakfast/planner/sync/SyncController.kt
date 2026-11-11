@@ -26,6 +26,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -48,6 +50,7 @@ class SyncController(private val context: Context, sync: Sync, changes: Flow<Any
         keys = SyncPrefKeys(anywhere = "anywhere", name = "sync_name", paired = "paired"),
         defaultName = Build.MODEL.orEmpty().ifBlank { "phone" }.lowercase(),
         scope = scope,
+        ports = if (context.packageName == "dev.fourthbreakfast.planner.demo.qa") Ports(22103, 21103) else Ports(),
         log = { Log.i("planner", it) },
     ) {
     // android drops the packets devices find each other with unless an app asks for them
@@ -55,12 +58,15 @@ class SyncController(private val context: Context, sync: Sync, changes: Flow<Any
         .createMulticastLock("planner sync")
         .apply { setReferenceCounted(false) }
     private var linger: Job? = null
-    private var inSight = false
+    private val lifetime = Mutex()
+    private var backgroundRuns = 0
+
+    @Volatile private var inSight = false
 
     fun onInSight() {
         inSight = true
         linger?.cancel()
-        startIfPaired()
+        if (pairing || paired) scope.launch { lifetime.withLock { if (inSight) ensureRunning() } }
     }
 
     fun onOutOfSight() {
@@ -68,13 +74,15 @@ class SyncController(private val context: Context, sync: Sync, changes: Flow<Any
         linger?.cancel()
         linger = scope.launch {
             delay(LINGER_MILLIS)
-            if (!inSight && !pairing) stop()
+            // A worker owns the process until its transfer finishes. Complete an already-started stop before resume.
+            withContext(NonCancellable) { lifetime.withLock { if (!inSight && backgroundRuns == 0) stop() } }
         }
     }
 
     /** A short run for background work: trade with whoever is around, wait until everything is through, stop. */
     suspend fun runOnce() {
         if (!paired || !available) return
+        lifetime.withLock { backgroundRuns++ }
         try {
             ensureRunning()
             withTimeoutOrNull(120_000) {
@@ -85,7 +93,12 @@ class SyncController(private val context: Context, sync: Sync, changes: Flow<Any
             }
         } finally {
             // however the run ends, a syncthing nobody is looking at does not stay behind
-            if (!inSight && !pairing) withContext(NonCancellable) { stop() }
+            withContext(NonCancellable) {
+                lifetime.withLock {
+                    backgroundRuns--
+                    if (!inSight && backgroundRuns == 0) stop()
+                }
+            }
         }
     }
 
@@ -146,7 +159,8 @@ private fun rootOf(context: Context) = File(context.filesDir, "syncthing")
 /** The run between uses, whenever Android allows it. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        (applicationContext as PlannerApp).syncController.runOnce()
-        return Result.success()
+        val sync = (applicationContext as PlannerApp).syncController
+        sync.runOnce()
+        return if (sync.state.value.failed) Result.retry() else Result.success()
     }
 }

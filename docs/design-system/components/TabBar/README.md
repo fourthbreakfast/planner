@@ -1,5 +1,5 @@
-Three phone tabs run along the top: `tasks`, `agenda`, `notes`. Their segmented lettering is part of planner's identity. The selected tab is full ink; the others are quiet. Tabs expose their role and selected state to accessibility services.
+Five labeled destinations follow the same reading order on every platform: Today, Tasks, Habits, Agenda, Notes. Mobile renders them as a bottom-ready navigation bar with small neutral outline icons and proportional SansSerif labels. The application shell owns placement and system insets.
 
-A touch switches tabs; holding a tab opens settings. Ordinary horizontal sweeps move to neighboring tabs and stop at the ends. Sweeps starting at the screen edge belong to the system back gesture. Row swipes and dragging require a hold first.
+The active destination uses slightly brighter text/icon and a tiny coral dot below its label, without a filled tile. Inactive entries reserve the same dot space to prevent movement. Hover and pressed feedback use quiet neutral surfaces; keyboard focus has a visible outline. Every destination exposes its tab role and selected state, and touch targets are at least 48dp. Labels grow and wrap with the user's font scaling rather than being hidden in a horizontal scroller.
 
-Counts and controls live in the bar below. Windows uses three simultaneous columns, with the same distinctive headings.
+A touch switches destinations. Holding a destination retains the settings shortcut. LocalEmbeddedNavigation lets retained feature screens suppress legacy bars when the shared shell supplies navigation once. tabLabel and NavigationIcon provide the same labels and drawings to the desktop shell.
