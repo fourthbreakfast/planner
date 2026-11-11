@@ -61,6 +61,7 @@ object Desk {
     val textScale = 1f
 
     val titleBar = 40.dp
+    val sidebarWidth = 184.dp
     val row = 36.dp
 
     // every control in a column is a 32dp square with a 16dp drawing, its edge 12dp in from the column's right side

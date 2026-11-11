@@ -1,7 +1,6 @@
 package dev.fourthbreakfast.planner.desktop
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -15,15 +14,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -55,17 +53,19 @@ import org.jetbrains.compose.resources.stringResource
 private val closeRed = Color(0xFFC42B1C)
 
 /**
- * The top of the window, drawn by the app: its mark and name at the left, a place to drag the window by (a double click
+ * The top of the window, drawn by the app: a place to drag the window by (a double click
  * maximizes), [extras] such as the settings, and the window's own minimize, maximize and close at the right, as Windows 11
  * lays them.
  */
 @Composable
 fun WindowScope.TitleBar(state: WindowState, frame: NativeFrame, onClose: () -> Unit, extras: @Composable RowScope.() -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
-    val icon = remember { appIconPainter() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(Desk.titleBar).background(colors.background),
+        modifier = Modifier.fillMaxWidth().height(Desk.titleBar).background(colors.background).drawBehind {
+            val x = Desk.sidebarWidth.toPx() - .5.dp.toPx()
+            drawLine(colors.outlineVariant, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
+        },
     ) {
         WindowDraggableArea(
             Modifier
@@ -76,9 +76,7 @@ fun WindowScope.TitleBar(state: WindowState, frame: NativeFrame, onClose: () -> 
                     detectTapGestures(onDoubleTap = { state.toggleMaximized() })
                 },
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxSize().padding(start = Space.gutter)) {
-                Image(icon, contentDescription = null, modifier = Modifier.size(Space.x5))
-            }
+            Box(Modifier.fillMaxSize())
         }
         extras()
         WindowButton(stringResource(Res.string.window_minimize), hoverColor = colors.secondaryContainer, onClick = { state.isMinimized = true }) { ink ->

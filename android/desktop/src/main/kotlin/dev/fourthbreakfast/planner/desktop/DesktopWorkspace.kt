@@ -1,6 +1,7 @@
 package dev.fourthbreakfast.planner.desktop
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -85,10 +86,13 @@ internal fun DesktopWorkspace(
     var panelEnd by remember { mutableStateOf(Float.POSITIVE_INFINITY) }
     var origin by remember { mutableStateOf(0f) }
     Row(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionInRoot().y }) {
-        BoxWithConstraints(Modifier.width(184.dp).fillMaxHeight()) {
+        BoxWithConstraints(Modifier.width(Desk.sidebarWidth).fillMaxHeight()) {
             val header = 56.dp
             val groupHeight = 240.dp
             val top = navigationGroupTop(header.value, with(density) { (panelEnd - origin).toDp() }.value, groupHeight.value, maxHeight.value).dp
+            Box(Modifier.fillMaxWidth().height(header).padding(start = 16.dp), contentAlignment = Alignment.CenterStart) {
+                Image(remember { appIconPainter() }, contentDescription = "Planner", modifier = Modifier.size(28.dp))
+            }
             Column(Modifier.offset(y = top).fillMaxWidth().padding(horizontal = 16.dp)) {
                 Tab.entries.forEach { tab ->
                     Row(
@@ -126,14 +130,14 @@ internal fun DesktopWorkspace(
                 Box(Modifier.width(18.dp), contentAlignment = Alignment.Center) {
                     Canvas(Modifier.size(6.dp)) { drawCircle(statusColor) }
                 }
-                Text(
-                    "Sync",
-                    Modifier.weight(1f).padding(start = 12.dp).heightIn(min = 32.dp).clickable {
+                Box(
+                    Modifier.weight(1f).heightIn(min = 32.dp).padding(start = 12.dp).clickable {
                         if (sync != null) scope.launch { sync.syncNow() } else state.panel = Panel.Settings
                     },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                )
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text("Sync", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                }
                 Box(
                     Modifier.width(32.dp).height(32.dp).semantics {
                         contentDescription = "Settings"
@@ -143,7 +147,7 @@ internal fun DesktopWorkspace(
                     Canvas(Modifier.size(16.dp)) { cog(colors.onSurfaceVariant) }
                 }
             }
-            Box(Modifier.align(Alignment.CenterEnd).padding(vertical = 12.dp).width(1.dp).fillMaxHeight().background(colors.outlineVariant))
+            Box(Modifier.align(Alignment.CenterEnd).width(1.dp).fillMaxHeight().background(colors.outlineVariant))
         }
         Column(Modifier.weight(1f).fillMaxHeight().padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {

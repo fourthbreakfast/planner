@@ -123,7 +123,7 @@ On a short window where the group cannot fit between safe bounds, allow the navi
 
 Use 4, 8, 12, 16, 24 and 32 logical dp. Initial values: desktop content gutter 24–32, phone gutter 16, task indent 20 per level, desktop row minimum 36–40, touch row minimum 48. Let long content wrap and height grow.
 
-Divider rules: one thin sidebar line inset from top/bottom; horizontal toolbar and Up next dividers align with the content gutter and stop before panel edges. No border around each task. No connected grid intersections. Keep structural dividers quieter than task content.
+Divider rules: one thin sidebar line runs continuously from the top of the desktop title bar to the bottom of the window. Horizontal toolbar and Up next dividers remain inset, align with the content gutter and stop before panel edges. No border around each task. No connected grid intersections. Keep structural dividers quieter than task content.
 
 Small selection radius: 4dp proposed. Outer window shape follows platform support. Do not force a square or custom-decorated desktop frame.
 
@@ -232,6 +232,7 @@ Acceptance for a migrated screen:
 | D015 | Approved | Center the sidebar navigation group between the header and Up next horizontal dividers. Sync/settings remain bottom-anchored. |
 | D016 | Approved | Keep one inline Add task action; remove redundant toolbar add action. |
 | D017 | Approved, refined in P24 | Sync/footer and Today/navigation share row geometry. Settings cog and active dot have equal visible right-edge gaps to the sidebar divider, not aligned centers. The wider cog center sits farther left. Preserve full accessible settings hit target independently of the drawing bounds. |
+| D018 | Approved, P24 fidelity correction | Center Sync text, status dot and settings cog on one horizontal axis. Restore the existing four-dot mark in the sidebar header beside the page-header row, without a wordmark. Continue the sidebar separator through the title bar to the window top. Today priority dots precede task text; All/Do now uses a short vertical divider. This supersedes the sidebar line's earlier top/bottom insets. |
 
 New decision template: ID; scenario; status; proposal/options; rationale; affected screens/platforms; preview ID; final decision; implementation links; superseded rules.
 

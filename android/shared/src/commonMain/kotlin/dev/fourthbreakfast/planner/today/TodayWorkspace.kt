@@ -25,6 +25,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -126,7 +127,7 @@ fun TodayWorkspace(
                 androidx.compose.material3.TextButton(onClick = { shortlist = false }, modifier = Modifier.semantics { selected = !shortlist }) {
                     Text("All", style = MaterialTheme.typography.bodyMedium, color = if (!shortlist) colors.onBackground else colors.onSurfaceVariant)
                 }
-                Text(" / ", color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                VerticalDivider(Modifier.height(16.dp), color = colors.outlineVariant)
                 androidx.compose.material3.TextButton(onClick = { shortlist = true }, modifier = Modifier.semantics { selected = shortlist }) {
                     Text("Do now", style = MaterialTheme.typography.bodyMedium, color = if (shortlist) colors.onBackground else colors.onSurfaceVariant)
                 }
@@ -162,7 +163,10 @@ fun TodayWorkspace(
                         drawLine(ink, b, c, Space.strokeThin.toPx())
                     }
                 } else {
-                    Spacer(Modifier.width(Space.x2))
+                    Spacer(Modifier.width(Space.touch))
+                }
+                Box(Modifier.width(24.dp), contentAlignment = Alignment.CenterStart) {
+                    if (task.priority != Priority.NONE) PriorityDot(task.priority)
                 }
                 Column(
                     Modifier.weight(1f).clickable {
@@ -177,7 +181,6 @@ fun TodayWorkspace(
                         textDecoration = if (task.done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
                     )
                 }
-                if (task.priority != Priority.NONE) PriorityDot(task.priority)
                 Box {
                     dev.fourthbreakfast.planner.ui.DrawnIconButton("Task actions", onClick = { menu = true }) { ink ->
                         for (x in listOf(.25f, .5f, .75f)) drawCircle(ink, 1.2.dp.toPx(), Offset(size.width * x, size.height / 2))
