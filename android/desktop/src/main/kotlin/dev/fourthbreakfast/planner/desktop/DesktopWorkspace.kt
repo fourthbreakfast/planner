@@ -165,6 +165,7 @@ internal fun DesktopWorkspace(
                         onOpenEvent = state::openEvent,
                         onTaskPanelEnd = { panelEnd = it },
                         onEditingChange = { state.editingTask = it },
+                        desktopInteractions = true,
                     )
                     Tab.TASKS -> TaskColumn(tasks, binEntries(tasks).size, state, taskModel)
                     Tab.HABITS -> habits?.let { HabitsScreen(it, { state.destination = Tab.TODAY }, embedded = true) }

@@ -1,6 +1,11 @@
 package dev.fourthbreakfast.planner.today
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,10 +42,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -83,6 +91,7 @@ fun TodayWorkspace(
     onOpenEvent: (String) -> Unit,
     onTaskPanelEnd: (Float) -> Unit = {},
     onEditingChange: (Boolean) -> Unit = {},
+    desktopInteractions: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     var shortlist by rememberSaveable { mutableStateOf(false) }
@@ -147,8 +156,28 @@ fun TodayWorkspace(
         items(rows, key = { "task:" + it.task.id }) { node ->
             val task = node.task
             var menu by remember(task.id) { mutableStateOf(false) }
+            val interaction = remember(task.id) { MutableInteractionSource() }
+            val hovered by interaction.collectIsHoveredAsState()
+            var focused by remember(task.id) { mutableStateOf(false) }
             Row(
-                Modifier.fillMaxWidth().heightIn(min = Space.touch).padding(start = Space.indent * node.depth),
+                Modifier.fillMaxWidth().heightIn(min = Space.touch)
+                    .drawBehind {
+                        val center = Space.touch.toPx() / 2
+                        val indent = Space.indent.toPx()
+                        if (node.depth > 0) {
+                            val x = center + indent * (node.depth - 1)
+                            drawLine(colors.outlineVariant, Offset(x, 0f), Offset(x, size.height / 2), 1.dp.toPx())
+                            drawLine(colors.outlineVariant, Offset(x, size.height / 2), Offset(x + indent - 12.dp.toPx(), size.height / 2), 1.dp.toPx())
+                        }
+                        if (node.childCount > 0 && !node.collapsed) {
+                            val x = center + indent * node.depth
+                            drawLine(colors.outlineVariant, Offset(x, size.height / 2 + 12.dp.toPx()), Offset(x, size.height), 1.dp.toPx())
+                        }
+                    }
+                    .hoverable(interaction)
+                    .onFocusChanged { focused = it.hasFocus }.focusGroup()
+                    .background(if (desktopInteractions && hovered) colors.surfaceVariant else Color.Transparent)
+                    .padding(start = Space.indent * node.depth),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TaskCheck(task.done, colors.onBackground, task.title) { viewModel.setDone(task, it) }
@@ -181,7 +210,7 @@ fun TodayWorkspace(
                         textDecoration = if (task.done) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
                     )
                 }
-                Box {
+                Box(Modifier.alpha(if (!desktopInteractions || hovered || focused || menu) 1f else 0f)) {
                     dev.fourthbreakfast.planner.ui.DrawnIconButton("Task actions", onClick = { menu = true }) { ink ->
                         for (x in listOf(.25f, .5f, .75f)) drawCircle(ink, 1.2.dp.toPx(), Offset(size.width * x, size.height / 2))
                     }
