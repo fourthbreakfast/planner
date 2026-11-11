@@ -11,11 +11,33 @@ version=$(sed -n 's/^plannerVersion=//p' "$root/android/gradle.properties" | tr 
 cd "$root/android"
 bash ./gradlew :desktop:packageDeb :desktop:packageLinuxTar --no-configuration-cache --console=plain
 shopt -s nullglob
-debs=(desktop/build/compose/binaries/main/deb/"fourthbreakfast-planner_${version}-"*_amd64.deb)
-[[ ${#debs[@]} == 1 ]] || { echo 'Expected exactly one generated .deb.' >&2; exit 1; }
+deb_dir=desktop/build/compose/binaries/main/deb
+deb="$deb_dir/fourthbreakfast-planner_${version}_amd64.deb"
+if [[ ! -f $deb ]]; then
+  echo "Missing generated Debian package: $deb" >&2
+  available=("$deb_dir/"*.deb)
+  if (( ${#available[@]} )); then
+    printf 'Available .deb: %s\n' "${available[@]}" >&2
+  else
+    echo "No .deb files found in $deb_dir." >&2
+  fi
+  exit 1
+fi
+for field in Package Version Architecture; do
+  case $field in
+    Package) expected=fourthbreakfast-planner ;;
+    Version) expected=$version ;;
+    Architecture) expected=amd64 ;;
+  esac
+  actual=$(dpkg-deb --field "$deb" "$field")
+  if [[ $actual != "$expected" ]]; then
+    echo "Invalid $field in $deb: expected '$expected', got '$actual'." >&2
+    exit 1
+  fi
+done
 stage=$(mktemp -d)
 trap 'rm -rf -- "$stage"' EXIT
-dpkg-deb --raw-extract "${debs[0]}" "$stage"
+dpkg-deb --raw-extract "$deb" "$stage"
 python3 - "$stage" <<'PY'
 from pathlib import Path
 import shlex
@@ -23,15 +45,28 @@ import sys
 
 stage = Path(sys.argv[1])
 app = stage / "opt/fourthbreakfast-planner"
+
+def layout_error(message):
+    paths = sorted(
+        str(path.relative_to(stage))
+        for path in stage.rglob("*")
+        if (path.is_file() or path.is_symlink()) and (
+            path.suffix in (".desktop", ".png", ".svg", ".ico") or
+            (path.parent.name == "bin" and "runtime" not in path.relative_to(stage).parts)
+        )
+    )
+    details = "\n".join(f"  {path}" for path in paths[:20]) or "  (none)"
+    raise SystemExit(f"{message}\nExpected app root: {app.relative_to(stage)}\nRelevant packaged paths:\n{details}")
+
 launcher = app / "bin/planner"
 if not launcher.is_file() or not launcher.stat().st_mode & 0o111:
-    raise SystemExit("The package must contain an executable private launcher.")
+    layout_error("The package must contain an executable private bin/planner launcher.")
 shared_launcher = stage / "usr/bin/planner"
 if shared_launcher.exists() or shared_launcher.is_symlink():
     raise SystemExit("The package must not replace GNOME Planner's shared launcher.")
 expected_desktop = app / "lib/fourthbreakfast-planner-planner.desktop"
 if not expected_desktop.is_file() or not (app / "lib/planner.png").is_file():
-    raise SystemExit("Missing private desktop entry or application icon.")
+    layout_error("Missing private lib/fourthbreakfast-planner-planner.desktop or lib/planner.png.")
 control = stage / "DEBIAN/control"
 lines = control.read_text().splitlines()
 for i, line in enumerate(lines):
@@ -56,7 +91,8 @@ for desktop in stage.glob("**/*.desktop"):
     entries = [line for line in desktop.read_text().splitlines() if not line.startswith("StartupWMClass=")]
     launch = next((line.removeprefix("Exec=") for line in entries if line.startswith("Exec=")), "")
     if shlex.split(launch) != ["/opt/fourthbreakfast-planner/bin/planner"] or "Icon=/opt/fourthbreakfast-planner/lib/planner.png" not in entries:
-        raise SystemExit("The desktop entry must use this package's private launcher and icon.")
+        icons = [line for line in entries if line.startswith("Icon=")]
+        layout_error(f"The desktop entry must use this package's private launcher and icon; got Exec={launch!r}, {icons!r}.")
     start = entries.index("[Desktop Entry]")
     end = next((i for i in range(start + 1, len(entries)) if entries[i].startswith("[")), len(entries))
     entries.insert(end, "StartupWMClass=fourthbreakfast-planner")

@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $id = 'fourthbreakfast.planner'
-$schema = '1.12.0'
+$schema = '1.28.0'
 $url = "https://github.com/fourthbreakfast/planner/releases/download/v$Version/planner-$Version-setup.exe"
 $download = Join-Path ([IO.Path]::GetTempPath()) ("planner-winget-$([guid]::NewGuid()).exe")
 try {
@@ -61,12 +61,13 @@ PackageName: planner
 PackageUrl: https://github.com/fourthbreakfast/planner
 License: AGPL-3.0
 LicenseUrl: https://github.com/fourthbreakfast/planner/blob/main/LICENSE
-ShortDescription: Tasks, an agenda and notes, kept together on your own devices.
+ShortDescription: Tasks, agenda, habits and notes, together on your own devices.
 Tags:
 - tasks
 - todo
 - calendar
 - notes
+- habits
 - syncthing
 ReleaseNotesUrl: https://github.com/fourthbreakfast/planner/releases/tag/v$Version
 ManifestType: defaultLocale
