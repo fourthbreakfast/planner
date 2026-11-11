@@ -26,9 +26,25 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools platforms;android-37 build-tools;36.0.0
+      - name: install the pinned Android SDK with CLI 23
+        shell: bash
+        run: |
+          sdk="$RUNNER_TEMP/planner-android-sdk"
+          archive="$RUNNER_TEMP/commandlinetools-linux-16111833.zip"
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 300 \
+            'https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip' --output "$archive"
+          printf '%s  %s\n' '0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8' "$archive" | sha256sum --check -
+          mkdir -p "$sdk/cmdline-tools"
+          unzip -q "$archive" -d "$sdk/cmdline-tools"
+          mv "$sdk/cmdline-tools/cmdline-tools" "$sdk/cmdline-tools/latest"
+          # CLI 23 records SDK licenses during installation; accept CI prompts through stdin.
+          printf 'y\n%.0s' {1..20} | "$sdk/cmdline-tools/latest/bin/android" --no-metrics "--sdk=$sdk" sdk install \
+            platform-tools 'platforms/android-37.0@2.0.0' 'build-tools/36.0.0@36.0.0'
+          test -s "$sdk/licenses/android-sdk-license"
+          test -s "$sdk/platforms/android-37.0/android.jar"
+          test -x "$sdk/build-tools/36.0.0/apksigner"
+          printf 'ANDROID_HOME=%s\nANDROID_SDK_ROOT=%s\n' "$sdk" "$sdk" >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk/cmdline-tools/latest/bin" "$sdk/platform-tools" >> "$GITHUB_PATH"
       - uses: gradle/actions/setup-gradle@v4
       - name: style
         run: ./gradlew ktlintCheck --console=plain

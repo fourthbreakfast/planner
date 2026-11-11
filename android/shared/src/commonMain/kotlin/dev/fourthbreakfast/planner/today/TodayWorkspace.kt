@@ -90,6 +90,7 @@ fun TodayWorkspace(
     var editing by remember { mutableStateOf<Task?>(null) }
     var rename by remember { mutableStateOf("") }
     var addInside by remember { mutableStateOf<Task?>(null) }
+    var adding by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val addFocus = remember { FocusRequester() }
     DisposableEffect(Unit) { onDispose { onEditingChange(false) } }
@@ -102,6 +103,9 @@ fun TodayWorkspace(
             listState.animateScrollToItem(rows.size + 1)
             addFocus.requestFocus()
         }
+    }
+    LaunchedEffect(rows.size, adding) {
+        if (adding) listState.animateScrollToItem(rows.size + 1)
     }
     var clockTick by remember { mutableStateOf(0L) }
     LaunchedEffect(Unit) {
@@ -117,7 +121,7 @@ fun TodayWorkspace(
         upNext(events, tasks, day, minute)
     }
     LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = Space.gutter, vertical = Space.x3)) {
-        item {
+        item(key = "today:filters") {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = Space.x3)) {
                 androidx.compose.material3.TextButton(onClick = { shortlist = false }, modifier = Modifier.semantics { selected = !shortlist }) {
                     Text("All", style = MaterialTheme.typography.bodyMedium, color = if (!shortlist) colors.onBackground else colors.onSurfaceVariant)
@@ -130,7 +134,7 @@ fun TodayWorkspace(
             }
         }
         if (rows.isEmpty()) {
-            item {
+            item(key = "today:empty") {
                 Text(
                     if (shortlist) "Your shortlist is clear." else "Add a task to get started.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -139,7 +143,7 @@ fun TodayWorkspace(
                 )
             }
         }
-        items(rows, key = { it.task.id }) { node ->
+        items(rows, key = { "task:" + it.task.id }) { node ->
             val task = node.task
             var menu by remember(task.id) { mutableStateOf(false) }
             Row(
@@ -211,7 +215,7 @@ fun TodayWorkspace(
                 }
             }
         }
-        item {
+        item(key = "today:add") {
             if (addInside != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -233,7 +237,10 @@ fun TodayWorkspace(
                 }
                 BasicTextField(
                     text, { text = it },
-                    Modifier.weight(1f).padding(vertical = Space.x3).focusRequester(addFocus).onFocusChanged { onEditingChange(it.isFocused) }
+                    Modifier.weight(1f).padding(vertical = Space.x3).focusRequester(addFocus).onFocusChanged {
+                        adding = it.isFocused
+                        onEditingChange(it.isFocused)
+                    }
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown && (event.key == Key.Enter || event.key == Key.NumPadEnter)) {
                                 add()
@@ -254,7 +261,7 @@ fun TodayWorkspace(
                 if (text.isNotBlank()) QuietButton("Add", onClick = { add() })
             }
         }
-        item {
+        item(key = "today:up-next") {
             Column(
                 Modifier.fillMaxWidth().padding(top = Space.x6)
                     .then(
@@ -277,7 +284,7 @@ fun TodayWorkspace(
             }
         }
         if (upcoming.isEmpty()) {
-            item {
+            item(key = "today:no-events") {
                 Text(
                     "No upcoming events.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -286,7 +293,7 @@ fun TodayWorkspace(
                 )
             }
         }
-        items(upcoming, key = { it.event.id + "@" + it.start }) { occurrence ->
+        items(upcoming, key = { "event:" + it.event.id + "@" + it.start }) { occurrence ->
             val event = occurrence.event
             Row(
                 Modifier.fillMaxWidth().heightIn(min = Space.touch).clickable { onOpenEvent(event.id + "@" + occurrence.start) },
@@ -305,7 +312,7 @@ fun TodayWorkspace(
                 Text(event.title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             }
         }
-        item { Spacer(Modifier.height(Space.x6)) }
+        item(key = "today:end") { Spacer(Modifier.height(Space.x6)) }
     }
     if (editing != null) {
         AlertDialog(

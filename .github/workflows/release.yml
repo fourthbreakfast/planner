@@ -59,9 +59,33 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools platforms;android-37 build-tools;36.0.0
+      - name: install the pinned Android SDK with CLI 23
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $sdk = Join-Path $env:RUNNER_TEMP 'planner-android-sdk'
+          $archive = Join-Path $env:RUNNER_TEMP 'commandlinetools-win-16111833.zip'
+          Invoke-WebRequest 'https://dl.google.com/android/repository/commandlinetools-win-16111833_latest.zip' -OutFile $archive
+          $expected = 'e5885e2e59038c0778a85fc19f01de7ce7c567c105553f7617b936b1e0e87b2b'
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Android command-line tools checksum mismatch'
+          }
+          $tools = Join-Path $sdk 'cmdline-tools'
+          New-Item -ItemType Directory -Path $tools -Force | Out-Null
+          Expand-Archive -LiteralPath $archive -DestinationPath $tools
+          Move-Item -LiteralPath (Join-Path $tools 'cmdline-tools') -Destination (Join-Path $tools 'latest')
+          $android = Join-Path $tools 'latest/bin/android.exe'
+          # CLI 23 records SDK licenses during installation; accept CI prompts through stdin.
+          @('y') * 20 | & $android --no-metrics "--sdk=$sdk" sdk install platform-tools 'platforms/android-37.0@2.0.0' 'build-tools/36.0.0@36.0.0'
+          if ($LASTEXITCODE) { throw "Android SDK installation failed: $LASTEXITCODE" }
+          foreach ($required in @('licenses/android-sdk-license', 'platforms/android-37.0/android.jar', 'build-tools/36.0.0/apksigner.bat')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $sdk $required) -PathType Leaf)) { throw "Missing Android SDK component: $required" }
+          }
+          "ANDROID_HOME=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ANDROID_SDK_ROOT=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          (Join-Path $tools 'latest/bin') | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          (Join-Path $sdk 'platform-tools') | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
       - uses: gradle/actions/setup-gradle@v4
       - name: Inno Setup
         run: choco upgrade innosetup --no-progress -y
@@ -171,9 +195,25 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools platforms;android-37 build-tools;36.0.0
+      - name: install the pinned Android SDK with CLI 23
+        shell: bash
+        run: |
+          sdk="$RUNNER_TEMP/planner-android-sdk"
+          archive="$RUNNER_TEMP/commandlinetools-linux-16111833.zip"
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 300 \
+            'https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip' --output "$archive"
+          printf '%s  %s\n' '0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8' "$archive" | sha256sum --check -
+          mkdir -p "$sdk/cmdline-tools"
+          unzip -q "$archive" -d "$sdk/cmdline-tools"
+          mv "$sdk/cmdline-tools/cmdline-tools" "$sdk/cmdline-tools/latest"
+          # CLI 23 records SDK licenses during installation; accept CI prompts through stdin.
+          printf 'y\n%.0s' {1..20} | "$sdk/cmdline-tools/latest/bin/android" --no-metrics "--sdk=$sdk" sdk install \
+            platform-tools 'platforms/android-37.0@2.0.0' 'build-tools/36.0.0@36.0.0'
+          test -s "$sdk/licenses/android-sdk-license"
+          test -s "$sdk/platforms/android-37.0/android.jar"
+          test -x "$sdk/build-tools/36.0.0/apksigner"
+          printf 'ANDROID_HOME=%s\nANDROID_SDK_ROOT=%s\n' "$sdk" "$sdk" >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk/cmdline-tools/latest/bin" "$sdk/platform-tools" >> "$GITHUB_PATH"
       - uses: gradle/actions/setup-gradle@v4
       - name: Linux packaging and display tools
         run: sudo apt-get update && sudo apt-get install -y fakeroot libnotify-bin xdg-utils xvfb python3

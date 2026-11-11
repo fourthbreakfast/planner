@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -98,8 +99,9 @@ fun PlannerScreen(
         return
     }
     val animated = rememberAnimationsOn()
+    val typing = dev.fourthbreakfast.planner.ui.rememberKeyboardShown()
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        androidx.compose.foundation.layout.Box(Modifier.weight(1f).statusBarsPadding()) {
+        androidx.compose.foundation.layout.Box(Modifier.weight(1f).statusBarsPadding().imePadding()) {
             CompositionLocalProvider(dev.fourthbreakfast.planner.ui.LocalEmbeddedNavigation provides true) {
                 AnimatedContent(
                     modifier = Modifier.background(MaterialTheme.colorScheme.background),
@@ -188,7 +190,7 @@ fun PlannerScreen(
                 }
             }
         }
-        if (!settingsOpen && !searchOpen && !binOpen) {
+        if (!settingsOpen && !searchOpen && !binOpen && !typing) {
             dev.fourthbreakfast.planner.ui.TabBar(tab, { tab = it }, modifier = Modifier.navigationBarsPadding(), onLongPress = openSettings)
         }
     }
