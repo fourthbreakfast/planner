@@ -1,24 +1,23 @@
 # Changelog
 
-what changed in each release, newest first. these notes are also the text of each [release](https://github.com/fourthbreakfast/planner/releases).
+Changes by version, newest first. These notes also accompany each [release](https://github.com/fourthbreakfast/planner/releases).
 
 ## 2.0.0
 
-- introduce a compact, text-first Today workspace and consistent Today, Tasks, Habits, Agenda and Notes navigation
-- replace segmented headings and all-interface monospace with a restrained shared type scale, neutral graphite surfaces and red/yellow/green accents
-- align page labels with content text, simplify task creation and sidebar settings, and use quieter inset dividers
-- rebuild the README, development guide and project design system around the new interface
+Planner 2.0 brings tasks, agenda, habits and notes into a compact, text-first workspace.
 
-- save a “do now” task shortlist and show only its tasks and subtasks
-- schedule existing tasks on the agenda, sharing their completion state
-- add a separate habits section with weekday schedules, completion history, streaks and archive
-- subscribe to read-only HTTPS/webcal calendars, with manual/background refresh, recurrence support and offline copies
-- clarify task nesting and drag destinations, keep all phone tabs visible, and improve touch and accessibility controls
-- preserve multiline note selections when using formatting tools; let Enter save agenda forms without interrupting note new lines
-- start weeks on Monday, omit repeated all-day labels, and use a simpler pin
-- put Sync now directly in settings, show multi-device completion status, and improve pairing and network recovery
-- restore window size and improve Windows taskbar identity and second-launch focus
-- add Linux packaging and platform integrations, remove new MSI builds, and restore WinGet manifest generation
+- A new Today view combines tasks, a saved **Do now** shortlist and an **Up next** agenda summary. Schedule an existing task while keeping one completion state.
+- Shared navigation, compact typography, neutral graphite surfaces and restrained red, yellow and green accents bring the desktop and Android interfaces together.
+- Habits have weekday schedules, daily completion, history, current and best streaks, and an archive.
+- Read-only HTTPS/webcal calendar subscriptions support manual and periodic refresh, recurring events and retained offline copies.
+- Task nesting and drag destinations are clearer. Keyboard, touch and accessibility controls are improved, including repeated Enter-to-add focus retention.
+- Note formatting preserves multiline selections. Enter saves agenda forms while notes retain normal newlines. Calendar weeks start on Monday; untimed events no longer repeat an all-day label.
+- **Sync now** is directly accessible in settings. Device status distinguishes connection from completed sync, with improvements to pairing and network recovery.
+- Windows restores window size and improves taskbar identity and second-launch focus. New installations use the setup executable; MSI packages are no longer generated.
+- Linux x86-64 Debian and portable packages include Java and Syncthing. WinGet manifest generation is available; catalog acceptance is separate.
+- The README, development guide and design system now document the shipped interface, installation, verification and support limits.
+
+Update paired devices together and keep a backup before upgrading. See the [2.0 release guide](docs/release-2.0.md) for compatibility and platform details.
 
 ## 1.2.1
 

@@ -1,6 +1,6 @@
 # Planner 2.0
 
-Draft release notes for 2.0.0. Publication, updated screenshots and final platform checks are pending.
+Release guide for Planner 2.0.0.
 
 Planner 2.0 brings tasks, agenda, notes and habits into a more compact, text-first workspace. It also adds task shortlists, scheduled tasks, calendar subscriptions and Linux packaging.
 
@@ -44,4 +44,4 @@ Calendar subscriptions are read-only HTTPS feeds, including webcal links upgrade
 
 Background jobs can be delayed by the operating system. Public sync discovery/relays can observe connection metadata, while device traffic is encrypted. Planner does not encrypt the database or exported backups on disk.
 
-The [README](../README.md) covers installation and capabilities; the [development guide](../android/README.md) covers source builds, verification and release tooling. Replace this draft's pending-publication notice with the final release evidence when the packages are ready.
+The [README](../README.md) covers installation and capabilities; the [development guide](../android/README.md) covers source builds, verification and release tooling. The [verification record](releases/2.0-verification.md) records platform checks and their limits.

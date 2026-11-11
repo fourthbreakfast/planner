@@ -86,6 +86,9 @@ else:
     lines.append("Depends: libnotify-bin, xdg-utils")
 control.write_text("\n".join(lines) + "\n")
 for desktop in stage.glob("**/*.desktop"):
+    # The bundled JRE also has a legal/java.desktop directory, not a launcher.
+    if not desktop.is_file():
+        continue
     if desktop != expected_desktop:
         raise SystemExit(f"Unexpected desktop entry: {desktop.relative_to(stage)}")
     entries = [line for line in desktop.read_text().splitlines() if not line.startswith("StartupWMClass=")]
