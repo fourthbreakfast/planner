@@ -280,6 +280,15 @@ jobs:
           version = os.environ['VERSION']
           root = Path('dist')
           expected = {f'planner-{version}.apk', f'planner-{version}-setup.exe', f'planner-{version}-linux-x64.deb', f'planner-{version}-linux-x64.tar.gz'}
+          # Multi-path artifact uploads retain their common-root subdirectories.
+          for asset in list(root.rglob('*')):
+              if asset.is_file() and asset.parent != root:
+                  target = root / asset.name
+                  if asset.name not in expected or target.exists():
+                      raise SystemExit(f'Unexpected or duplicate nested asset: {asset}')
+                  asset.rename(target)
+          for directory in sorted((p for p in root.rglob('*') if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
+              directory.rmdir()
           actual = {entry.name for entry in root.iterdir()}
           if actual != expected:
               raise SystemExit(f'Unexpected release assets: {actual ^ expected}')
@@ -309,7 +318,8 @@ jobs:
       - name: verify uploaded asset sizes and digests
         shell: bash
         run: |
-          gh api "repos/$GH_REPO/releases/tags/v$VERSION" > "$RUNNER_TEMP/release-metadata.json"
+          release_id=$(gh release view "v$VERSION" --json databaseId --jq '.databaseId')
+          gh api "repos/$GH_REPO/releases/$release_id" > "$RUNNER_TEMP/release-metadata.json"
           python3 - <<'PY'
           from pathlib import Path
           import hashlib

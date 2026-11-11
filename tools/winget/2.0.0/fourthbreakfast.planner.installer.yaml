@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
+PackageIdentifier: fourthbreakfast.planner
+PackageVersion: 2.0.0
+InstallerType: inno
+Scope: user
+UpgradeBehavior: install
+InstallModes:
+- interactive
+- silent
+- silentWithProgress
+ProductCode: '{7d1a5b0e-3c6f-4e0b-9a52-0f1c8e2d4b61}_is1'
+AppsAndFeaturesEntries:
+- DisplayName: planner
+  Publisher: fourthbreakfast
+  ProductCode: '{7d1a5b0e-3c6f-4e0b-9a52-0f1c8e2d4b61}_is1'
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/fourthbreakfast/planner/releases/download/v2.0.0/planner-2.0.0-setup.exe
+  InstallerSha256: 8AC0B2C6AA32274B7465120F790762DD88745FD9415C2466DEA90A9DFDD2C3AC
+ManifestType: installer
+ManifestVersion: 1.28.0

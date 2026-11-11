@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.28.0.schema.json
+PackageIdentifier: fourthbreakfast.planner
+PackageVersion: 2.0.0
+PackageLocale: en-US
+Publisher: fourthbreakfast
+PublisherUrl: https://github.com/fourthbreakfast
+PackageName: planner
+PackageUrl: https://github.com/fourthbreakfast/planner
+License: AGPL-3.0
+LicenseUrl: https://github.com/fourthbreakfast/planner/blob/main/LICENSE
+ShortDescription: Tasks, agenda, habits and notes, together on your own devices.
+Tags:
+- tasks
+- todo
+- calendar
+- notes
+- habits
+- syncthing
+ReleaseNotesUrl: https://github.com/fourthbreakfast/planner/releases/tag/v2.0.0
+ManifestType: defaultLocale
+ManifestVersion: 1.28.0
