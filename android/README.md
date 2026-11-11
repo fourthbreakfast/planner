@@ -2,7 +2,7 @@
 
 This directory contains the Android, Windows and Linux applications, their shared interface and their data rules.
 
-[Product overview](../README.md) · [Design system](../docs/design-system/README.md) · [Changelog](../CHANGELOG.md) · [Build CI](../.github/workflows/build.yml)
+[Product overview](../README.md) · [Changelog](../CHANGELOG.md) · [Build CI](../.github/workflows/build.yml)
 
 ## Setup
 
@@ -86,7 +86,7 @@ Linux normally uses `$XDG_DATA_HOME/planner`, or `~/.local/share/planner` when u
 | `desktop` | Windows/Linux shell, tray, desktop input, native integration, reminders, sync and packaging. |
 | `buildSrc` | `SyncthingBinary`, which builds the pinned source for each target platform. |
 
-Follow the [design system](../docs/design-system/README.md) for interface, visual and product-copy work. It distinguishes approved rules from proposals and historical references. Font and third-party licenses live in [docs/licenses](../docs/licenses).
+Shared interface components and theme values live in `shared/src/commonMain/kotlin/dev/fourthbreakfast/planner/ui`. Font and third-party licenses live in [docs/licenses](../docs/licenses).
 
 ## Verification
 
@@ -125,9 +125,7 @@ A matching `v` tag triggers [release CI](../.github/workflows/release.yml). Wind
 
 After publication, [tools/winget.ps1](../tools/winget.ps1) generates manifests from the published Windows installer. Validate those manifests before catalog submission; generation and Microsoft catalog acceptance are separate steps.
 
-The legacy local Windows helper, [tools/release.ps1](../tools/release.ps1), publishes only APK and Windows setup and assumes an Android Studio installation. It is not the complete 2.0 release path. Use the workflow for production releases across all platforms.
-
-Use the original release keystore at `%USERPROFILE%\.planner\release.jks`, alias `planner`. The helper refuses a missing key or a certificate that differs from [signing-certificate.sha256](signing-certificate.sha256); CI verifies the APK against that public pin as well. Signing credentials remain outside the repository.
+Production releases use the original Android signing key. CI verifies the signed APK against [signing-certificate.sha256](signing-certificate.sha256). Signing credentials remain outside the repository and are supplied through release secrets.
 
 ## Toolchain reference
 
@@ -172,4 +170,4 @@ Use `android` rather than the deprecated `sdkmanager` wrapper to pass `--no-metr
 | lib-recur | `0.17.1` |
 | Compile / target / minimum SDK | `37` / `37` / `26` |
 
-Move the toolchain forward in small steps: update one layer, build from the command line and test the affected platforms before moving to the next. Check the final release's verification record rather than treating an older device run as evidence for a new build.
+Move the toolchain forward in small steps: update one layer, build from the command line and test the affected platforms before moving to the next. Verify device behavior on the build being released.

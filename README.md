@@ -2,7 +2,7 @@
 
 Tasks, agenda, notes and habits in one workspace for Android, Windows and Linux. Planner works offline, keeps its database on your device and offers optional sync between paired devices. No account is required.
 
-[Downloads](https://github.com/fourthbreakfast/planner/releases) · [Changelog](CHANGELOG.md) · [Build from source](android/README.md) · [Design system](docs/design-system/README.md)
+[Downloads](https://github.com/fourthbreakfast/planner/releases) · [Changelog](CHANGELOG.md) · [Build from source](android/README.md)
 
 ![Planner desktop workspace](docs/readme/windows.png)
 
@@ -40,7 +40,7 @@ Pair devices in settings using a QR code or a full pairing code. Short codes wor
 
 Sync runs continuously while Planner is open. Android schedules background runs about every 15 minutes, subject to battery and network restrictions; background delivery is not immediate. **Sync now** starts a manual run. The status view shows each paired device's connection and completion.
 
-Public discovery and relay services are enabled by default for new setups to help devices connect across networks. Traffic between devices is encrypted; those services can observe connection metadata. You can turn them off for local-network-only sync. Firewalls, router restrictions and mobile power management can still prevent or delay a connection. See the [phone sync verification guide](docs/phone-sync-qa.md) for troubleshooting scenarios.
+Public discovery and relay services are enabled by default for new setups to help devices connect across networks. Traffic between devices is encrypted; those services can observe connection metadata. You can turn them off for local-network-only sync. Firewalls, router restrictions and mobile power management can still prevent or delay a connection.
 
 The local database and exported backup files are not encrypted by Planner. Keep backups somewhere you trust. Permanent deletion records prevent old copies from reappearing through sync. If a note is changed independently on two devices, the losing version is kept in the bin. Sync does not replace a backup.
 
@@ -66,7 +66,7 @@ apksigner verify --print-certs planner-<version>.apk
 
 Planner is written in Kotlin with Compose Multiplatform and Room. Android Studio is optional: command-line builds need a JDK and Go, plus the Android SDK for the phone app. Syncthing is built from the pinned source submodule.
 
-The [development guide](android/README.md) covers setup, isolated development installs, platform packaging, tests, migrations and release signing. The [design system](docs/design-system/README.md) records approved interface decisions and their status. Source build and release automation live in [GitHub Actions](.github/workflows).
+The [development guide](android/README.md) covers setup, isolated development installs, platform packaging, tests, migrations and release signing. Source build and release automation live in [GitHub Actions](.github/workflows).
 
 ## Credits and license
 

@@ -1,5 +1,0 @@
-Five labeled destinations follow the same reading order on every platform: Today, Tasks, Habits, Agenda, Notes. Mobile renders them as a bottom-ready navigation bar with small neutral outline icons and proportional SansSerif labels. The application shell owns placement and system insets.
-
-The active destination uses slightly brighter text/icon and a tiny coral dot below its label, without a filled tile. Inactive entries reserve the same dot space to prevent movement. Hover and pressed feedback use quiet neutral surfaces; keyboard focus has a visible outline. Every destination exposes its tab role and selected state, and touch targets are at least 48dp. Labels grow and wrap with the user's font scaling rather than being hidden in a horizontal scroller.
-
-A touch switches destinations. Holding a destination retains the settings shortcut. LocalEmbeddedNavigation lets retained feature screens suppress legacy bars when the shared shell supplies navigation once. tabLabel and NavigationIcon provide the same labels and drawings to the desktop shell.

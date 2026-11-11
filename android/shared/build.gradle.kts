@@ -71,7 +71,7 @@ dependencies {
 tasks.withType<Test>().configureEach {
     providers.environmentVariable("PLANNER_RENDER").orNull?.let { environment("PLANNER_RENDER", it) }
     providers.environmentVariable("PLANNER_SYNCTHING").orNull?.let { environment("PLANNER_SYNCTHING", it) }
-    val designTokens = rootProject.file("../docs/design-system/tokens.json")
+    val designTokens = project.file("src/desktopTest/resources/ui-tokens.json")
     inputs.file(designTokens)
     systemProperty("planner.designTokens", designTokens.absolutePath)
 }

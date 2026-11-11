@@ -1,0 +1,14 @@
+# Local AI instructions and tooling
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
+GEMINI.md
+.codex/
+.claude/
+.agents/
+/.github/copilot-instructions.md
+
+# Local working notes, previews and generated tooling
+/.tools/
+/local-notes/
+/design-previews/

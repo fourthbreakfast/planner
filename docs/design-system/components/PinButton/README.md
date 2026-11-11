@@ -1,1 +1,0 @@
-A single diagonal pushpin is shared by phone and desktop. A simple head with rounded outline joins and a straight, round-ended needle sits on a 24-unit grid, rotated 45 degrees. The head is outlined when unpinned and filled when pinned. Preserve the accessible pin/unpin labels and the full control target around the small drawing.

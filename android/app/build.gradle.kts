@@ -43,7 +43,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // the key and its password never live in the repo: tools/release.ps1 passes them in
+    // Release signing credentials are supplied externally and never stored in the repository.
     if (releaseKeystore != null) {
         signingConfigs {
             create("release") {

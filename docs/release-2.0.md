@@ -44,4 +44,4 @@ Calendar subscriptions are read-only HTTPS feeds, including webcal links upgrade
 
 Background jobs can be delayed by the operating system. Public sync discovery/relays can observe connection metadata, while device traffic is encrypted. Planner does not encrypt the database or exported backups on disk.
 
-The [README](../README.md) covers installation and capabilities; the [development guide](../android/README.md) covers source builds, verification and release tooling. The [verification record](releases/2.0-verification.md) records platform checks and their limits.
+The [README](../README.md) covers installation and capabilities; the [development guide](../android/README.md) covers source builds, verification and release tooling.
