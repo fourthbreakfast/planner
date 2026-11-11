@@ -227,6 +227,7 @@ jobs:
         run: bash ../tools/package-linux.sh
       - name: smoke-test the packaged Linux runtime on isolated data
         run: |
+          set -x
           deb="desktop/build/linux/planner-$VERSION-linux-x64.deb"
           test "$(dpkg-deb --field "$deb" Architecture)" = amd64
           test "$(dpkg-deb --field "$deb" Package)" = fourthbreakfast-planner

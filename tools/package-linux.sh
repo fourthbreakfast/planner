@@ -59,6 +59,11 @@ def layout_error(message):
     raise SystemExit(f"{message}\nExpected app root: {app.relative_to(stage)}\nRelevant packaged paths:\n{details}")
 
 launcher = app / "bin/planner"
+engine = app / "lib/app/resources/syncthing"
+if not engine.is_file():
+    layout_error("Missing bundled lib/app/resources/syncthing engine.")
+# jpackage can copy resources before createDistributable applies its permissions.
+engine.chmod(0o755)
 if not launcher.is_file() or not launcher.stat().st_mode & 0o111:
     layout_error("The package must contain an executable private bin/planner launcher.")
 shared_launcher = stage / "usr/bin/planner"
